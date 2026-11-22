@@ -2,7 +2,7 @@ import type {
   ImportFilePickerClient,
   ImportFilePickResult,
 } from "./import-file-picker";
-import { MAX_IMPORT_FILE_BYTES } from "./import-service";
+import { MAX_IMPORT_FILE_BYTES } from "./import-limits";
 
 // Web picks through a transient <input type="file"> and reads the file in
 // memory with FileReader (mirroring ovumcy-web's settings-import handler), so

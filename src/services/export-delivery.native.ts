@@ -10,7 +10,13 @@ import type { ExportArtifact } from "./export-service";
 export function createPlatformExportDeliveryClient(): ExportDeliveryClient {
   return {
     async deliver(artifact: ExportArtifact): Promise<ExportDeliveryResult> {
-      if (!(await Sharing.isAvailableAsync())) {
+      let available: boolean;
+      try {
+        available = await Sharing.isAvailableAsync();
+      } catch {
+        available = false;
+      }
+      if (!available) {
         return {
           ok: false,
           errorCode: "delivery_unavailable",

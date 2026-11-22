@@ -62,40 +62,32 @@ export function buildDayLogVisibility(
   };
 }
 
+// The record may come from an imported file or a decoded payload, so every
+// field is rebuilt by name and type-checked: an unknown key is dropped and a
+// value of the wrong type degrades to the field's default instead of being
+// stored as-is or throwing partway through an import.
 export function sanitizeDayLogRecord(record: DayLogRecord): DayLogRecord {
-  const normalizedFlow = normalizeDayFlow(record.flow);
-  const normalizedNotes = trimDayLogNotes(record.notes);
-  // exactOptionalPropertyTypes forbids assigning a `number | undefined`
-  // normalizer result straight into an optional `number` property, and a
-  // later "no override" can't erase a key the `...record` spread below
-  // already added — so the raw pregnancy-metric values are pulled out of
-  // the spread source here and spliced back in conditionally at the end.
-  const {
-    weightKg: rawWeightKg,
-    bpSystolic: rawBpSystolic,
-    bpDiastolic: rawBpDiastolic,
-    ...restRecord
-  } = record;
-  const weightKg = normalizeDayWeightKg(rawWeightKg);
-  const bpSystolic = normalizeDayBpSystolic(rawBpSystolic);
-  const bpDiastolic = normalizeDayBpDiastolic(rawBpDiastolic);
+  const isPeriod = record.isPeriod === true;
+  const cycleStart = isPeriod && record.cycleStart === true;
+  const weightKg = normalizeDayWeightKg(record.weightKg);
+  const bpSystolic = normalizeDayBpSystolic(record.bpSystolic);
+  const bpDiastolic = normalizeDayBpDiastolic(record.bpDiastolic);
 
   return {
     ...createEmptyDayLogRecord(record.date),
-    ...restRecord,
-    isPeriod: record.isPeriod,
-    cycleStart: record.cycleStart && record.isPeriod,
-    isUncertain: record.isUncertain && record.cycleStart && record.isPeriod,
-    flow: record.isPeriod ? normalizedFlow : "none",
+    isPeriod,
+    cycleStart,
+    isUncertain: cycleStart && record.isUncertain === true,
+    flow: isPeriod ? normalizeDayFlow(record.flow) : "none",
     mood: clampDayMood(record.mood),
     sexActivity: normalizeDaySexActivity(record.sexActivity),
     bbt: normalizeDayBBT(record.bbt),
     cervicalMucus: normalizeDayCervicalMucus(record.cervicalMucus),
     lhTest: normalizeDayLHTest(record.lhTest),
     pregnancyTest: normalizeDayPregnancyTest(record.pregnancyTest),
-    cycleFactorKeys: normalizeDayCycleFactorKeys(record.cycleFactorKeys),
-    symptomIDs: normalizeDayLogSymptomIDs(record.symptomIDs),
-    notes: normalizedNotes,
+    cycleFactorKeys: normalizeDayCycleFactorKeys(stringEntries(record.cycleFactorKeys)),
+    symptomIDs: normalizeDayLogSymptomIDs(stringEntries(record.symptomIDs)),
+    notes: typeof record.notes === "string" ? trimDayLogNotes(record.notes) : "",
     // BP systolic/diastolic apply independently — a lone reading (e.g.
     // diastolic without systolic) is stored as given; neither value invents
     // nor drops its counterpart.
@@ -103,6 +95,12 @@ export function sanitizeDayLogRecord(record: DayLogRecord): DayLogRecord {
     ...(bpSystolic !== undefined ? { bpSystolic } : {}),
     ...(bpDiastolic !== undefined ? { bpDiastolic } : {}),
   };
+}
+
+function stringEntries(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
 }
 
 export function normalizeDayFlow(value: string): DayFlow {

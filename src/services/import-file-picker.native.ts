@@ -5,7 +5,7 @@ import type {
   ImportFilePickerClient,
   ImportFilePickResult,
 } from "./import-file-picker";
-import { MAX_IMPORT_FILE_BYTES } from "./import-service";
+import { MAX_IMPORT_FILE_BYTES } from "./import-limits";
 
 export function createPlatformImportFilePickerClient(): ImportFilePickerClient {
   return {
@@ -40,9 +40,14 @@ export function createPlatformImportFilePickerClient(): ImportFilePickerClient {
       let cacheCopy: File | null = null;
       try {
         cacheCopy = new File(asset.uri);
-        const sizeInBytes =
-          typeof asset.size === "number" ? asset.size : cacheCopy.size;
-        if (sizeInBytes > MAX_IMPORT_FILE_BYTES) {
+        // The cached copy is what gets read, so its own size always counts;
+        // the picker's reported size is provider metadata that can understate
+        // it and only ever tightens the check.
+        const sizeInBytes = Math.max(
+          cacheCopy.size,
+          typeof asset.size === "number" ? asset.size : 0,
+        );
+        if (!Number.isFinite(sizeInBytes) || sizeInBytes > MAX_IMPORT_FILE_BYTES) {
           return { status: "failed", errorCode: "too_large" };
         }
 

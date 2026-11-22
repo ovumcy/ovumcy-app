@@ -1194,8 +1194,20 @@ describe("import-service v1 compatibility", () => {
   });
 });
 
+// Every imported record is stored under a freshly minted id, never the file's.
+function storedOnly<T>(records: Map<string, T>): T {
+  const values = [...records.values()];
+  expect(values).toHaveLength(1);
+  return values[0] as T;
+}
+
+function expectMintedID(id: string, prefix: string, fileID: string) {
+  expect(id).not.toBe(fileID);
+  expect(id).toMatch(new RegExp(`^${prefix}_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`));
+}
+
 describe("import-service apply (pregnancy-mode collections, v2)", () => {
-  it("imports pregnancy records, kick sessions, and contraction sessions additively onto a fresh install", async () => {
+  it("imports pregnancy records, kick sessions, and contraction sessions additively onto a fresh install under fresh ids", async () => {
     const { storage, pregnancies, kickSessions, contractionSessions } =
       createStatefulStorage();
 
@@ -1217,12 +1229,31 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
       contractionSessionsAdded: 1,
       contractionSessionsSkipped: 0,
     });
-    expect(pregnancies.get("p1")).toMatchObject({ id: "p1", status: "active" });
-    expect(kickSessions.get("k1")).toMatchObject({ id: "k1", kickCount: 7 });
-    expect(contractionSessions.get("c1")).toMatchObject({ id: "c1" });
+    const pregnancy = storedOnly(pregnancies);
+    expect(pregnancy).toMatchObject({ status: "active" });
+    expectMintedID(pregnancy.id, "pregnancy", "p1");
+    const kick = storedOnly(kickSessions);
+    expect(kick).toMatchObject({ kickCount: 7 });
+    expectMintedID(kick.id, "kick", "k1");
+    expectMintedID(storedOnly(contractionSessions).id, "contraction", "c1");
   });
 
-  it("never overwrites a pregnancy record, kick session, or contraction session whose id already exists on-device", async () => {
+  it("never stores a file-chosen id as a key, however long or odd it is", async () => {
+    const { storage, pregnancies } = createStatefulStorage();
+    const hostileID = `../${"x".repeat(5000)}`;
+
+    await importBackupEnvelope(
+      storage,
+      envelope({
+        formatVersion: 2,
+        pregnancies: [pregnancyRecord({ id: hostileID, status: "ended", endedAt: "2025-06-01" })],
+      }),
+    );
+
+    expectMintedID(storedOnly(pregnancies).id, "pregnancy", hostileID);
+  });
+
+  it("skips a pregnancy record, kick session, or contraction session whose content already exists on-device, whatever its id", async () => {
     const { storage, pregnancies, kickSessions, contractionSessions } =
       createStatefulStorage();
     pregnancies.set(
@@ -1236,11 +1267,11 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
       storage,
       envelope({
         formatVersion: 2,
-        // Same ids, different payloads -- if additivity broke, these would
-        // clobber the existing records.
-        pregnancies: [pregnancyRecord({ id: "p1", status: "active" })],
-        kickSessions: [kickSession({ id: "k1", kickCount: 99 })],
-        contractionSessions: [contractionSession({ id: "c1", startedAt: "2026-03-10T23:00:00.000Z" })],
+        pregnancies: [
+          pregnancyRecord({ id: "other-id", status: "ended", endedAt: "2025-06-01" }),
+        ],
+        kickSessions: [kickSession({ id: "k1", kickCount: 5 })],
+        contractionSessions: [contractionSession({ id: "c-other" })],
       }),
     );
 
@@ -1252,19 +1283,75 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
       contractionSessionsAdded: 0,
       contractionSessionsSkipped: 1,
     });
-    expect(pregnancies.get("p1")?.status).toBe("ended");
-    expect(kickSessions.get("k1")?.kickCount).toBe(5);
-    expect(contractionSessions.get("c1")?.startedAt).toBe("2026-03-10T10:00:00.000Z");
     expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
     expect(storage.writeKickSession).not.toHaveBeenCalled();
     expect(storage.writeContractionSession).not.toHaveBeenCalled();
+  });
+
+  it("never overwrites an on-device record that shares an imported record's id", async () => {
+    const { storage, pregnancies, kickSessions, contractionSessions } =
+      createStatefulStorage();
+    pregnancies.set(
+      "p1",
+      pregnancyRecord({ id: "p1", status: "ended", endedAt: "2025-06-01" }),
+    );
+    kickSessions.set("k1", kickSession({ id: "k1", kickCount: 5 }));
+    contractionSessions.set("c1", contractionSession({ id: "c1" }));
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        formatVersion: 2,
+        pregnancies: [pregnancyRecord({ id: "p1", status: "active" })],
+        kickSessions: [kickSession({ id: "k1", kickCount: 99 })],
+        contractionSessions: [contractionSession({ id: "c1", startedAt: "2026-03-10T23:00:00.000Z" })],
+      }),
+    );
+
+    expect(outcome).toMatchObject({
+      pregnanciesAdded: 1,
+      kickSessionsAdded: 1,
+      contractionSessionsAdded: 1,
+    });
+    expect(pregnancies.get("p1")?.status).toBe("ended");
+    expect(kickSessions.get("k1")?.kickCount).toBe(5);
+    expect(contractionSessions.get("c1")?.startedAt).toBe("2026-03-10T10:00:00.000Z");
+    expect(pregnancies.size).toBe(2);
+    expect(kickSessions.size).toBe(2);
+    expect(contractionSessions.size).toBe(2);
+  });
+
+  it("adds nothing when the same backup is imported twice", async () => {
+    const { storage, pregnancies, kickSessions, contractionSessions } =
+      createStatefulStorage();
+    const backup = envelope({
+      formatVersion: 2,
+      pregnancies: [pregnancyRecord({ id: "p1", status: "ended", endedAt: "2025-06-01" })],
+      kickSessions: [kickSession({ id: "k1", kickCount: 7 })],
+      contractionSessions: [contractionSession({ id: "c1" })],
+    });
+
+    await importBackupEnvelope(storage, backup);
+    const second = await importBackupEnvelope(storage, backup);
+
+    expect(second).toMatchObject({
+      pregnanciesAdded: 0,
+      pregnanciesSkipped: 1,
+      kickSessionsAdded: 0,
+      kickSessionsSkipped: 1,
+      contractionSessionsAdded: 0,
+      contractionSessionsSkipped: 1,
+    });
+    expect(pregnancies.size).toBe(1);
+    expect(kickSessions.size).toBe(1);
+    expect(contractionSessions.size).toBe(1);
   });
 
   it("skips an imported active pregnancy record when the device already has a DIFFERENT active record (never overwrites, never ends, never throws)", async () => {
     const { storage, pregnancies } = createStatefulStorage();
     pregnancies.set(
       "device-active",
-      pregnancyRecord({ id: "device-active", status: "active" }),
+      pregnancyRecord({ id: "device-active", status: "active", edd: "2026-11-01" }),
     );
 
     const outcome = await importBackupEnvelope(
@@ -1276,7 +1363,7 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
     );
 
     expect(outcome).toMatchObject({ pregnanciesAdded: 0, pregnanciesSkipped: 1 });
-    expect(pregnancies.has("incoming-active")).toBe(false);
+    expect(pregnancies.size).toBe(1);
     expect(pregnancies.get("device-active")).toMatchObject({
       id: "device-active",
       status: "active",
@@ -1301,8 +1388,10 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
     );
 
     expect(outcome).toMatchObject({ pregnanciesAdded: 2, pregnanciesSkipped: 0 });
-    expect(pregnancies.get("new-active")?.status).toBe("active");
-    expect(pregnancies.get("old-ended")?.status).toBe("ended");
+    expect([...pregnancies.values()].map((record) => record.status).sort()).toEqual([
+      "active",
+      "ended",
+    ]);
   });
 
   it("skips the second of two active pregnancy records in the same file, keeping the first", async () => {
@@ -1313,15 +1402,14 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
       envelope({
         formatVersion: 2,
         pregnancies: [
-          pregnancyRecord({ id: "first-active", status: "active" }),
-          pregnancyRecord({ id: "second-active", status: "active" }),
+          pregnancyRecord({ id: "first-active", status: "active", edd: "2026-09-01" }),
+          pregnancyRecord({ id: "second-active", status: "active", edd: "2026-10-01" }),
         ],
       }),
     );
 
     expect(outcome).toMatchObject({ pregnanciesAdded: 1, pregnanciesSkipped: 1 });
-    expect(pregnancies.has("first-active")).toBe(true);
-    expect(pregnancies.has("second-active")).toBe(false);
+    expect(storedOnly(pregnancies).edd).toBe("2026-09-01");
   });
 
   it("counts a malformed pregnancy record, kick session, and contraction session as skipped without aborting the rest of the import", async () => {
@@ -1355,9 +1443,9 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
       contractionSessionsAdded: 1,
       contractionSessionsSkipped: 1,
     });
-    expect(pregnancies.has("valid-pregnancy")).toBe(true);
-    expect(kickSessions.has("valid-kick")).toBe(true);
-    expect(contractionSessions.has("valid-contraction")).toBe(true);
+    expect(pregnancies.size).toBe(1);
+    expect(kickSessions.size).toBe(1);
+    expect(contractionSessions.size).toBe(1);
   });
 
   it("restores pregnancies, kick sessions, and contraction sessions from a v2 JSON backup string on a fresh install (export -> import round trip)", async () => {
@@ -1394,20 +1482,19 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
         contractionSessionsAdded: 1,
       });
     }
-    expect(pregnancies.get("p1")).toMatchObject({
-      id: "p1",
+    expect(storedOnly(pregnancies)).toMatchObject({
       status: "ended",
       endReason: "birth",
     });
-    expect(kickSessions.get("k1")).toMatchObject({ id: "k1", kickCount: 12 });
-    expect(contractionSessions.get("c1")?.contractions).toEqual([
+    expect(storedOnly(kickSessions)).toMatchObject({ kickCount: 12 });
+    expect(storedOnly(contractionSessions).contractions).toEqual([
       { startedAt: "2026-01-01T10:05:00.000Z", durationSeconds: 45 },
     ]);
   });
 });
 
 describe("import-service apply (postpartum + screening collections, v3)", () => {
-  it("imports postpartum records and screening responses additively onto a fresh install", async () => {
+  it("imports postpartum records and screening responses additively onto a fresh install under fresh ids", async () => {
     const { storage, postpartumRecords, screeningResponses } =
       createStatefulStorage();
 
@@ -1426,14 +1513,15 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
       screeningResponsesAdded: 1,
       screeningResponsesSkipped: 0,
     });
-    expect(postpartumRecords.get("pp1")).toMatchObject({
-      id: "pp1",
-      status: "active",
-    });
-    expect(screeningResponses.get("sc1")).toMatchObject({ id: "sc1", score: 8 });
+    const postpartum = storedOnly(postpartumRecords);
+    expect(postpartum).toMatchObject({ status: "active" });
+    expectMintedID(postpartum.id, "postpartum", "pp1");
+    const screening = storedOnly(screeningResponses);
+    expect(screening).toMatchObject({ score: 8 });
+    expectMintedID(screening.id, "screening", "sc1");
   });
 
-  it("never overwrites a postpartum record or screening response whose id already exists on-device", async () => {
+  it("skips a postpartum record or screening response whose content already exists on-device, and never overwrites one that shares its id", async () => {
     const { storage, postpartumRecords, screeningResponses } =
       createStatefulStorage();
     postpartumRecords.set(
@@ -1442,33 +1530,44 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
     );
     screeningResponses.set("sc1", screeningResponse({ id: "sc1", answers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], score: 0 }));
 
-    const outcome = await importBackupEnvelope(
+    const duplicate = await importBackupEnvelope(
       storage,
       envelope({
         formatVersion: 3,
-        // Same ids, different payloads -- additivity must keep the existing rows.
-        postpartumRecords: [postpartumRecord({ id: "pp1", status: "active" })],
-        screeningResponses: [screeningResponse({ id: "sc1" })],
+        postpartumRecords: [
+          postpartumRecord({ id: "pp-other", status: "ended", endedAt: "2025-06-01", endReason: "manual" }),
+        ],
+        screeningResponses: [
+          screeningResponse({ id: "sc-other", answers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], score: 0 }),
+        ],
       }),
     );
-
-    expect(outcome).toMatchObject({
+    expect(duplicate).toMatchObject({
       postpartumRecordsAdded: 0,
       postpartumRecordsSkipped: 1,
       screeningResponsesAdded: 0,
       screeningResponsesSkipped: 1,
     });
+
+    await importBackupEnvelope(
+      storage,
+      envelope({
+        formatVersion: 3,
+        postpartumRecords: [postpartumRecord({ id: "pp1", status: "active" })],
+        screeningResponses: [screeningResponse({ id: "sc1" })],
+      }),
+    );
     expect(postpartumRecords.get("pp1")?.status).toBe("ended");
     expect(screeningResponses.get("sc1")?.score).toBe(0);
-    expect(storage.writePostpartumRecord).not.toHaveBeenCalled();
-    expect(storage.writeScreeningResponse).not.toHaveBeenCalled();
+    expect(postpartumRecords.size).toBe(2);
+    expect(screeningResponses.size).toBe(2);
   });
 
   it("skips an imported active postpartum record when the device already has a DIFFERENT active record (never overwrites, never ends, never throws)", async () => {
     const { storage, postpartumRecords } = createStatefulStorage();
     postpartumRecords.set(
       "device-active",
-      postpartumRecord({ id: "device-active", status: "active" }),
+      postpartumRecord({ id: "device-active", status: "active", startedAt: "2026-02-01" }),
     );
 
     const outcome = await importBackupEnvelope(
@@ -1483,7 +1582,7 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
       postpartumRecordsAdded: 0,
       postpartumRecordsSkipped: 1,
     });
-    expect(postpartumRecords.has("incoming-active")).toBe(false);
+    expect(postpartumRecords.size).toBe(1);
     expect(postpartumRecords.get("device-active")).toMatchObject({
       id: "device-active",
       status: "active",
@@ -1510,8 +1609,10 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
       postpartumRecordsAdded: 2,
       postpartumRecordsSkipped: 0,
     });
-    expect(postpartumRecords.get("new-active")?.status).toBe("active");
-    expect(postpartumRecords.get("old-ended")?.status).toBe("ended");
+    expect([...postpartumRecords.values()].map((record) => record.status).sort()).toEqual([
+      "active",
+      "ended",
+    ]);
   });
 
   it("skips the second of two active postpartum records in the same file, keeping the first", async () => {
@@ -1522,8 +1623,8 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
       envelope({
         formatVersion: 3,
         postpartumRecords: [
-          postpartumRecord({ id: "first-active", status: "active" }),
-          postpartumRecord({ id: "second-active", status: "active" }),
+          postpartumRecord({ id: "first-active", status: "active", startedAt: "2026-02-01" }),
+          postpartumRecord({ id: "second-active", status: "active", startedAt: "2026-02-02" }),
         ],
       }),
     );
@@ -1532,8 +1633,7 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
       postpartumRecordsAdded: 1,
       postpartumRecordsSkipped: 1,
     });
-    expect(postpartumRecords.has("first-active")).toBe(true);
-    expect(postpartumRecords.has("second-active")).toBe(false);
+    expect(storedOnly(postpartumRecords).startedAt).toBe("2026-02-01");
   });
 
   it("recomputes an imported screening's score + selfHarmFlag from its answers (a drifted stored score is corrected, never trusted)", async () => {
@@ -1557,7 +1657,7 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
     );
 
     expect(outcome).toMatchObject({ screeningResponsesAdded: 1 });
-    expect(screeningResponses.get("drifted")).toMatchObject({
+    expect(storedOnly(screeningResponses)).toMatchObject({
       score: 4,
       selfHarmFlag: true,
     });
@@ -1589,8 +1689,8 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
       screeningResponsesAdded: 1,
       screeningResponsesSkipped: 1,
     });
-    expect(postpartumRecords.has("valid-postpartum")).toBe(true);
-    expect(screeningResponses.has("valid-screening")).toBe(true);
+    expect(postpartumRecords.size).toBe(1);
+    expect(screeningResponses.size).toBe(1);
   });
 
   it("restores postpartum records and screening responses from a v3 JSON backup string on a fresh install (export -> import round trip)", async () => {
@@ -1616,12 +1716,11 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
         screeningResponsesAdded: 1,
       });
     }
-    expect(postpartumRecords.get("pp1")).toMatchObject({
-      id: "pp1",
+    expect(storedOnly(postpartumRecords)).toMatchObject({
       status: "ended",
       endReason: "manual",
     });
-    expect(screeningResponses.get("sc1")).toMatchObject({ id: "sc1", score: 8 });
+    expect(storedOnly(screeningResponses)).toMatchObject({ score: 8 });
   });
 });
 
@@ -1875,5 +1974,40 @@ describe("preview and apply agree on a file repeating a date", () => {
       );
       expect(preview).toEqual(applied);
     }
+  });
+});
+
+describe("import-service day logs with untrusted field types", () => {
+  it("imports a day whose flags, notes and lists have the wrong types without aborting later days", async () => {
+    const { storage, dayLogs } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        dayLogs: [
+          {
+            ...createEmptyDayLogRecord("2026-03-10"),
+            isPeriod: "yes",
+            cycleStart: 1,
+            notes: 42,
+            symptomIDs: "cramps",
+            cycleFactorKeys: 7,
+            mood: 3,
+          } as unknown as DayLogRecord,
+          dayLog("2026-03-11", { mood: 2 }),
+        ],
+      }),
+    );
+
+    expect(outcome).toMatchObject({ dayLogsAdded: 2, dayLogsRejected: 0 });
+    expect(dayLogs.get("2026-03-10")).toMatchObject({
+      isPeriod: false,
+      cycleStart: false,
+      notes: "",
+      symptomIDs: [],
+      cycleFactorKeys: [],
+      mood: 3,
+    });
+    expect(dayLogs.get("2026-03-11")).toMatchObject({ mood: 2 });
   });
 });

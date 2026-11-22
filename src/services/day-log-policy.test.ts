@@ -264,3 +264,40 @@ describe("day-log model pregnancy metrics", () => {
     expect(hasDayLogData({ ...empty, bpDiastolic: 0 })).toBe(false);
   });
 });
+
+describe("sanitizeDayLogRecord with untrusted field types", () => {
+  it("degrades wrong-typed fields to their defaults instead of storing them or throwing", () => {
+    const hostile = {
+      date: "2026-03-17",
+      isPeriod: "yes",
+      cycleStart: 1,
+      isUncertain: "true",
+      flow: 7,
+      mood: "3",
+      sexActivity: null,
+      bbt: "36.6",
+      cervicalMucus: {},
+      lhTest: [],
+      pregnancyTest: 1,
+      cycleFactorKeys: 7,
+      symptomIDs: "headache",
+      notes: 42,
+      weightKg: "70",
+      extraField: "x".repeat(10),
+    } as unknown as DayLogRecord;
+
+    const sanitized = sanitizeDayLogRecord(hostile);
+
+    expect(sanitized).toEqual(createEmptyDayLogRecord("2026-03-17"));
+    expect(sanitized).not.toHaveProperty("extraField");
+  });
+
+  it("keeps the string entries of a mixed list and drops the rest", () => {
+    const sanitized = sanitizeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-17"),
+      symptomIDs: ["cramps", 3, null, " bloating "] as unknown as string[],
+    });
+
+    expect(sanitized.symptomIDs).toEqual(["cramps", "bloating"]);
+  });
+});
