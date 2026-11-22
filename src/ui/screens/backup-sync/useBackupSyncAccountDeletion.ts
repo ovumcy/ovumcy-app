@@ -150,16 +150,35 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     ) {
       // Asked up front: a bodiless try would spend the shared step-up budget.
       setIsDeletingAccount(true);
-      const codeRequired = await isCodeFieldNeeded(state);
+      const needsStepUp = await hasModeSessionToken(state);
+      const codeRequired = needsStepUp && (await isCodeFieldNeeded(state));
       setIsDeletingAccount(false);
-      setPendingStepUp({
-        prompt: { codeRequired, errorCode: null },
-        forState: state,
-      });
-      return;
+      if (needsStepUp) {
+        setPendingStepUp({
+          prompt: { codeRequired, errorCode: null },
+          forState: state,
+        });
+        return;
+      }
     }
 
     await runDeletion(state, undefined);
+  }
+
+  // `hasSyncSession` counts either server's token; the card speaks for the
+  // saved mode's server, and a stray token of the other one never decides it.
+  async function hasModeSessionToken(forState: NonNullable<typeof state>) {
+    let secrets: Awaited<ReturnType<typeof syncSecretStore.readSyncSecrets>>;
+    try {
+      secrets = await syncSecretStore.readSyncSecrets();
+    } catch {
+      return true;
+    }
+    const token =
+      forState.savedSyncPreferences.mode === "managed"
+        ? secrets?.managedAuthSessionToken
+        : secrets?.authSessionToken;
+    return typeof token === "string";
   }
 
   // The password and code live only in the card's own field state and this
