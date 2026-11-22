@@ -55,7 +55,6 @@ export type VerifyTOTPEnrollmentErrorCode =
   | "totp_invalid_code"
   | "totp_replayed"
   | "totp_secret_failed"
-  | "totp_enrollment_restart_required"
   | "totp_enrollment_not_started"
   | "unauthorized"
   | "rate_limited"

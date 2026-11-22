@@ -55,7 +55,6 @@ export type TOTPCopy = {
     networkFailed: string;
     unauthorized: string;
     totpEnrollInvalidCode: string;
-    totpEnrollmentRestartRequired: string;
     totpEnrollmentNotStarted: string;
     totpAlreadyDisabled: string;
     totpRecoveryCodeLost: string;
@@ -119,8 +118,6 @@ const totpCopyEn: TOTPCopy = {
     unauthorized: "Session expired. Sign in again.",
     totpEnrollInvalidCode:
       "Code is incorrect. If setup was also started on another device, only the newest setup counts: finish it there, or cancel and start again here.",
-    totpEnrollmentRestartRequired:
-      "Too many attempts for this setup, so it was cancelled. Enter your password to start again.",
     totpEnrollmentNotStarted:
       "This setup is no longer pending. Enter your password to start again.",
     totpAlreadyDisabled:
@@ -191,8 +188,6 @@ const totpCopyDe: TOTPCopy = {
     unauthorized: "Sitzung abgelaufen. Bitte erneut anmelden.",
     totpEnrollInvalidCode:
       "Der Code ist falsch. Wurde die Einrichtung auch auf einem anderen Gerät gestartet, gilt nur die neueste: Schließen Sie sie dort ab oder brechen Sie ab und starten Sie hier neu.",
-    totpEnrollmentRestartRequired:
-      "Zu viele Versuche für diese Einrichtung, sie wurde abgebrochen. Geben Sie Ihr Passwort ein, um neu zu starten.",
     totpEnrollmentNotStarted:
       "Diese Einrichtung ist nicht mehr offen. Geben Sie Ihr Passwort ein, um neu zu starten.",
     totpAlreadyDisabled:
@@ -264,8 +259,6 @@ const totpCopyFr: TOTPCopy = {
     unauthorized: "Session expirée. Reconnectez-vous.",
     totpEnrollInvalidCode:
       "Code incorrect. Si la configuration a aussi été lancée sur un autre appareil, seule la plus récente compte : terminez-la là-bas, ou annulez et recommencez ici.",
-    totpEnrollmentRestartRequired:
-      "Trop d'essais pour cette configuration, elle a été annulée. Entrez votre mot de passe pour recommencer.",
     totpEnrollmentNotStarted:
       "Cette configuration n'est plus en attente. Entrez votre mot de passe pour recommencer.",
     totpAlreadyDisabled:
@@ -334,8 +327,6 @@ const totpCopyRu: TOTPCopy = {
     unauthorized: "Сессия истекла. Войдите заново.",
     totpEnrollInvalidCode:
       "Код неверный. Если настройку начали и на другом устройстве, действует только самая новая: завершите её там или отмените и начните заново здесь.",
-    totpEnrollmentRestartRequired:
-      "Слишком много попыток для этой настройки, она отменена. Введите пароль, чтобы начать заново.",
     totpEnrollmentNotStarted:
       "Эта настройка больше не активна. Введите пароль, чтобы начать заново.",
     totpAlreadyDisabled:
@@ -407,8 +398,6 @@ const totpCopyEs: TOTPCopy = {
     unauthorized: "La sesión ha caducado. Vuelve a iniciar sesión.",
     totpEnrollInvalidCode:
       "Código incorrecto. Si también iniciaste la configuración en otro dispositivo, solo cuenta la más reciente: termínala allí o cancela y empieza de nuevo aquí.",
-    totpEnrollmentRestartRequired:
-      "Demasiados intentos para esta configuración; se canceló. Introduce tu contraseña para empezar de nuevo.",
     totpEnrollmentNotStarted:
       "Esta configuración ya no está pendiente. Introduce tu contraseña para empezar de nuevo.",
     totpAlreadyDisabled:
@@ -475,8 +464,6 @@ const totpCopyIt: TOTPCopy = {
     unauthorized: "Sessione scaduta. Accedi di nuovo.",
     totpEnrollInvalidCode:
       "Codice non corretto. Se la configurazione è stata avviata anche su un altro dispositivo, vale solo la più recente: completala lì, oppure annulla e ricomincia qui.",
-    totpEnrollmentRestartRequired:
-      "Troppi tentativi per questa configurazione, che è stata annullata. Inserisci la password per ricominciare.",
     totpEnrollmentNotStarted:
       "Questa configurazione non è più in attesa. Inserisci la password per ricominciare.",
     totpAlreadyDisabled:

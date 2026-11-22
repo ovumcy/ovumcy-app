@@ -411,10 +411,7 @@ export function useSyncAccountSecurityController({
     });
     if (!result.ok) {
       setTotpErrorCode(result.errorCode);
-      if (
-        result.errorCode === "totp_enrollment_restart_required" ||
-        result.errorCode === "totp_enrollment_not_started"
-      ) {
+      if (result.errorCode === "totp_enrollment_not_started") {
         setTotpStatus("idle");
         setTotpStage("idle");
         setTotpEnrollment(null);
