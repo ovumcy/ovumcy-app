@@ -1008,6 +1008,52 @@ describe("managed-partner-share-service", () => {
       expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBeUndefined();
     });
 
+    it("records no floor invite for a legacy key without a source invite", async () => {
+      const { syncSecretStore, partnerShareSecretStore, shareKey } =
+        await setupPartnerGrant();
+      await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+        record.grantKeysByGrantID["grant-1"]!.sourceInviteID = "";
+      });
+      mockProjectionGetReturnsPayload(
+        shareKey,
+        buildProjectionPayload({ generation: 7 }),
+      );
+
+      await expect(
+        loadManagedPartnerProjection(
+          syncSecretStore,
+          partnerShareSecretStore,
+          "managed",
+          { id: "grant-1" },
+        ),
+      ).resolves.toEqual({ ok: true, value: expect.objectContaining({ generation: 7 }) });
+      const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
+      expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBe(7);
+      expect(secrets.partnerLastSeenInviteIDByGrantID["grant-1"]).toBeUndefined();
+    });
+
+    it.each([
+      ["a missing record", undefined],
+      ["a non-string key", { keyHex: 42, rotatedAtISO: "x", sourceInviteID: "invite-1" }],
+    ])("treats %s under the grant id as no key", async (_name, stored) => {
+      const { syncSecretStore, partnerShareSecretStore } = await setupPartnerGrant();
+      const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
+      // An own property holding no record, which a JSON round trip would drop.
+      jest.spyOn(partnerShareSecretStore, "readPartnerShareSecrets").mockResolvedValue({
+        ...secrets,
+        grantKeysByGrantID: { "grant-1": stored as never },
+      });
+
+      await expect(
+        loadManagedPartnerProjection(
+          syncSecretStore,
+          partnerShareSecretStore,
+          "managed",
+          { id: "grant-1" },
+        ),
+      ).resolves.toEqual({ ok: false, errorCode: "share_key_unavailable" });
+    });
+
     it("rejects a regression below the last-seen marker", async () => {
       const { syncSecretStore, partnerShareSecretStore, shareKey } =
         await setupPartnerGrant();
@@ -1291,6 +1337,50 @@ describe("managed-partner-share-service", () => {
       );
       expect(secrets.consumedInviteIDs["invite-2"]?.grantID).toBe("grant-1");
       expect(secrets.pendingInviteKeysByInviteID["invite-2"]).toBeUndefined();
+    });
+  });
+
+  describe("grant key metadata edges", () => {
+    it("stores a received key without an account when the grant names no partner account", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      const { partnerAccountID: _omitted, ...grant } = buildGrantFixture();
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        grant,
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID["grant-1"]?.role).toBe("partner");
+      expect(secrets.grantKeysByGrantID["grant-1"]).not.toHaveProperty("accountID");
+    });
+
+    it("keeps a received key when the revoked row names no source invite", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      const { sourceInviteID: _omitted, ...revoked } = buildGrantFixture({
+        revokedAt: "2026-04-06T00:00:00.000Z",
+      });
+
+      await reconcileManagedPartnerShareKeys(
+        store,
+        {
+          owned: { invites: [], grants: [] },
+          sharedWithMe: [revoked as ManagedCloudPartnerAccessGrant],
+        },
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID["grant-1"]?.sourceInviteID).toBe("invite-1");
     });
   });
 

@@ -199,14 +199,14 @@ export async function reconcileManagedPartnerShareKeys(
         sourceInviteID: inviteID,
       });
       const pinnedLevel = record.pendingInviteAccessLevelsByInviteID[inviteID];
-      const ownerAccountID = grant.ownerAccountID.trim();
       record.grantKeysByGrantID[grant.id] = {
         keyHex: grantKeyHex,
         rotatedAtISO: nowISO,
         sourceInviteID: inviteID,
         ...(pinnedLevel ? { accessLevel: pinnedLevel } : {}),
         role: "owner",
-        ...(ownerAccountID.length > 0 ? { accountID: ownerAccountID } : {}),
+        // Never blank: the derivation above refuses a blank owner account.
+        accountID: grant.ownerAccountID.trim(),
       };
       record.consumedInviteIDs[inviteID] = {
         grantID: grant.id,
