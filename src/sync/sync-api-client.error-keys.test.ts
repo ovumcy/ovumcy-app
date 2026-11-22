@@ -38,7 +38,7 @@ describe("mapServerErrorKey", () => {
     ["host_not_allowed", 403, "generic"],
     ["session_device_bound", 409, "generic"],
     ["recovery_key_conflict", 409, "generic"],
-    ["managed_bridge_disabled", 503, "server_busy"],
+    ["managed_bridge_disabled", 503, "generic"],
     ["internal_error", 500, "generic"],
     [undefined, 503, "server_busy"],
     [undefined, 502, "generic"],

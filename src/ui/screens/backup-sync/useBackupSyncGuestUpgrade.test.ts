@@ -178,6 +178,24 @@ describe("useBackupSyncGuestUpgrade", () => {
       expect(mockUpgradeBackupSyncGuestAccount).not.toHaveBeenCalled();
     });
 
+    it("rejects a password over 72 bytes", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
+
+      await act(() => {
+        result.current.setEmailValue("owner@example.com");
+        result.current.setPasswordValue("ж".repeat(37));
+      });
+      await act(async () => {
+        await result.current.handleSubmitUpgrade();
+      });
+
+      expect(result.current.formErrorMessage).toBe(
+        core.partnerCopy.guestUpgrade.errors.passwordTooLong,
+      );
+      expect(mockUpgradeBackupSyncGuestAccount).not.toHaveBeenCalled();
+    });
+
     it("reveals a one-time recovery code, closes the form, and clears the fields on success", async () => {
       const nextState = createLoadedSettingsStateFixture({ hasSyncSession: true });
       mockUpgradeBackupSyncGuestAccount.mockResolvedValue({

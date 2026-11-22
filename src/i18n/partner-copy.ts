@@ -137,6 +137,8 @@ const partnerCopyEn = {
       emailRequired: "Email is required.",
       passwordRequired: "Password is required.",
       passwordTooShort: "Password must be at least 12 characters.",
+      passwordTooLong:
+        "Password is too long: use at most 72 characters, fewer with non-Latin letters or emoji.",
       invalidRegistrationInput: "Use a valid email and a stronger password.",
       emailTaken:
         "This email is already registered. Try a different email or sign in on another device instead.",
@@ -285,6 +287,8 @@ const partnerCopyDe = {
       emailRequired: "E-Mail ist erforderlich.",
       passwordRequired: "Passwort ist erforderlich.",
       passwordTooShort: "Das Passwort muss mindestens 12 Zeichen lang sein.",
+      passwordTooLong:
+        "Das Passwort ist zu lang: höchstens 72 Zeichen, mit nicht-lateinischen Buchstaben oder Emoji weniger.",
       invalidRegistrationInput:
         "Verwenden Sie eine gültige E-Mail-Adresse und ein stärkeres Passwort.",
       emailTaken:
@@ -438,6 +442,8 @@ const partnerCopyFr = {
       emailRequired: "L’e-mail est requis.",
       passwordRequired: "Le mot de passe est requis.",
       passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
+      passwordTooLong:
+        "Le mot de passe est trop long : 72 caractères au maximum, moins avec des lettres non latines ou des emoji.",
       invalidRegistrationInput:
         "Utilisez un e-mail valide et un mot de passe plus robuste.",
       emailTaken:
@@ -590,6 +596,8 @@ const partnerCopyRu = {
       emailRequired: "Укажите email.",
       passwordRequired: "Введите пароль.",
       passwordTooShort: "Пароль должен содержать не менее 12 символов.",
+      passwordTooLong:
+        "Пароль слишком длинный: не более 72 латинских символов; кириллица и эмодзи занимают больше места.",
       invalidRegistrationInput: "Укажите корректный email и более надёжный пароль.",
       emailTaken:
         "Этот email уже зарегистрирован. Используйте другой email или войдите на другом устройстве.",
@@ -738,6 +746,8 @@ const partnerCopyEs = {
       emailRequired: "El correo electrónico es obligatorio.",
       passwordRequired: "La contraseña es obligatoria.",
       passwordTooShort: "La contraseña debe tener al menos 12 caracteres.",
+      passwordTooLong:
+        "La contraseña es demasiado larga: 72 caracteres como máximo, menos con letras no latinas o emoji.",
       invalidRegistrationInput: "Usa un correo válido y una contraseña más segura.",
       emailTaken:
         "Este correo ya está registrado. Prueba con otro correo o inicia sesión en otro dispositivo.",
@@ -888,6 +898,8 @@ const partnerCopyIt = {
       emailRequired: "L'email è obbligatoria.",
       passwordRequired: "La password è obbligatoria.",
       passwordTooShort: "La password deve contenere almeno 12 caratteri.",
+      passwordTooLong:
+        "La password è troppo lunga: al massimo 72 caratteri, meno con lettere non latine o emoji.",
       invalidRegistrationInput: "Usa un'email valida e una password più sicura.",
       emailTaken:
         "Questa email è già registrata. Prova un'altra email oppure accedi da un altro dispositivo.",

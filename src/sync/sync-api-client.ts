@@ -911,6 +911,9 @@ export function mapServerErrorKey(key: unknown, status: number): SyncAPIErrorCod
       return key;
     case "not_ready":
       return "server_busy";
+    // A server-side switch, not load: retrying later cannot succeed.
+    case "managed_bridge_disabled":
+      return "generic";
     // Requests this client never sends malformed (invalid_json,
     // invalid_ciphertext, unsupported_media_type, not_found), managed-bridge
     // and host checks it never reaches (host_not_allowed, managed_*,
