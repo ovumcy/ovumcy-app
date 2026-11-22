@@ -655,7 +655,7 @@ describe("saveBackupSyncDraft", () => {
       ...connectedState,
       syncPreferences: {
         ...connectedState.syncPreferences,
-        deviceLabel: "A brand new device label",
+        endpointInput: "192.168.1.30:8080",
       },
     };
 

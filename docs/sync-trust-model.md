@@ -271,7 +271,7 @@ The server keeps one snapshot blob per account. Authenticating the blob proves t
 
 Limits:
 
-- A device with no floor — a fresh install, one just recovered or set up again, or one whose saved sync mode, endpoint or device label changed while it held sync secrets, all of which reset it — has nothing to compare and accepts any genuine blob.
+- A device with no floor — a fresh install, one just recovered or set up again, or one whose saved sync mode or endpoint changed while it held sync secrets, all of which reset it — has nothing to compare and accepts any genuine blob.
 - The floor only covers what this device has seen. A device that never saw a later upload from another device cannot tell that it exists, so the server can still hand it that device's older blob down to its own floor.
 - The floor lives in the local sync preferences row. An attacker who can write the app's database is outside this boundary.
 - A build older than the v3 envelope cannot open a v3 blob, so every device of an account needs a build with the v3 reader. Reverting to such a build leaves v3 blobs unreadable on it until some device uploads again.
