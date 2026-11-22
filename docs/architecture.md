@@ -236,13 +236,16 @@ release predates SQLite.
 
 `resolveLocalDataKey` (`sqlite-local-data-key.ts`) reads the key from secure
 storage and canary-decrypts the first well-formed payload in `bootstrap_state`,
-then `profile_settings`. If authentication fails (for example the database was
+then `profile_settings`, one day log, one symptom, and then one row of every
+other encrypted table (sync preferences, the managed billing cache, and the
+pregnancy, kick, contraction, postpartum and screening tables); any one that
+authenticates proves the key. If authentication fails (for example the database was
 restored without the key, or the key was regenerated), or the stored key is not
 a 32-byte hex key, it wipes every local table with `wipeLocalAppTables` in one
 transaction, then generates and stores a new key, and continues. An unparseable
 canary envelope is skipped and a SQLite read error propagates; neither wipes.
 If there is no stored key but encrypted rows exist, it wipes them before
-creating a key. The wipe covers all tables, not only the two canary tables. The
+creating a key. The wipe covers every local table. The
 result is a fresh, usable install rather than a crash or partially readable
 data. A user-initiated "delete all local data" uses the same wipe, then clears
 the legacy store and the key and reseeds.

@@ -92,6 +92,16 @@ async function canaryAuthenticatesKey(
       sql: "SELECT id AS row_key, encrypted_payload FROM symptoms WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
       rowKey: (row) => String(row.row_key),
     },
+    ...SINGLETON_CANARY_TABLES.map((table) => ({
+      aadTable: table,
+      sql: `SELECT encrypted_payload FROM ${table} WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;`,
+      rowKey: () => "1",
+    })),
+    ...ID_KEYED_CANARY_TABLES.map((table) => ({
+      aadTable: table,
+      sql: `SELECT id AS row_key, encrypted_payload FROM ${table} WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;`,
+      rowKey: (row: CanaryRow) => String(row.row_key),
+    })),
   ];
 
   let sawMismatch = false;
@@ -117,6 +127,18 @@ async function canaryAuthenticatesKey(
 }
 
 type CanaryRow = { encrypted_payload: string | null; row_key?: string };
+
+// The remaining encrypted tables are probed too, so a key that matches none of
+// their rows is never accepted just because the four primary tables are empty
+// or unparseable.
+const SINGLETON_CANARY_TABLES = ["sync_preferences", "managed_billing_cache"] as const;
+const ID_KEYED_CANARY_TABLES = [
+  "pregnancy_records",
+  "kick_sessions",
+  "contraction_sessions",
+  "postpartum_records",
+  "screening_responses",
+] as const;
 
 async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolean> {
   const [
@@ -203,18 +225,33 @@ export async function wipeLocalAppTables(
   database: LocalAppDatabase,
   onRollbackFailed?: () => void,
 ): Promise<void> {
+  await runLocalDataTransaction(
+    database,
+    async () => {
+      for (const table of LOCAL_APP_TABLES) {
+        await database.runAsync(`DELETE FROM ${table};`);
+      }
+    },
+    onRollbackFailed,
+  );
+}
+
+// The task's failure is the one rethrown; a failed ROLLBACK is reported through
+// onRollbackFailed so the caller can clear the connection, which may still be
+// inside the transaction, before its next statement.
+export async function runLocalDataTransaction(
+  database: LocalAppDatabase,
+  task: () => Promise<void>,
+  onRollbackFailed?: () => void,
+): Promise<void> {
   await database.execAsync("BEGIN IMMEDIATE;");
   try {
-    for (const table of LOCAL_APP_TABLES) {
-      await database.runAsync(`DELETE FROM ${table};`);
-    }
+    await task();
     await database.execAsync("COMMIT;");
   } catch (error) {
     try {
       await database.execAsync("ROLLBACK;");
     } catch {
-      // The DELETE failure is the one worth reporting; the caller learns the
-      // connection may still be inside the transaction.
       onRollbackFailed?.();
     }
     throw error;
