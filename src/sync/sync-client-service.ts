@@ -55,6 +55,7 @@ import {
   createManagedCloudAPIClient,
   type ManagedCloudAPIClient,
   type ManagedCloudAPIErrorCode,
+  type ManagedCloudAuthResult,
 } from "./managed-cloud-api-client";
 import {
   createSyncAPIClient,
@@ -964,7 +965,7 @@ export async function recoverSyncAccess(
 ): Promise<
   | RecoverSyncAccessSuccess
   | {
-      // Self-hosted only: the password verified but the account has TOTP on.
+      // The password verified but the account has TOTP on.
       // Nothing is stored yet; the caller completes the challenge and calls
       // `finalizeSyncRecoveryAfterTOTP` with the issued token and the phrase.
       ok: true;
@@ -1020,6 +1021,16 @@ export async function recoverSyncAccess(
         errorCode: mapManagedRecoverAPIError(authResult.errorCode),
       };
     }
+    // A deferred login carries no entitlement verdict yet; the resume reads it
+    // from the post-challenge session.
+    if (authResult.auth.totpChallenge) {
+      return {
+        ok: true,
+        totpChallengeRequired: true,
+        challengeID: authResult.auth.totpChallenge.challengeID,
+        challengeExpiresAt: authResult.auth.totpChallenge.challengeExpiresAt,
+      };
+    }
     if (!authResult.auth.entitlement.syncAllowed) {
       return {
         ok: false,
@@ -1027,104 +1038,17 @@ export async function recoverSyncAccess(
       };
     }
 
-    const syncSessionResult = await managedClient.createSyncSession(
-      authResult.auth.sessionToken,
+    return completeManagedRecovery(
+      storage,
+      secretStore,
+      preferences,
+      managedClient,
+      apiClientFactory,
+      normalizedEndpoint.endpoint.baseURL,
+      authResult.auth,
+      normalizedRecoveryPhrase,
+      now,
     );
-    if (!syncSessionResult.ok) {
-      return {
-        ok: false,
-        errorCode: mapManagedRecoverAPIError(syncSessionResult.errorCode),
-      };
-    }
-
-    const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
-    const recoveryKeyResult = await client.getRecoveryKey(
-      syncSessionResult.auth.sessionToken,
-    );
-    if (!recoveryKeyResult.ok) {
-      return {
-        ok: false,
-        errorCode: mapRecoverAPIError(recoveryKeyResult.errorCode),
-      };
-    }
-
-    let recoveredSecrets: SyncSecretsRecord;
-    try {
-      recoveredSecrets = createRecoveredSyncSecretsRecord(
-        normalizedRecoveryPhrase,
-        recoveryKeyResult.recoveryKey,
-        preferences.deviceLabel,
-        now,
-      );
-    } catch {
-      return {
-        ok: false,
-        errorCode: "invalid_recovery_phrase",
-      };
-    }
-
-    const capabilities = buildManagedCapabilitiesDocument(true);
-    const attachDeviceResult = await client.attachDevice(
-      syncSessionResult.auth.sessionToken,
-      {
-        deviceID: recoveredSecrets.device.deviceID,
-        deviceLabel: recoveredSecrets.device.deviceLabel,
-      },
-    );
-    if (!attachDeviceResult.ok) {
-      return {
-        ok: false,
-        errorCode: mapRecoverAPIError(attachDeviceResult.errorCode),
-      };
-    }
-
-    await syncRecoveryKeyIfSupported(
-      client,
-      syncSessionResult.auth.sessionToken,
-      capabilities,
-      recoveredSecrets.wrappedKey,
-    );
-
-    await secretStore.writeSyncSecrets(
-      applyManagedAuthResultToSecrets(
-        {
-          ...recoveredSecrets,
-          authSessionToken: syncSessionResult.auth.sessionToken,
-        },
-        authResult.auth,
-      ),
-    );
-
-    const nextPreferences: SyncPreferencesRecord = {
-      ...createDefaultSyncPreferencesRecord(),
-      ...preferences,
-      deviceLabel: preferences.deviceLabel.trim(),
-      endpointInput: "",
-      normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
-      setupStatus: "connected",
-      preparedAt: now.toISOString(),
-      lastRemoteGeneration: null,
-      lastSyncedAt: null,
-      // Recovery authenticates with a real password (managedClient.login
-      // above) — a guest account has none, so this path can never actually
-      // be reached for a guest. Clear defensively so a stale marker carried
-      // in `...preferences` can never survive onto this freshly recovered
-      // session.
-      guestSessionExpiresAt: null,
-      guestSessionRenewable: false,
-    };
-    await storage.writeSyncPreferencesRecord(nextPreferences);
-
-    // Recovery establishes a fresh managed session context as well.
-    await storage.writeManagedBillingCacheRecord(
-      createDefaultManagedBillingCacheRecord(),
-    );
-
-    return {
-      ok: true,
-      capabilities,
-      preferences: nextPreferences,
-    };
   }
 
   const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
@@ -1161,25 +1085,16 @@ export async function recoverSyncAccess(
   );
 }
 
-type RecoverSyncAccessSuccess = {
-  ok: true;
-  capabilities: SyncCapabilityDocument;
-  preferences: SyncPreferencesRecord;
-};
-
-/**
- * finalizeSyncRecoveryAfterTOTP finishes a self-hosted phrase recovery whose
- * login `recoverSyncAccess` deferred for a TOTP challenge. The caller completes
- * the challenge (`completeTOTPChallenge` in sync-totp-service) and passes the
- * issued session token with the phrase, both held in memory only.
- */
-export async function finalizeSyncRecoveryAfterTOTP(
+async function completeManagedRecovery(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
-  input: { sessionToken: string; recoveryPhrase: string },
+  managedClient: ManagedCloudAPIClient,
+  apiClientFactory: SyncAPIClientFactory,
+  baseURL: string,
+  managedAuth: ManagedCloudAuthResult,
+  normalizedRecoveryPhrase: string,
   now: Date,
-  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
 ): Promise<
   | RecoverSyncAccessSuccess
   | {
@@ -1187,9 +1102,141 @@ export async function finalizeSyncRecoveryAfterTOTP(
       errorCode: SyncRecoverErrorCode;
     }
 > {
-  if (preferences.mode !== "self_hosted") {
-    return { ok: false, errorCode: "generic" };
+  const syncSessionResult = await managedClient.createSyncSession(
+    managedAuth.sessionToken,
+  );
+  if (!syncSessionResult.ok) {
+    return {
+      ok: false,
+      errorCode: mapManagedRecoverAPIError(syncSessionResult.errorCode),
+    };
   }
+
+  const client = apiClientFactory(baseURL);
+  const recoveryKeyResult = await client.getRecoveryKey(
+    syncSessionResult.auth.sessionToken,
+  );
+  if (!recoveryKeyResult.ok) {
+    return {
+      ok: false,
+      errorCode: mapRecoverAPIError(recoveryKeyResult.errorCode),
+    };
+  }
+
+  let recoveredSecrets: SyncSecretsRecord;
+  try {
+    recoveredSecrets = createRecoveredSyncSecretsRecord(
+      normalizedRecoveryPhrase,
+      recoveryKeyResult.recoveryKey,
+      preferences.deviceLabel,
+      now,
+    );
+  } catch {
+    return {
+      ok: false,
+      errorCode: "invalid_recovery_phrase",
+    };
+  }
+
+  const capabilities = buildManagedCapabilitiesDocument(true);
+  const attachDeviceResult = await client.attachDevice(
+    syncSessionResult.auth.sessionToken,
+    {
+      deviceID: recoveredSecrets.device.deviceID,
+      deviceLabel: recoveredSecrets.device.deviceLabel,
+    },
+  );
+  if (!attachDeviceResult.ok) {
+    return {
+      ok: false,
+      errorCode: mapRecoverAPIError(attachDeviceResult.errorCode),
+    };
+  }
+
+  await syncRecoveryKeyIfSupported(
+    client,
+    syncSessionResult.auth.sessionToken,
+    capabilities,
+    recoveredSecrets.wrappedKey,
+  );
+
+  await secretStore.writeSyncSecrets(
+    applyManagedAuthResultToSecrets(
+      {
+        ...recoveredSecrets,
+        authSessionToken: syncSessionResult.auth.sessionToken,
+      },
+      managedAuth,
+    ),
+  );
+
+  const nextPreferences: SyncPreferencesRecord = {
+    ...createDefaultSyncPreferencesRecord(),
+    ...preferences,
+    deviceLabel: preferences.deviceLabel.trim(),
+    endpointInput: "",
+    normalizedEndpoint: baseURL,
+    setupStatus: "connected",
+    preparedAt: now.toISOString(),
+    lastRemoteGeneration: null,
+    lastSyncedAt: null,
+    // Recovery authenticates with a real password (the managed login)
+    // — a guest account has none, so this path can never actually
+    // be reached for a guest. Clear defensively so a stale marker carried
+    // in `...preferences` can never survive onto this freshly recovered
+    // session.
+    guestSessionExpiresAt: null,
+    guestSessionRenewable: false,
+  };
+  await storage.writeSyncPreferencesRecord(nextPreferences);
+
+  // Recovery establishes a fresh managed session context as well.
+  await storage.writeManagedBillingCacheRecord(
+    createDefaultManagedBillingCacheRecord(),
+  );
+
+  return {
+    ok: true,
+    capabilities,
+    preferences: nextPreferences,
+  };
+}
+
+type RecoverSyncAccessSuccess = {
+  ok: true;
+  capabilities: SyncCapabilityDocument;
+  preferences: SyncPreferencesRecord;
+};
+
+/**
+ * finalizeSyncRecoveryAfterTOTP finishes a phrase recovery whose login
+ * `recoverSyncAccess` deferred for a TOTP challenge. The caller completes the
+ * challenge (`completeTOTPChallenge` in sync-totp-service) and passes the
+ * issued session token with the phrase, both held in memory only. A managed
+ * resume also passes the session expiry and refresh pair; without them the
+ * recovered session cannot renew.
+ */
+export async function finalizeSyncRecoveryAfterTOTP(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  input: {
+    sessionToken: string;
+    recoveryPhrase: string;
+    sessionExpiresAt?: string;
+    refreshToken?: string;
+    refreshTokenExpiresAt?: string;
+  },
+  now: Date,
+  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+): Promise<
+  | RecoverSyncAccessSuccess
+  | {
+      ok: false;
+      errorCode: SyncRecoverErrorCode;
+    }
+> {
   if (input.sessionToken.length === 0) {
     return { ok: false, errorCode: "unauthorized" };
   }
@@ -1212,6 +1259,47 @@ export async function finalizeSyncRecoveryAfterTOTP(
   );
   if (!normalizedEndpoint.ok) {
     return normalizedEndpoint;
+  }
+
+  if (preferences.mode === "managed") {
+    const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+    // The challenge answer carries no entitlement; the session read is the
+    // first verdict on whether this account may sync.
+    const sessionResult = await managedClient.getSession(input.sessionToken);
+    if (!sessionResult.ok) {
+      return {
+        ok: false,
+        errorCode: mapManagedRecoverAPIError(sessionResult.errorCode),
+      };
+    }
+    const session = sessionResult.session;
+    if (!session.entitlement.syncAllowed) {
+      return { ok: false, errorCode: "sync_not_allowed" };
+    }
+    const managedAuth: ManagedCloudAuthResult = {
+      accountID: session.accountID,
+      email: session.email,
+      sessionToken: input.sessionToken,
+      sessionExpiresAt: input.sessionExpiresAt ?? session.sessionExpiresAt,
+      entitlement: session.entitlement,
+      ...(input.refreshToken !== undefined
+        ? { refreshToken: input.refreshToken }
+        : {}),
+      ...(input.refreshTokenExpiresAt !== undefined
+        ? { refreshTokenExpiresAt: input.refreshTokenExpiresAt }
+        : {}),
+    };
+    return completeManagedRecovery(
+      storage,
+      secretStore,
+      preferences,
+      managedClient,
+      apiClientFactory,
+      normalizedEndpoint.endpoint.baseURL,
+      managedAuth,
+      normalizedRecoveryPhrase,
+      now,
+    );
   }
 
   return completeCommunityRecovery(

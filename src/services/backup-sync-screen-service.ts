@@ -517,9 +517,9 @@ export async function recoverBackupSyncAccess(
 }
 
 /**
- * completeBackupSyncRecoveryTOTPChallenge consumes the TOTP challenge a
- * self-hosted `recoverBackupSyncAccess` returned, then finishes the recovery
- * with the issued session token. The challenge id and the phrase travel via
+ * completeBackupSyncRecoveryTOTPChallenge consumes the TOTP challenge
+ * `recoverBackupSyncAccess` returned, then finishes the recovery with the
+ * issued session (and, on managed, its refresh pair). The challenge id and the phrase travel via
  * screen state only — neither is persisted. `totp_challenge_invalid` means
  * the caller restarts from `recoverBackupSyncAccess`, and so does
  * `challengeSpent`: the code was accepted, so the challenge is gone, but the
@@ -558,6 +558,13 @@ export async function completeBackupSyncRecoveryTOTPChallenge(
     {
       sessionToken: challengeResult.auth.sessionToken,
       recoveryPhrase: input.recoveryPhrase,
+      sessionExpiresAt: challengeResult.auth.sessionExpiresAt,
+      ...(challengeResult.auth.refreshToken
+        ? {
+            refreshToken: challengeResult.auth.refreshToken,
+            refreshTokenExpiresAt: challengeResult.auth.refreshTokenExpiresAt,
+          }
+        : {}),
     },
     now,
   );
