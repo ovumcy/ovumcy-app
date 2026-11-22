@@ -96,11 +96,14 @@ export type SyncAPIClient = {
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
   // removeDevice detaches one device so its slot is freed (DELETE
-  // /sync/devices/{device_id}, scoped to the authenticated account).
+  // /sync/devices/{device_id}, scoped to the authenticated account). Once
+  // two-factor is on the server re-confirms the password and a current code;
+  // removing the device a session is bound to also revokes that session.
   removeDevice(
     sessionToken: string,
     input: { deviceID: string },
-  ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
+    stepUp?: SyncRecoveryKeyStepUp,
+  ): Promise<{ ok: true } | SyncAPIFailure>;
   getBlob(
     sessionToken: string,
   ): Promise<{ ok: true; blob: SyncBlobRecord } | SyncAPIFailure>;
@@ -626,7 +629,8 @@ export function createSyncAPIClient(
       );
     },
 
-    async removeDevice(sessionToken, input) {
+    async removeDevice(sessionToken, input, stepUp) {
+      const code = stepUp?.code?.trim();
       return requestNoPayload(
         fetchImpl,
         normalizedBaseURL,
@@ -634,6 +638,13 @@ export function createSyncAPIClient(
         {
           method: "DELETE",
           sessionToken,
+          ...(stepUp
+            ? {
+                body: code
+                  ? { current_password: stepUp.currentPassword, code }
+                  : { current_password: stepUp.currentPassword },
+              }
+            : {}),
         },
       );
     },
