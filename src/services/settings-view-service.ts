@@ -354,6 +354,7 @@ export type SettingsViewData = {
       notConnected: string;
       recoveryKeyChangedElsewhere: string;
       blobNotFound: string;
+      remoteBackupChanged: string;
       invalidPayload: string;
       networkFailed: string;
       recoveryExportUnavailable: string;
@@ -938,6 +939,7 @@ export function buildSettingsViewData(
         recoveryKeyChangedElsewhere:
           settingsCopy.account.errors.recoveryKeyChangedElsewhere,
         blobNotFound: settingsCopy.account.errors.blobNotFound,
+        remoteBackupChanged: settingsCopy.account.errors.remoteBackupChanged,
         invalidPayload: settingsCopy.account.errors.invalidPayload,
         networkFailed: settingsCopy.account.errors.networkFailed,
         recoveryExportUnavailable:

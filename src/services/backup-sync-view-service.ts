@@ -425,6 +425,8 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.notConnected;
     case "blob_not_found":
       return viewData.errors.blobNotFound;
+    case "remote_backup_changed":
+      return viewData.errors.remoteBackupChanged;
     case "managed_recovery_key_overwrite":
     case "recovery_key_changed_elsewhere":
       return viewData.errors.recoveryKeyChangedElsewhere;
