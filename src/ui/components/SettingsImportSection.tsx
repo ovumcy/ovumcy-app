@@ -5,6 +5,7 @@ import type {
   SettingsViewData,
 } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
+import { BinaryToggleCard } from "./BinaryToggleCard";
 import { FeatureCard } from "./FeatureCard";
 import { StatusBanner } from "./StatusBanner";
 import type { AppThemeColors } from "../theme/tokens";
@@ -17,7 +18,9 @@ type SettingsImportSectionProps = {
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
   onPickFile: () => void | Promise<void>;
+  onRestoreRemindersChange: (value: boolean) => void;
   preview: SettingsImportPreviewViewData | null;
+  restoreReminders: boolean;
   statusMessage: string;
   viewData: SettingsViewData["import"];
 };
@@ -28,7 +31,9 @@ export function SettingsImportSection({
   onCancel,
   onConfirm,
   onPickFile,
+  onRestoreRemindersChange,
   preview,
+  restoreReminders,
   statusMessage,
   viewData,
 }: SettingsImportSectionProps) {
@@ -82,6 +87,18 @@ export function SettingsImportSection({
               <Text style={styles.previewText}>{preview.nothingNewLine}</Text>
             ) : null}
           </View>
+
+          {/* Off by default: a backup's reminders schedule notifications on
+              this device, so they are restored only when asked for. */}
+          {preview.remindersOptInLabel ? (
+            <BinaryToggleCard
+              compact
+              label={preview.remindersOptInLabel}
+              onValueChange={onRestoreRemindersChange}
+              testID="settings-import-reminders-opt-in"
+              value={restoreReminders}
+            />
+          ) : null}
 
           <View style={styles.actionsRow}>
             <AppButton
