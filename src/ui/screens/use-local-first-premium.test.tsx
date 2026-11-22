@@ -92,6 +92,53 @@ describe("useLocalFirstPremium", () => {
     expect(applied).toEqual([false, true, true, false]);
   });
 
+  it("keeps the local render when the premium-phase reload fails", async () => {
+    const { result } = await renderHook(() => useLocalFirstPremium());
+    const applied: boolean[] = [];
+
+    await act(async () => {
+      await result.current({
+        loadLocal: async (features) => {
+          if (features.advancedFertility) {
+            throw new Error("storage");
+          }
+          return false;
+        },
+        loadPremium: async () => UNLOCKED,
+        apply: (state) => applied.push(state),
+      });
+    });
+    await flush();
+
+    expect(applied).toEqual([false]);
+  });
+
+  it("does not apply a superseded pass's late local state", async () => {
+    const { result } = await renderHook(() => useLocalFirstPremium());
+    const slowLocal = deferred<string>();
+    const applied: string[] = [];
+    let firstPass: Promise<string> = Promise.resolve("");
+
+    await act(async () => {
+      firstPass = result.current({
+        loadLocal: () => slowLocal.promise,
+        loadPremium: async () => EMPTY_MANAGED_PREMIUM_FEATURES,
+        apply: (state) => applied.push(state),
+      });
+      await result.current({
+        loadLocal: async () => "second",
+        loadPremium: async () => EMPTY_MANAGED_PREMIUM_FEATURES,
+        apply: (state) => applied.push(state),
+      });
+    });
+    slowLocal.resolve("first");
+    await act(async () => {
+      await firstPass;
+    });
+
+    expect(applied).toEqual(["second"]);
+  });
+
   it("discards a superseded pass's late premium answer", async () => {
     const { result } = await renderHook(() => useLocalFirstPremium());
     const stale = deferred<ManagedCloudPremiumFeatures>();
