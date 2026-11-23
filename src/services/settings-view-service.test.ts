@@ -10,7 +10,9 @@ import {
   buildSettingsHubNavigation,
   buildSettingsImportPreviewViewData,
   buildSettingsImportResultMessage,
+  buildSettingsSyncSummary,
   buildSettingsViewData,
+  createEmptySettingsManagedPremiumAccess,
   createLoadedSettingsState,
   revertLoadedSettingsDraftValues,
 } from "./settings-view-service";
@@ -561,5 +563,47 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
     expect(preview.canConfirm).toBe(true);
     expect(preview.nothingNewLine).toBe("");
     expect(preview.detailLines).toContain("New check-ins: 1");
+  });
+});
+
+describe("buildSettingsSyncSummary (managed status)", () => {
+  const account = buildSettingsViewData(new Date(2026, 2, 22), "en").account;
+  const capabilities = (syncEnabled: boolean) => ({
+    mode: "managed" as const,
+    syncEnabled,
+    recoverySupported: true,
+    pushSupported: false,
+    portalSupported: false,
+    advancedCloudInsights: false,
+    maxDevices: 5,
+    maxBlobBytes: 1024,
+  });
+  const summarize = (syncEnabled: boolean | null) =>
+    buildSettingsSyncSummary(
+      {
+        hasStoredSyncSecrets: true,
+        hasSyncSession: true,
+        managedPremiumAccess: {
+          ...createEmptySettingsManagedPremiumAccess(),
+          planStatus: "active",
+        },
+        syncCapabilities: syncEnabled === null ? null : capabilities(syncEnabled),
+        syncPreferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+      },
+      account,
+      "Not set",
+      "en",
+    );
+
+  it("names an active plan whose server refuses sync as not including sync, not as active", () => {
+    const summary = summarize(false);
+    expect(summary.statusMessage).toBe(account.status.syncNotIncluded);
+    expect(summary.statusTone).toBe("info");
+  });
+
+  it("keeps the active-plan success status when sync is allowed", () => {
+    const summary = summarize(true);
+    expect(summary.statusMessage).toBe(account.planActive);
+    expect(summary.statusTone).toBe("success");
   });
 });

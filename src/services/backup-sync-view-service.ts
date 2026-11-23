@@ -538,9 +538,7 @@ export function resolveBackupSyncConnectedStatusMessage(
   if (planStatus === "inactive") {
     return viewData.status.connectedNoPlan;
   }
-  return planStatus === "active" && state.syncCapabilities?.syncEnabled === false
-    ? viewData.status.syncNotIncluded
-    : viewData.status.connected;
+  return resolveManagedSyncBlockedMessage(planStatus, state.syncCapabilities, viewData);
 }
 
 export function resolveBackupSyncErrorPresentation(
