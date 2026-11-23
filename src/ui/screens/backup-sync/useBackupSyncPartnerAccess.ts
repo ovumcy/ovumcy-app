@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Platform } from "react-native";
 
 import {
   acceptManagedPartnerInvite,
@@ -185,7 +186,11 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
    * points can never drift.
    */
   async function handleAcceptPartnerInviteAsGuest() {
-    if (!state || pendingPartnerInviteToken.length === 0) {
+    if (
+      Platform.OS === "web" ||
+      !state ||
+      pendingPartnerInviteToken.length === 0
+    ) {
       return;
     }
 

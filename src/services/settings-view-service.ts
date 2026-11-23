@@ -331,6 +331,7 @@ export type SettingsViewData = {
       restored: string;
       disconnected: string;
       disconnectedRemoteUnconfirmed: string;
+      syncNotIncluded: string;
       deleted: string;
     };
     errors: {
@@ -912,6 +913,7 @@ export function buildSettingsViewData(
         restored: settingsCopy.account.restored,
         disconnected: settingsCopy.account.disconnected,
         disconnectedRemoteUnconfirmed: settingsCopy.account.disconnectedRemoteUnconfirmed,
+        syncNotIncluded: settingsCopy.account.syncNotIncluded,
         deleted: settingsCopy.account.deleted,
       },
       errors: {

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { Share } from "react-native";
+import { Platform, Share } from "react-native";
 
 import { getPartnerCopy } from "../../../i18n/partner-copy";
 import type {
@@ -227,6 +227,35 @@ describe("SettingsPartnerAccessSection", () => {
       </AppPreferencesTestProvider>,
     );
     expect(screen.queryByTestId("settings-partner-invite-replaced-notice")).toBeNull();
+  });
+
+  it("offers no guest accept on web and leaves the invite for the app", async () => {
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+    try {
+      await render(
+        <AppPreferencesTestProvider>
+          <SettingsPartnerAccessSection {...createBaseProps()} pendingInviteToken="tok" />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.queryByTestId("settings-partner-accept-guest-button")).toBeNull();
+      expect(screen.getByText(copy.acceptChoiceHintWeb)).toBeTruthy();
+      expect(screen.getByTestId("settings-partner-signin-to-accept-button")).toBeTruthy();
+    } finally {
+      Object.defineProperty(Platform, "OS", { configurable: true, value: originalOS });
+    }
+  });
+
+  it("offers the guest accept on a native build", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection {...createBaseProps()} pendingInviteToken="tok" />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByTestId("settings-partner-accept-guest-button")).toBeTruthy();
+    expect(screen.queryByTestId("settings-partner-accept-guest-web-hint")).toBeNull();
   });
 
   it("shows the error banner when errorMessage is set", async () => {

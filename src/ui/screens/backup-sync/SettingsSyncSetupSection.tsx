@@ -591,7 +591,9 @@ export function SettingsSyncSetupSection({
               />
             ))}
             <Text style={styles.helperText}>{viewData.planUnavailable}</Text>
-            {hasSyncSession && !presentation.hasManagedPlan ? (
+            {hasSyncSession &&
+            (!presentation.hasManagedPlan ||
+              presentation.managedSyncBlockedMessage !== null) ? (
               <AppButton
                 disabled={presentation.accountActionsDisabled}
                 label={viewData.checkPlanAgain}
@@ -629,9 +631,9 @@ export function SettingsSyncSetupSection({
             />
           ) : null}
 
-          {presentation.isManaged && hasSyncSession && !presentation.hasManagedPlan ? (
+          {presentation.managedSyncBlockedMessage !== null ? (
             <StatusBanner
-              message={viewData.syncBlockedNoPlan}
+              message={presentation.managedSyncBlockedMessage}
               testID="settings-sync-plan-blocked-banner"
             />
           ) : null}

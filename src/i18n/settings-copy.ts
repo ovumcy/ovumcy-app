@@ -365,6 +365,8 @@ const settingsCopyEn = {
     disconnected: "Sync server session removed from this device.",
     disconnectedRemoteUnconfirmed:
       "Signed out on this device. The server did not confirm the sign-out, so the server session ends when it expires.",
+    syncNotIncluded:
+      "Your Ovumcy Cloud plan does not include cloud sync, so upload and restore stay locked. Your data stays on this device.",
     deleted: "Account deleted. Returning to onboarding.",
     errors: {
       loginRequired: "Login is required.",
@@ -984,6 +986,8 @@ const settingsCopyDe: SettingsCopy = {
     disconnected: "Die Sync-Server-Sitzung wurde von diesem Gerät entfernt.",
     disconnectedRemoteUnconfirmed:
       "Auf diesem Gerät abgemeldet. Der Server hat die Abmeldung nicht bestätigt, daher endet die Server-Sitzung erst mit ihrem Ablauf.",
+    syncNotIncluded:
+      "Ihr Ovumcy-Cloud-Plan enthält keine Cloud-Synchronisierung, daher bleiben Hochladen und Wiederherstellen gesperrt. Ihre Daten bleiben auf diesem Gerät.",
     deleted: "Konto gelöscht. Rückkehr zum Onboarding.",
     errors: {
       ...settingsCopyEn.account.errors,
@@ -1641,6 +1645,8 @@ const settingsCopyFr: SettingsCopy = {
     disconnected: "La session du serveur de sync a été supprimée de cet appareil.",
     disconnectedRemoteUnconfirmed:
       "Déconnecté sur cet appareil. Le serveur n'a pas confirmé la déconnexion : la session du serveur prendra fin à son expiration.",
+    syncNotIncluded:
+      "Votre plan Ovumcy Cloud n'inclut pas la synchronisation cloud : l'envoi et la restauration restent verrouillés. Vos données restent sur cet appareil.",
     deleted: "Compte supprimé. Retour à l'onboarding.",
     errors: {
       ...settingsCopyEn.account.errors,
@@ -2284,6 +2290,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       disconnected: "Сессия sync-сервера удалена с этого устройства.",
       disconnectedRemoteUnconfirmed:
         "Выход на этом устройстве выполнен. Сервер не подтвердил выход, поэтому сессия на сервере закончится, когда истечёт её срок.",
+      syncNotIncluded:
+        "Ваш план Ovumcy Cloud не включает облачную синхронизацию, поэтому выгрузка и восстановление недоступны. Ваши данные остаются на этом устройстве.",
       deleted: "Аккаунт удалён. Возврат к онбордингу.",
       errors: {
         loginRequired: "Логин обязателен.",
@@ -2900,6 +2908,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       disconnected: "La sesión del servidor de sync se eliminó de este dispositivo.",
       disconnectedRemoteUnconfirmed:
         "Sesión cerrada en este dispositivo. El servidor no confirmó el cierre, así que la sesión del servidor terminará cuando caduque.",
+      syncNotIncluded:
+        "Tu plan de Ovumcy Cloud no incluye la sincronización en la nube, así que la subida y la restauración siguen bloqueadas. Tus datos se quedan en este dispositivo.",
       deleted: "Cuenta eliminada. Volviendo al onboarding.",
       errors: {
         loginRequired: "El login es obligatorio.",
@@ -3523,6 +3533,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       disconnected: "La sessione del server di sync è stata rimossa da questo dispositivo.",
       disconnectedRemoteUnconfirmed:
         "Disconnesso su questo dispositivo. Il server non ha confermato la disconnessione, quindi la sessione del server terminerà alla sua scadenza.",
+      syncNotIncluded:
+        "Il tuo piano Ovumcy Cloud non include la sincronizzazione cloud, quindi caricamento e ripristino restano bloccati. I tuoi dati restano su questo dispositivo.",
       deleted: "Account eliminato. Ritorno alla configurazione iniziale.",
       errors: {
         loginRequired: "Il login è obbligatorio.",

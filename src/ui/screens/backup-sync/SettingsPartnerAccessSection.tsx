@@ -1,4 +1,4 @@
-import { Share, StyleSheet, Text, View } from "react-native";
+import { Platform, Share, StyleSheet, Text, View } from "react-native";
 
 import type { PartnerCopy } from "../../../i18n/partner-copy";
 import { formatBackupSyncLastSeen } from "../../../services/backup-sync-view-service";
@@ -146,14 +146,29 @@ export function SettingsPartnerAccessSection({
               // the token untouched so whoever is accepting can instead sign
               // in with the account fields on this screen and then use the
               // ready-to-accept button above.
+              // Web keeps secrets in memory only, so a reload after a guest
+              // accept would lose the guest session while the single-use
+              // invite is already spent: web offers no guest accept and
+              // leaves the invite unredeemed for the app.
               <>
-                <Text style={styles.helperText}>{copy.acceptChoiceHint}</Text>
-                <AppButton
-                  disabled={isBusy}
-                  label={copy.acceptAsGuestActionLabel}
-                  onPress={onAcceptInviteAsGuest}
-                  testID="settings-partner-accept-guest-button"
-                />
+                {Platform.OS === "web" ? (
+                  <Text
+                    style={styles.helperText}
+                    testID="settings-partner-accept-guest-web-hint"
+                  >
+                    {copy.acceptChoiceHintWeb}
+                  </Text>
+                ) : (
+                  <>
+                    <Text style={styles.helperText}>{copy.acceptChoiceHint}</Text>
+                    <AppButton
+                      disabled={isBusy}
+                      label={copy.acceptAsGuestActionLabel}
+                      onPress={onAcceptInviteAsGuest}
+                      testID="settings-partner-accept-guest-button"
+                    />
+                  </>
+                )}
                 <AppButton
                   disabled={isBusy}
                   label={copy.acceptSignInActionLabel}
