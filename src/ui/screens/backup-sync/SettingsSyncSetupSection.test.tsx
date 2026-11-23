@@ -152,7 +152,6 @@ describe("SettingsSyncSetupSection", () => {
             syncCapabilities,
             viewData,
           })}
-          syncCapabilities={syncCapabilities}
         />
       </AppPreferencesTestProvider>,
     );
