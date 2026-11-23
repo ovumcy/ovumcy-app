@@ -418,13 +418,10 @@ export function useSyncAccountSecurityController({
         setTotpVerifyCode("");
         return;
       }
-      // A community server enables 2FA and rotates the recovery code before it
-      // answers, so a lost or unreadable response can leave the account with a
+      // Both servers enable 2FA and rotate the recovery code before they
+      // answer, so a lost or unreadable response can leave the account with a
       // code this device never saw.
-      if (
-        preferences.mode !== "managed" &&
-        RESPONSE_MAY_BE_LOST_CODES.has(result.errorCode)
-      ) {
+      if (RESPONSE_MAY_BE_LOST_CODES.has(result.errorCode)) {
         const status = await describeSyncAccountTwoFactor(
           syncSecretStore,
           preferences,

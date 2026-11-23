@@ -165,10 +165,10 @@ export async function startTOTPEnrollment(
  * preserved), and from this point on `login` returns a TOTP challenge instead
  * of a session.
  *
- * A community server also rotates the account recovery code on success and
- * returns the new one; it is the only working recovery code from then on, so
- * the caller must show it once. `recoveryCode` is null when the backend issued
- * none (managed, or a community server that predates rotation). A 429 is the
+ * Both backends also rotate the account recovery code on success and return
+ * the new one; it is the only working recovery code from then on, so the
+ * caller must show it once. `recoveryCode` is null when the backend issued
+ * none (a community server that predates rotation). A 429 is the
  * rolling attempt budget and keeps the pending secret: it surfaces as
  * `rate_limited`. A 409 `totp_enrollment_discarded` (the secret's own attempt
  * or lifetime cap) or `totp_enrollment_not_started` (community or managed)
@@ -210,7 +210,7 @@ export async function verifyTOTPEnrollment(
         errorCode: mapManagedVerifyEnrollmentError(result.errorCode),
       };
     }
-    return { ok: true, recoveryCode: null };
+    return { ok: true, recoveryCode: result.recoveryCode };
   }
 
   const normalizedEndpoint = normalizeSyncEndpoint(

@@ -412,10 +412,15 @@ export type ManagedCloudAPIClient = {
     | { ok: true; enrollment: SyncTOTPEnrollmentStart }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
+  // The server rotates the account recovery code when it enables two-factor;
+  // `recoveryCode` is null only when it issued none.
   verifyTOTPEnrollment(
     sessionToken: string,
     input: { code: string },
-  ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
+  ): Promise<
+    | { ok: true; recoveryCode: string | null }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
   disableTOTP(
     sessionToken: string,
     input: { currentPassword: string; code: string },
@@ -547,6 +552,11 @@ type RawManagedCloudTOTPEnrollmentStart = {
 
 type RawManagedCloudStatusPayload = {
   status: string;
+};
+
+type RawManagedCloudTOTPEnabledPayload = {
+  status: string;
+  recovery_code?: string;
 };
 
 type RawManagedCloudForgotPasswordResult = {
@@ -884,7 +894,7 @@ export function createManagedCloudAPIClient(
     },
 
     async verifyTOTPEnrollment(sessionToken, input) {
-      return requestJSON<RawManagedCloudStatusPayload>(
+      return requestJSON<RawManagedCloudTOTPEnabledPayload>(
         fetchImpl,
         normalizedBaseURL,
         "/auth/totp/verify",
@@ -895,9 +905,14 @@ export function createManagedCloudAPIClient(
             code: input.code,
           },
         },
-        isRawManagedCloudStatusPayload,
+        isRawManagedCloudTOTPEnabledPayload,
       ).then((result) =>
-        result.ok ? { ok: true } : { ok: false, errorCode: result.errorCode },
+        result.ok
+          ? {
+              ok: true,
+              recoveryCode: result.payload.recovery_code?.trim() || null,
+            }
+          : { ok: false, errorCode: result.errorCode },
       );
     },
 
@@ -1590,6 +1605,17 @@ function isRawManagedCloudStatusPayload(
   value: unknown,
 ): value is RawManagedCloudStatusPayload {
   return isObject(value) && typeof value.status === "string";
+}
+
+function isRawManagedCloudTOTPEnabledPayload(
+  value: unknown,
+): value is RawManagedCloudTOTPEnabledPayload {
+  return (
+    isObject(value) &&
+    typeof value.status === "string" &&
+    (typeof value.recovery_code === "string" ||
+      typeof value.recovery_code === "undefined")
+  );
 }
 
 function isRawManagedCloudForgotPasswordResult(

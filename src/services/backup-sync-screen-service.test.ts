@@ -320,6 +320,7 @@ describe("acceptBackupSyncPartnerInviteAsGuest", () => {
     const storedSecrets = await secretStore.readSyncSecrets();
     expect(storedSecrets?.managedAuthSessionToken).toBe("guest-session-1");
     expect(storedSecrets?.authSessionToken).toBeNull();
+    expect(storedSecrets?.managedRefreshToken).toBeNull();
 
     const guestAcceptCall = (global.fetch as jest.Mock).mock.calls[0];
     expect(String(guestAcceptCall[0])).toContain("/auth/partner/invites/accept");
@@ -355,6 +356,54 @@ describe("acceptBackupSyncPartnerInviteAsGuest", () => {
     expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
     await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("stores the refresh token the guest accept issued so the guest session renews", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const initialState = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 3, 5),
+    );
+
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ...GUEST_ACCEPT_RESPONSE,
+            refresh_token: "guest-refresh-1",
+            refresh_token_expires_at: "2026-07-05T00:00:00.000Z",
+          }),
+          { status: 201, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValue(
+        new Response(JSON.stringify({ error: "network_failed" }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ) as typeof fetch;
+
+    const result = await acceptBackupSyncPartnerInviteAsGuest(
+      storage,
+      secretStore,
+      initialState,
+      "invite-token-9-fixture-padding",
+      new Date(2026, 3, 5),
+    );
+
+    expect(result.ok).toBe(true);
+    const storedSecrets = await secretStore.readSyncSecrets();
+    expect(storedSecrets).toEqual(
+      expect.objectContaining({
+        managedAuthSessionToken: "guest-session-1",
+        managedAuthSessionExpiresAt: "2026-04-12T00:00:00.000Z",
+        managedRefreshToken: "guest-refresh-1",
+        managedRefreshTokenExpiresAt: "2026-07-05T00:00:00.000Z",
+      }),
+    );
   });
 
   it("forwards each mapped error key and persists no session", async () => {

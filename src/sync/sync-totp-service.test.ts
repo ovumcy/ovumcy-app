@@ -314,7 +314,7 @@ describe("sync-totp-service", () => {
 
     it("passes a trimmed 6-digit code through to the network", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
-      const verifyFn = jest.fn().mockResolvedValue({ ok: true });
+      const verifyFn = jest.fn().mockResolvedValue({ ok: true, recoveryCode: null });
       const managedFactory = jest
         .fn()
         .mockReturnValue(managedClientMock({ verifyTOTPEnrollment: verifyFn }));
@@ -330,6 +330,30 @@ describe("sync-totp-service", () => {
       expect(result).toEqual({ ok: true, recoveryCode: null });
       expect(verifyFn).toHaveBeenCalledWith("managed-session-1", {
         code: " 123456 ",
+      });
+    });
+
+    it("returns the recovery code the managed backend rotated on enable", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const verifyFn = jest.fn().mockResolvedValue({
+        ok: true,
+        recoveryCode: "7b2e4c9a0d1f46e8b3c5a7d9e1f20468",
+      });
+      const managedFactory = jest
+        .fn()
+        .mockReturnValue(managedClientMock({ verifyTOTPEnrollment: verifyFn }));
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        managedPreferences(),
+        { code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        recoveryCode: "7b2e4c9a0d1f46e8b3c5a7d9e1f20468",
       });
     });
 
