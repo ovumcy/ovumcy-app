@@ -1328,8 +1328,12 @@ export function buildSettingsSyncSummary(
         if (state.managedPremiumAccess.planStatus === "unknown") {
           statusMessage = viewData.planCheckFailed;
         } else if (state.managedPremiumAccess.planStatus === "active") {
-          statusMessage = viewData.planActive;
-          statusTone = "success";
+          if (state.syncCapabilities?.syncEnabled === false) {
+            statusMessage = viewData.status.syncNotIncluded;
+          } else {
+            statusMessage = viewData.planActive;
+            statusTone = "success";
+          }
         } else {
           statusMessage = viewData.planInactive;
         }

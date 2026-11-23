@@ -1169,8 +1169,17 @@ describe("managed sync gate from sync_allowed", () => {
     expect(
       resolveBackupSyncConnectedStatusMessage(loadedState(null, "inactive"), viewData),
     ).toBe(viewData.status.connectedNoPlan);
+  });
+
+  it("does not announce a managed connection while an unconfirmed gate stays locked", () => {
     expect(
       resolveBackupSyncConnectedStatusMessage(loadedState(null, "unknown"), viewData),
+    ).toBe(viewData.planCheckFailed);
+    expect(
+      resolveBackupSyncConnectedStatusMessage(loadedState(null, "active"), viewData),
+    ).toBe(viewData.planCheckFailed);
+    expect(
+      resolveBackupSyncConnectedStatusMessage(loadedState(capabilities(true), "unknown"), viewData),
     ).toBe(viewData.status.connected);
   });
 });
