@@ -514,6 +514,42 @@ describe("syncManagedPartnerSharedProjections", () => {
       expect(uploadedGenerations).toEqual([1, 2]);
     });
 
+    it("folds triggers that arrive during a pass into one trailing pass", async () => {
+      const setupSpy = armTwoGrantPush([{ id: "grant-1", sourceInviteID: "invite-1" }]);
+      const settleFirstUpload: (() => void)[] = [];
+      const uploadSpy = jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockImplementation(async () => {
+          if (uploadSpy.mock.calls.length === 1) {
+            await new Promise<void>((resolve) => settleFirstUpload.push(resolve));
+          }
+          return { ok: true, value: {} as never };
+        });
+      const laterNow = new Date("2026-03-20T09:00:00.000Z");
+      const run = (now: Date) =>
+        syncManagedPartnerSharedProjections(
+          createLocalAppStorageMock(),
+          createSyncSecretStoreMock(),
+          {} as PartnerShareSecretStore,
+          now,
+        );
+
+      const first = run(FIXED_NOW);
+      const second = run(FIXED_NOW);
+      const third = run(laterNow);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      settleFirstUpload[0]?.();
+      await Promise.all([first, second, third]);
+
+      expect(third).toBe(second);
+      expect(setupSpy).toHaveBeenCalledTimes(2);
+      expect(uploadSpy).toHaveBeenCalledTimes(2);
+      expect(
+        jest.mocked(partnerSharedProjectionService.buildPartnerSharedProjectionPayload).mock
+          .calls[1]?.[0].generatedAt,
+      ).toBe(laterNow.toISOString());
+    });
+
     it("keeps later passes running after a pass rejects", async () => {
       const setupSpy = armTwoGrantPush([{ id: "grant-1", sourceInviteID: "invite-1" }]);
       setupSpy.mockRejectedValueOnce(new Error("storage unavailable"));
