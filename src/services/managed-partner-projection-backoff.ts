@@ -1,5 +1,6 @@
 // Back-off for the partner projection PUT after `429 rate_limited` (managed
-// caps it at 30/min per account). Every push trigger (focus, app-active, saves)
+// caps it at 30/min per account) or a refusal of the body itself, which would
+// repeat on every retry. Every push trigger (focus, app-active, saves)
 // funnels through `syncManagedPartnerSharedProjections`, so one in-memory gate
 // there is enough to stop a retry storm. A projection is a full snapshot, so a
 // skipped push loses freshness only: the next trigger after the window uploads

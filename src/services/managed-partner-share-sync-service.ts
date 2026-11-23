@@ -26,28 +26,55 @@ type ManagedPartnerProjectionSyncResult = {
   reshareRequiredGrantIDs: string[];
 };
 
-let projectionPassTail: Promise<unknown> = Promise.resolve();
+type ProjectionPassArgs = Parameters<typeof runManagedPartnerProjectionPass>;
 
-// Passes run one at a time, in call order. The lock spans the whole pass
-// (storage read, generation reserve, build, PUT): with overlapping passes, one
-// that read storage earlier could still reserve a higher generation or finish
-// its PUT last, leaving the server holding older data.
-export function syncManagedPartnerSharedProjections(
-  storage: LocalAppStorage,
-  syncSecretStore: SyncSecretStore,
-  partnerShareSecretStore: PartnerShareSecretStore,
-  now: Date,
+type QueuedProjectionPass = {
+  args: ProjectionPassArgs;
+  promise: Promise<ManagedPartnerProjectionSyncResult>;
+};
+
+let activePass: Promise<ManagedPartnerProjectionSyncResult> | null = null;
+let queuedPass: QueuedProjectionPass | null = null;
+
+function startProjectionPass(
+  args: ProjectionPassArgs,
 ): Promise<ManagedPartnerProjectionSyncResult> {
-  const pass = projectionPassTail.then(() =>
-    runManagedPartnerProjectionPass(
-      storage,
-      syncSecretStore,
-      partnerShareSecretStore,
-      now,
-    ),
-  );
-  projectionPassTail = pass.catch(() => undefined);
+  const pass = runManagedPartnerProjectionPass(...args).finally(() => {
+    if (activePass === pass) {
+      activePass = null;
+    }
+  });
+  activePass = pass;
   return pass;
+}
+
+// Passes never overlap. The lock spans the whole pass (storage read,
+// generation reserve, build, PUT): with overlapping passes, one that read
+// storage earlier could still reserve a higher generation or finish its PUT
+// last, leaving the server holding older data. Triggers arriving while a pass
+// runs share one trailing pass, built from the latest call's arguments: a
+// projection is a full snapshot, so that pass covers every change they saw.
+export function syncManagedPartnerSharedProjections(
+  ...args: ProjectionPassArgs
+): Promise<ManagedPartnerProjectionSyncResult> {
+  if (queuedPass) {
+    queuedPass.args = args;
+    return queuedPass.promise;
+  }
+  if (!activePass) {
+    return startProjectionPass(args);
+  }
+  const queued: QueuedProjectionPass = {
+    args,
+    promise: activePass
+      .catch(() => undefined)
+      .then(() => {
+        queuedPass = null;
+        return startProjectionPass(queued.args);
+      }),
+  };
+  queuedPass = queued;
+  return queued.promise;
 }
 
 async function runManagedPartnerProjectionPass(
