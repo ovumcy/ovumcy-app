@@ -282,6 +282,9 @@ export async function resetSyncAccountPassword(
       ok: true;
       recoveryCode: string;
       preferences: SyncPreferencesRecord;
+      // True only when the reset revoked this device's own session and it
+      // was cleared here.
+      signedOut: boolean;
     }
   | { ok: false; errorCode: ResetSyncPasswordErrorCode }
 > {
@@ -339,7 +342,7 @@ export async function resetSyncAccountPassword(
   }
 
   if (!ownSessionRevoked) {
-    return { ok: true, recoveryCode, preferences };
+    return { ok: true, recoveryCode, preferences, signedOut: false };
   }
 
   const secrets = await secretStore.readSyncSecrets();
@@ -356,7 +359,7 @@ export async function resetSyncAccountPassword(
     await storage.writeSyncPreferencesRecord(nextPreferences);
   }
 
-  return { ok: true, recoveryCode, preferences: nextPreferences };
+  return { ok: true, recoveryCode, preferences: nextPreferences, signedOut: true };
 }
 
 // Revoked = the stored access token is refused and so is its refresh (the

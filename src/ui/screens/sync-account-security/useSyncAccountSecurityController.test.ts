@@ -215,6 +215,7 @@ describe("useSyncAccountSecurityController", () => {
           ok: true,
           recoveryCode: "newcode0000newcode0000newcode00",
           preferences: localReadyPreferences(),
+          signedOut: true,
         });
 
       const { result } = await renderHook(() =>
@@ -246,6 +247,7 @@ describe("useSyncAccountSecurityController", () => {
           ok: true,
           recoveryCode: "newcode0000newcode0000newcode00",
           preferences: localReadyPreferences(),
+          signedOut: true,
         });
 
       const { result } = await renderHook(() =>
@@ -286,6 +288,35 @@ describe("useSyncAccountSecurityController", () => {
 
       expect(result.current.forgotSignedOut).toBe(false);
       expect(result.current.forgotErrorCode).toBe("invalid_reset_token");
+    });
+
+    it("does not flag signed-out when the reset kept this device's session", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncAccountRecoveryService, "resetSyncAccountPassword")
+        .mockResolvedValue({
+          ok: true,
+          recoveryCode: "newcode0000newcode0000newcode00",
+          preferences: managedPreferences(),
+          signedOut: false,
+        });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleSubmitResetPassword();
+      });
+
+      expect(result.current.forgotStage).toBe("completed");
+      expect(result.current.forgotSignedOut).toBe(false);
     });
   });
 
@@ -775,6 +806,7 @@ describe("useSyncAccountSecurityController", () => {
           ok: true,
           recoveryCode: "newcode0000newcode0000newcode00",
           preferences: managedPreferences(),
+          signedOut: false,
         });
 
       const { result } = await renderHook(() =>
@@ -1706,6 +1738,7 @@ describe("useSyncAccountSecurityController", () => {
           ok: true,
           recoveryCode: "resetcode000resetcode000resetcod",
           preferences: managedPreferences(),
+          signedOut: false,
         });
 
       const { result } = await renderHook(() =>
