@@ -223,6 +223,26 @@ export function clearManagedSessionFromSecrets(
   };
 }
 
+/**
+ * keepManagedSessionOf carries the managed credentials of `current` (a record
+ * read just before the write) onto `next`. A write that builds `next` from a
+ * read taken before a network await would otherwise put back a refresh token
+ * a renewal has since rotated away, and the server revokes the family on its
+ * next use.
+ */
+export function keepManagedSessionOf(
+  next: SyncSecretsRecord,
+  current: SyncSecretsRecord,
+): SyncSecretsRecord {
+  return {
+    ...next,
+    managedAuthSessionToken: current.managedAuthSessionToken,
+    managedAuthSessionExpiresAt: current.managedAuthSessionExpiresAt,
+    managedRefreshToken: current.managedRefreshToken,
+    managedRefreshTokenExpiresAt: current.managedRefreshTokenExpiresAt,
+  };
+}
+
 /** Test seam: drops the shared in-flight refresh between cases. */
 export function resetManagedSessionRefreshStateForTests(): void {
   inFlightRefresh = null;

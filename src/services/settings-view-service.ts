@@ -330,6 +330,7 @@ export type SettingsViewData = {
       uploaded: string;
       restored: string;
       disconnected: string;
+      disconnectedRemoteUnconfirmed: string;
       deleted: string;
     };
     errors: {
@@ -910,6 +911,7 @@ export function buildSettingsViewData(
         uploaded: settingsCopy.account.uploaded,
         restored: settingsCopy.account.restored,
         disconnected: settingsCopy.account.disconnected,
+        disconnectedRemoteUnconfirmed: settingsCopy.account.disconnectedRemoteUnconfirmed,
         deleted: settingsCopy.account.deleted,
       },
       errors: {

@@ -363,6 +363,8 @@ const settingsCopyEn = {
     uploaded: "Encrypted backup copy uploaded to the sync server.",
     restored: "Encrypted backup copy restored from the sync server.",
     disconnected: "Sync server session removed from this device.",
+    disconnectedRemoteUnconfirmed:
+      "Signed out on this device. The server did not confirm the sign-out, so the server session ends when it expires.",
     deleted: "Account deleted. Returning to onboarding.",
     errors: {
       loginRequired: "Login is required.",
@@ -980,6 +982,8 @@ const settingsCopyDe: SettingsCopy = {
     restored:
       "Verschlüsselte Sicherungskopie vom Sync-Server wiederhergestellt.",
     disconnected: "Die Sync-Server-Sitzung wurde von diesem Gerät entfernt.",
+    disconnectedRemoteUnconfirmed:
+      "Auf diesem Gerät abgemeldet. Der Server hat die Abmeldung nicht bestätigt, daher endet die Server-Sitzung erst mit ihrem Ablauf.",
     deleted: "Konto gelöscht. Rückkehr zum Onboarding.",
     errors: {
       ...settingsCopyEn.account.errors,
@@ -1635,6 +1639,8 @@ const settingsCopyFr: SettingsCopy = {
     restored:
       "Copie de sauvegarde chiffrée restaurée depuis le serveur de sync.",
     disconnected: "La session du serveur de sync a été supprimée de cet appareil.",
+    disconnectedRemoteUnconfirmed:
+      "Déconnecté sur cet appareil. Le serveur n'a pas confirmé la déconnexion : la session du serveur prendra fin à son expiration.",
     deleted: "Compte supprimé. Retour à l'onboarding.",
     errors: {
       ...settingsCopyEn.account.errors,
@@ -2276,6 +2282,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       uploaded: "Зашифрованная резервная копия отправлена на sync-сервер.",
       restored: "Зашифрованная резервная копия восстановлена с sync-сервера.",
       disconnected: "Сессия sync-сервера удалена с этого устройства.",
+      disconnectedRemoteUnconfirmed:
+        "Выход на этом устройстве выполнен. Сервер не подтвердил выход, поэтому сессия на сервере закончится, когда истечёт её срок.",
       deleted: "Аккаунт удалён. Возврат к онбордингу.",
       errors: {
         loginRequired: "Логин обязателен.",
@@ -2890,6 +2898,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restored:
         "La copia de respaldo cifrada se restauró desde el servidor de sync.",
       disconnected: "La sesión del servidor de sync se eliminó de este dispositivo.",
+      disconnectedRemoteUnconfirmed:
+        "Sesión cerrada en este dispositivo. El servidor no confirmó el cierre, así que la sesión del servidor terminará cuando caduque.",
       deleted: "Cuenta eliminada. Volviendo al onboarding.",
       errors: {
         loginRequired: "El login es obligatorio.",
@@ -3511,6 +3521,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restored:
         "Il backup cifrato è stato ripristinato dal server di sync.",
       disconnected: "La sessione del server di sync è stata rimossa da questo dispositivo.",
+      disconnectedRemoteUnconfirmed:
+        "Disconnesso su questo dispositivo. Il server non ha confermato la disconnessione, quindi la sessione del server terminerà alla sua scadenza.",
       deleted: "Account eliminato. Ritorno alla configurazione iniziale.",
       errors: {
         loginRequired: "Il login è obbligatorio.",

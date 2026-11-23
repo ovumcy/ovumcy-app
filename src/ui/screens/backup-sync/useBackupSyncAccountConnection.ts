@@ -368,7 +368,11 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     setErrorState(null);
     setState(result.state);
     await reloadPartnerAccess(result.state);
-    setAccountStatusMessage(viewData.account.status.disconnected);
+    setAccountStatusMessage(
+      result.remoteSignOut === "confirmed"
+        ? viewData.account.status.disconnected
+        : viewData.account.status.disconnectedRemoteUnconfirmed,
+    );
   }
 
   return {

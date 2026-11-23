@@ -1076,6 +1076,7 @@ describe("sync-client-service", () => {
       preferences: expect.objectContaining({
         setupStatus: "local_ready",
       }),
+      remoteSignOut: "confirmed",
     });
     expect(logout).toHaveBeenCalledWith("session-1");
     await expect(secretStore.readSyncSecrets()).resolves.toEqual(
@@ -1083,6 +1084,60 @@ describe("sync-client-service", () => {
         authSessionToken: null,
       }),
     );
+  });
+
+  it("reports a self-hosted sign-out unconfirmed when the server logout fails and still clears locally", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted" as const,
+      endpointInput: "192.168.1.20:8080",
+      normalizedEndpoint: "http://192.168.1.20:8080",
+      deviceLabel: "Pixel 7",
+      setupStatus: "connected" as const,
+      preparedAt: "2026-03-20T08:00:00.000Z",
+    };
+    const logout = jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" });
+
+    const result = await disconnectSyncAccount(
+      createLocalAppStorageMock(),
+      secretStore,
+      preferences,
+      jest.fn().mockReturnValue(createAPIClientMock({ logout })),
+    );
+
+    expect(result.remoteSignOut).toBe("unconfirmed");
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ authSessionToken: null }),
+    );
+  });
+
+  it("reports a sign-out confirmed when no server session was held", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+
+    const result = await disconnectSyncAccount(
+      createLocalAppStorageMock(),
+      createSyncSecretStoreMock(preparedSecrets.record),
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted" as const,
+        endpointInput: "192.168.1.20:8080",
+        setupStatus: "local_ready" as const,
+      },
+      jest.fn(),
+    );
+
+    expect(result.remoteSignOut).toBe("confirmed");
   });
 
   it("clears both managed and sync sessions when disconnecting managed cloud access", async () => {
@@ -1128,6 +1183,7 @@ describe("sync-client-service", () => {
       preferences: expect.objectContaining({
         setupStatus: "local_ready",
       }),
+      remoteSignOut: "confirmed",
     });
     expect(syncLogout).toHaveBeenCalledWith("sync-session-1");
     expect(managedLogout).toHaveBeenCalledWith({
@@ -1328,6 +1384,91 @@ describe("sync-client-service", () => {
       );
 
       await expectManagedCredentialsWiped(secretStore);
+    });
+
+    async function disconnectWith(
+      managedLogout: jest.Mock,
+      options: { syncLogout?: jest.Mock; timeoutMs?: number } = {},
+    ) {
+      const secretStore = createManagedSecretStore(
+        options.syncLogout ? { authSessionToken: "sync-session-1" } : {},
+      );
+      const result = await disconnectSyncAccount(
+        createLocalAppStorageMock(),
+        secretStore,
+        managedPreferences,
+        jest
+          .fn()
+          .mockReturnValue(createAPIClientMock({ logout: options.syncLogout ?? jest.fn() })),
+        jest.fn().mockReturnValue(createManagedClientMock({ logout: managedLogout })),
+        options.timeoutMs,
+      );
+      await expectManagedCredentialsWiped(secretStore);
+      return result;
+    }
+
+    it("reports the sign-out confirmed when the server revoked the session", async () => {
+      const result = await disconnectWith(jest.fn().mockResolvedValue({ ok: true }));
+
+      expect(result.remoteSignOut).toBe("confirmed");
+    });
+
+    it("reports the sign-out confirmed when the server already held no live session", async () => {
+      const result = await disconnectWith(
+        jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      );
+
+      expect(result.remoteSignOut).toBe("confirmed");
+    });
+
+    it("reports the sign-out confirmed when the retry after a rolled-back logout succeeds", async () => {
+      const result = await disconnectWith(
+        jest
+          .fn()
+          .mockResolvedValueOnce({ ok: false, errorCode: "network_failed" })
+          .mockResolvedValueOnce({ ok: true }),
+      );
+
+      expect(result.remoteSignOut).toBe("confirmed");
+    });
+
+    it("reports the sign-out unconfirmed after two failed logouts", async () => {
+      const result = await disconnectWith(
+        jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+      );
+
+      expect(result.remoteSignOut).toBe("unconfirmed");
+    });
+
+    it("reports the sign-out unconfirmed when the server refused the logout", async () => {
+      const result = await disconnectWith(
+        jest.fn().mockResolvedValue({ ok: false, errorCode: "rate_limited" }),
+      );
+
+      expect(result.remoteSignOut).toBe("unconfirmed");
+    });
+
+    it("reports the sign-out unconfirmed when a logout throws", async () => {
+      const result = await disconnectWith(jest.fn().mockRejectedValue(new Error("boom")));
+
+      expect(result.remoteSignOut).toBe("unconfirmed");
+    });
+
+    it("reports the sign-out unconfirmed when the server phase outlasts its timeout", async () => {
+      const result = await disconnectWith(
+        jest.fn(() => new Promise<never>(() => undefined)),
+        { timeoutMs: 5 },
+      );
+
+      expect(result.remoteSignOut).toBe("unconfirmed");
+    });
+
+    it("reports the sign-out unconfirmed when the sync session logout fails though the account logout succeeded", async () => {
+      const result = await disconnectWith(jest.fn().mockResolvedValue({ ok: true }), {
+        syncLogout: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+      });
+
+      expect(result.remoteSignOut).toBe("unconfirmed");
     });
 
     async function startRenewalInFlight(secretStore: SyncSecretStore) {
@@ -4911,6 +5052,8 @@ describe("disconnectSyncAccount and clearLocalSyncSession additional branches", 
     expect(result).toEqual({
       ok: true,
       preferences: expect.objectContaining({ setupStatus: "local_ready" }),
+      // The held session was never revoked.
+      remoteSignOut: "unconfirmed",
     });
     await expect(secretStore.readSyncSecrets()).resolves.toEqual(
       expect.objectContaining({ authSessionToken: null }),

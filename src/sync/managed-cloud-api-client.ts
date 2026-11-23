@@ -50,9 +50,21 @@ export type ManagedCloudAPIErrorCode =
   | "totp_replayed"
   | "totp_challenge_invalid"
   | "totp_secret_failed"
+  // 503 at register: the trial could not be started. A live refusal, not a
+  // transport failure.
+  | "trial_unavailable"
+  // 503 at recovery-key rotation: no sync bridge, nothing was replaced.
+  | "sync_not_configured"
   | "network_failed"
   | "invalid_response"
   | "generic";
+
+// A login/register refusal. `retryAfterSeconds` is the 429 `Retry-After`.
+export type ManagedCloudAuthFailure = {
+  ok: false;
+  errorCode: ManagedCloudAPIErrorCode;
+  retryAfterSeconds?: number;
+};
 
 // The managed API's cap on one partner projection ciphertext (2 MiB).
 export const MANAGED_PARTNER_PROJECTION_MAX_CIPHERTEXT_BYTES = 2 * 1024 * 1024;
@@ -337,10 +349,7 @@ export type ManagedCloudAPIClient = {
   >;
   login(
     input: { email: string; password: string },
-  ): Promise<
-    | { ok: true; auth: ManagedCloudAuthResult }
-    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
-  >;
+  ): Promise<{ ok: true; auth: ManagedCloudAuthResult } | ManagedCloudAuthFailure>;
   // DELETE /auth/session revokes the refresh family under either credential:
   // a live bearer or the refresh token in the body. Send every one held.
   logout(credentials: {
@@ -367,10 +376,7 @@ export type ManagedCloudAPIClient = {
   >;
   register(
     input: { email: string; password: string },
-  ): Promise<
-    | { ok: true; auth: ManagedCloudAuthResult }
-    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
-  >;
+  ): Promise<{ ok: true; auth: ManagedCloudAuthResult } | ManagedCloudAuthFailure>;
   changePassword(
     sessionToken: string,
     input: { currentPassword: string; newPassword: string },
@@ -1265,10 +1271,7 @@ async function requestAuthResult(
   baseURL: string,
   path: string,
   input: { email: string; password: string },
-): Promise<
-  | { ok: true; auth: ManagedCloudAuthResult }
-  | { ok: false; errorCode: ManagedCloudAPIErrorCode }
-> {
+): Promise<{ ok: true; auth: ManagedCloudAuthResult } | ManagedCloudAuthFailure> {
   const result = await requestJSON<RawManagedCloudAuthResult>(
     fetchImpl,
     baseURL,
@@ -1284,9 +1287,7 @@ async function requestAuthResult(
     isRawManagedCloudAuthResult,
   );
 
-  return result.ok
-    ? { ok: true, auth: mapAuthResult(result.payload) }
-    : { ok: false, errorCode: result.errorCode };
+  return result.ok ? { ok: true, auth: mapAuthResult(result.payload) } : result;
 }
 
 async function requestNoPayload(
@@ -1487,6 +1488,8 @@ async function readErrorCode(
       case "totp_replayed":
       case "totp_challenge_invalid":
       case "totp_secret_failed":
+      case "trial_unavailable":
+      case "sync_not_configured":
         return payload.error;
       default:
         return unrecognizedErrorCode(response.status, serverFault);
