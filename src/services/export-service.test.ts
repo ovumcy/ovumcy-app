@@ -541,6 +541,52 @@ describe("export-service", () => {
     expect(input.cycleHistoryLogs.map((record) => record.date)).toContain("2026-05-10");
   });
 
+  it("reads the day logs once for the PDF and derives the range and the shared cycle history from it", async () => {
+    const stored = [
+      { ...createEmptyDayLogRecord("2024-04-01"), notes: "outside both" },
+      { ...createEmptyDayLogRecord("2024-05-17"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2024-05-21"), isPeriod: true },
+      { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-05-10"), pregnancyTest: "positive" as const },
+    ];
+    const listDayLogRecordsInRange = jest
+      .fn()
+      .mockImplementation(async (from: string, to: string) =>
+        stored.filter((record) => record.date >= from && record.date <= to),
+      );
+    const storage = createStorageMock({ listDayLogRecordsInRange });
+    const now = new Date(2026, 4, 20, 10);
+    const loaded = await loadLocalExportState(storage, now, {
+      preset: "custom",
+      fromDate: "2026-01-01",
+      toDate: "2026-03-31",
+    });
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+    listDayLogRecordsInRange.mockClear();
+
+    const buildPDFContent = jest.fn().mockResolvedValue(new Uint8Array([0x25]));
+    const result = await buildLocalExportArtifact(storage, loaded.state, "pdf", now, {
+      buildPDFContent,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(listDayLogRecordsInRange).toHaveBeenCalledTimes(1);
+    const input = buildPDFContent.mock.calls[0]?.[0] as ExportPDFBuildInput;
+    expect(input.dayLogs.map((record) => record.date)).toEqual(["2026-01-01", "2026-03-01"]);
+    // The two-year window opens on 2024-05-20 and cuts the 2024-05-17 bleed,
+    // which is kept whole.
+    expect(input.cycleHistoryLogs.map((record) => record.date)).toEqual([
+      "2024-05-17",
+      "2024-05-21",
+      "2026-01-01",
+      "2026-03-01",
+      "2026-05-10",
+    ]);
+  });
+
   it("never reads the active-pregnancy record for CSV/JSON exports (PDF-only signal)", async () => {
     const storage = createStorageMock({
       readActivePregnancy: jest.fn().mockResolvedValue(pregnancyRecordFixture()),

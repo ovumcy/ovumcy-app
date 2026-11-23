@@ -19,7 +19,11 @@ import type { ScreeningResponse } from "../models/screening";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
-import { listCycleHistoryRecords } from "./cycle-history-records";
+import {
+  cycleHistoryStart,
+  MIN_DAY_LOG_DATE,
+  selectWholeClustersFrom,
+} from "./cycle-history-records";
 import type { ExportPDFBuildInput } from "./export-pdf-service";
 import {
   applyExportPreset,
@@ -220,22 +224,32 @@ export async function buildLocalExportArtifact(
     // reads... exports full pregnancy data regardless" test), so this stays
     // scoped like the other needs* reads above rather than always-fetched.
     const needsActivePregnancy = format === "pdf";
+    // The PDF reads the day logs once, wide enough for both the export range
+    // and the shared cycle history (listCycleHistoryRecords' window), and
+    // derives each from that read below.
+    const todayValue = formatLocalDate(now);
+    const [dayLogsFrom, dayLogsTo] =
+      format === "pdf"
+        ? [
+            MIN_DAY_LOG_DATE,
+            validation.toDate > todayValue ? validation.toDate : todayValue,
+          ]
+        : [validation.fromDate, validation.toDate];
 
     const [
       profile,
       symptomRecords,
-      dayLogs,
+      storedDayLogs,
       pregnancies,
       kickSessions,
       contractionSessions,
       postpartumRecords,
       allScreeningResponses,
       activePregnancy,
-      cycleHistoryLogs,
     ] = await Promise.all([
       storage.readProfileRecord(),
       storage.listSymptomRecords(),
-      storage.listDayLogRecordsInRange(validation.fromDate, validation.toDate),
+      storage.listDayLogRecordsInRange(dayLogsFrom, dayLogsTo),
       needsPregnancies
         ? storage.listPregnancyRecords()
         : Promise.resolve<PregnancyRecord[]>([]),
@@ -254,10 +268,21 @@ export async function buildLocalExportArtifact(
       needsActivePregnancy
         ? storage.readActivePregnancy()
         : Promise.resolve<PregnancyRecord | null>(null),
-      format === "pdf"
-        ? listCycleHistoryRecords(storage, now)
-        : Promise.resolve<DayLogRecord[]>([]),
     ]);
+    const dayLogs =
+      format === "pdf"
+        ? storedDayLogs.filter(
+            (record) =>
+              record.date >= validation.fromDate && record.date <= validation.toDate,
+          )
+        : storedDayLogs;
+    const cycleHistoryLogs =
+      format === "pdf"
+        ? selectWholeClustersFrom(
+            storedDayLogs.filter((record) => record.date <= todayValue),
+            cycleHistoryStart(now),
+          )
+        : [];
 
     // Screening responses are ranged by completion date like sessions (the
     // repo has no range read, so filter here). LocalDateISO is YYYY-MM-DD, so
