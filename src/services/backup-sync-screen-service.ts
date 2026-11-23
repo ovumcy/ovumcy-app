@@ -368,6 +368,7 @@ export async function upgradeBackupSyncGuestAccount(
   secretStore: SyncSecretStore,
   currentState: LoadedSettingsState,
   input: { email: string; password: string },
+  now: Date,
 ): Promise<
   | {
       ok: true;
@@ -387,6 +388,8 @@ export async function upgradeBackupSyncGuestAccount(
     secretStore,
     currentState.savedSyncPreferences,
     input,
+    undefined,
+    now,
   );
 
   const nextState = createLoadedSettingsState(
