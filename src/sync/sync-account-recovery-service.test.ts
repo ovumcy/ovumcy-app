@@ -13,6 +13,7 @@ import {
   createDefaultSyncPreferencesRecord,
   type SyncPreferencesRecord,
 } from "./sync-contract";
+import { advanceSyncWipeEpoch } from "./sync-wipe-epoch";
 
 function communityClientMock(
   overrides: Partial<SyncAPIClient> = {},
@@ -641,6 +642,95 @@ describe("sync-account-recovery-service", () => {
         expect.objectContaining({ setupStatus: "local_ready" }),
       );
     });
+
+    it("writes nothing when a local wipe lands during the session probe, and still returns the recovery code", async () => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const writeSecrets = jest.spyOn(secretStore, "writeSyncSecrets");
+      const resetPassword = jest.fn().mockResolvedValue({
+        ok: true,
+        result: { recoveryCode: "rotated1234rotated1234rotated123" },
+      });
+      const getSession = jest.fn().mockImplementation(async () => {
+        advanceSyncWipeEpoch();
+        return { ok: false, errorCode: "unauthorized" };
+      });
+      const apiFactory = jest
+        .fn()
+        .mockReturnValue(communityClientMock({ resetPassword, getSession }));
+
+      const initial = selfHostedPreferences();
+      const result = await resetSyncAccountPassword(
+        storage,
+        secretStore,
+        initial,
+        { resetToken: "reset-token-1", newPassword: "new password 12345" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        recoveryCode: "rotated1234rotated1234rotated123",
+        preferences: initial,
+        signedOut: false,
+      });
+      expect(writeSecrets).not.toHaveBeenCalled();
+      expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["while the secrets are read", "read"],
+      ["while the cleared secrets are written", "write"],
+    ] as const)(
+      "skips the preferences write when a local wipe lands %s",
+      async (_label, stage) => {
+        const storage = createLocalAppStorageMock();
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const getSession = jest
+          .fn()
+          .mockResolvedValue({ ok: false, errorCode: "unauthorized" });
+        const resetPassword = jest.fn().mockResolvedValue({
+          ok: true,
+          result: { recoveryCode: "rotated1234rotated1234rotated123" },
+        });
+        const apiFactory = jest
+          .fn()
+          .mockReturnValue(communityClientMock({ resetPassword, getSession }));
+        const realRead = secretStore.readSyncSecrets.bind(secretStore);
+        const realWrite = secretStore.writeSyncSecrets.bind(secretStore);
+        const writeSecrets = jest
+          .spyOn(secretStore, "writeSyncSecrets")
+          .mockImplementation(async (record) => {
+            await realWrite(record);
+            if (stage === "write") advanceSyncWipeEpoch();
+          });
+        let reads = 0;
+        jest.spyOn(secretStore, "readSyncSecrets").mockImplementation(async () => {
+          const record = await realRead();
+          reads += 1;
+          // The first read is the probe's; the second is the clear's.
+          if (stage === "read" && reads === 2) advanceSyncWipeEpoch();
+          return record;
+        });
+
+        const initial = selfHostedPreferences();
+        const result = await resetSyncAccountPassword(
+          storage,
+          secretStore,
+          initial,
+          { resetToken: "reset-token-1", newPassword: "new password 12345" },
+          apiFactory,
+          jest.fn(),
+        );
+
+        expect(result).toEqual(
+          expect.objectContaining({ ok: true, preferences: initial, signedOut: false }),
+        );
+        expect(writeSecrets).toHaveBeenCalledTimes(stage === "write" ? 1 : 0);
+        expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+      },
+    );
 
     it("works without prior session secrets (forgot flow on a fresh device)", async () => {
       const storage = createLocalAppStorageMock();
