@@ -1781,6 +1781,7 @@ describe("persistGuestPartnerSession", () => {
     );
 
     expect(result).toEqual({
+      ok: true,
       capabilities: expect.objectContaining({
         mode: "managed",
         syncEnabled: false,
@@ -1852,7 +1853,7 @@ describe("persistGuestPartnerSession", () => {
     // The marker records the deadline the device faces if it does nothing —
     // the refresh token's, not the 24h session's — and flags that the
     // deadline slides, so the nudge withholds a countdown.
-    expect(result.preferences).toEqual(
+    expect(result.ok && result.preferences).toEqual(
       expect.objectContaining({
         guestSessionExpiresAt: "2026-07-04T08:00:00.000Z",
         guestSessionRenewable: true,
@@ -1896,7 +1897,7 @@ describe("persistGuestPartnerSession", () => {
         managedRefreshTokenExpiresAt: null,
       }),
     );
-    expect(result.preferences.guestSessionRenewable).toBe(false);
+    expect(result.ok && result.preferences.guestSessionRenewable).toBe(false);
   });
 
   it("keeps an already-prepared device's master key and device identity untouched", async () => {
@@ -1992,7 +1993,11 @@ describe("upgradeGuestPartnerAccount", () => {
       accountID: "guest-account-1",
       email: "owner@example.com",
       recoveryCode: "fresh1234fresh1234fresh1234fresh",
-      preferences: { ...guestPreferences, guestSessionExpiresAt: null },
+      preferences: {
+        ...guestPreferences,
+        accountId: "guest-account-1",
+        guestSessionExpiresAt: null,
+      },
     });
     // The email is trimmed before it reaches the server, and auth uses the
     // guest's CURRENT session token — upgrade never mints or reads a new one.
@@ -2002,6 +2007,7 @@ describe("upgradeGuestPartnerAccount", () => {
     });
     expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith({
       ...guestPreferences,
+      accountId: "guest-account-1",
       guestSessionExpiresAt: null,
     });
     // No secrets write: the session token that already authenticated this

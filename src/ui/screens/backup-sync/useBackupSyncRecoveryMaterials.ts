@@ -3,7 +3,10 @@ import { useMemo, useRef, useState } from "react";
 import { selectAccountChangeRecoveryCopy } from "../../../i18n/account-change-recovery-copy";
 import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
 import { prepareBackupSyncSetup } from "../../../services/backup-sync-screen-service";
-import { shouldRotateManagedRecoveryPhrase } from "../../../services/backup-sync-view-service";
+import {
+  shouldBlockManagedRecoveryAction,
+  shouldRotateManagedRecoveryPhrase,
+} from "../../../services/backup-sync-view-service";
 import { deliverRecoveryPhraseArtifact } from "../../../services/recovery-phrase-delivery-service";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import {
@@ -87,6 +90,16 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     }
 
     resetFeedbackMessages();
+
+    if (
+      shouldBlockManagedRecoveryAction({
+        hasStoredSyncSecrets: state.hasStoredSyncSecrets,
+        hasSyncSession: state.hasSyncSession,
+        preferences: state.savedSyncPreferences,
+      })
+    ) {
+      return;
+    }
 
     const rotates = shouldRotateManagedRecoveryPhrase({
       hasStoredSyncSecrets: state.hasStoredSyncSecrets,

@@ -9,6 +9,7 @@ describe("managed-recovery-rotation-copy", () => {
       const copy = selectManagedRecoveryRotationCopy(language);
       for (const value of [
         copy.actionLabel,
+        copy.noFloorHint,
         copy.confirmPrompt,
         copy.confirmAccept,
         copy.deviceAuthPrompt,

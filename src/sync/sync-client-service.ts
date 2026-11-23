@@ -32,6 +32,7 @@ import {
 } from "./managed-session-call";
 import type { EntitlementTokenStore } from "../security/entitlement-token-store";
 import { holdAccountChangeRecoveryPhrase } from "./account-change-recovery-phrase";
+import { readSyncWipeEpoch } from "./sync-wipe-epoch";
 import { entitlementTokenStore as defaultEntitlementTokenStore } from "./app-wipe-scope-secret-stores";
 import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation-service";
 import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
@@ -111,6 +112,8 @@ export type SyncRecoverErrorCode =
   | "too_many_devices"
   | "rate_limited"
   | "network_failed"
+  // A local wipe landed while the recovery awaited the server.
+  | "sync_not_prepared"
   | "generic";
 
 export type SyncRunErrorCode =
@@ -213,6 +216,42 @@ export function bindSyncPreferencesToAccount(
     lastRemoteGeneration: null,
     lastSyncedAt: null,
   };
+}
+
+/**
+ * An unfinished-restore mark protects the backup of the account the restore
+ * read. It is dropped only on a sign-in to a known, different account; an
+ * unknown signed-in id may be the same account, so the mark stays.
+ */
+function restoreMarkWriteOptions(
+  preferences: SyncPreferencesRecord,
+  accountId: string | null | undefined,
+): { restoreInProgress: false } | undefined {
+  const storedAccountId =
+    typeof preferences.accountId === "string" && preferences.accountId.length > 0
+      ? preferences.accountId
+      : null;
+  const signedInAccountId =
+    typeof accountId === "string" && accountId.length > 0 ? accountId : null;
+  return storedAccountId !== null &&
+    signedInAccountId !== null &&
+    storedAccountId !== signedInAccountId
+    ? { restoreInProgress: false }
+    : undefined;
+}
+
+async function writeSignedInPreferences(
+  storage: LocalAppStorage,
+  nextPreferences: SyncPreferencesRecord,
+  preferences: SyncPreferencesRecord,
+  accountId: string | null | undefined,
+): Promise<void> {
+  const options = restoreMarkWriteOptions(preferences, accountId);
+  if (options) {
+    await storage.writeSyncPreferencesRecord(nextPreferences, options);
+  } else {
+    await storage.writeSyncPreferencesRecord(nextPreferences);
+  }
 }
 
 type AccountKeyedSecrets = {
@@ -383,6 +422,7 @@ export async function connectSyncAccount(
     return normalizedEndpoint;
   }
 
+  const wipeEpoch = readSyncWipeEpoch();
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets) {
     return { ok: false, errorCode: "sync_not_prepared" };
@@ -428,6 +468,9 @@ export async function connectSyncAccount(
       authResult.auth.accountID,
       now,
     );
+    if (readSyncWipeEpoch() !== wipeEpoch) {
+      return { ok: false, errorCode: "sync_not_prepared" };
+    }
     // New managed session (possibly a different account): drop billing-cache
     // state derived under the previous session BEFORE the new session is
     // stored, so a stop in between never leaves the previous account's
@@ -454,7 +497,7 @@ export async function connectSyncAccount(
       guestSessionExpiresAt: null,
       guestSessionRenewable: false,
     };
-    await storage.writeSyncPreferencesRecord(nextPreferences);
+    await writeSignedInPreferences(storage, nextPreferences, preferences, authResult.auth.accountID);
     await discardPreviousSessionBillingCache(storage);
 
     const success: {
@@ -542,6 +585,9 @@ export async function connectSyncAccount(
     }
   }
 
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return failAfterRegister("sync_not_prepared");
+  }
   await secretStore.writeSyncSecrets({
     ...keyed.secrets,
     authSessionToken: authResult.auth.sessionToken,
@@ -557,7 +603,7 @@ export async function connectSyncAccount(
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
   };
-  await storage.writeSyncPreferencesRecord(nextPreferences);
+  await writeSignedInPreferences(storage, nextPreferences, preferences, authResult.auth.accountID);
 
   const success: {
     ok: true;
@@ -637,6 +683,7 @@ export async function finalizeSyncSessionAfterTOTP(
     return normalizedEndpoint;
   }
 
+  const wipeEpoch = readSyncWipeEpoch();
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets) {
     return { ok: false, errorCode: "sync_not_prepared" };
@@ -661,6 +708,9 @@ export async function finalizeSyncSessionAfterTOTP(
       sessionResult.session.accountID,
       now,
     );
+    if (readSyncWipeEpoch() !== wipeEpoch) {
+      return { ok: false, errorCode: "sync_not_prepared" };
+    }
     // Same session-boundary purge as the password-only connect path, before
     // the new session is stored.
     await storage.writeManagedBillingCacheRecord(
@@ -686,7 +736,7 @@ export async function finalizeSyncSessionAfterTOTP(
       guestSessionExpiresAt: null,
       guestSessionRenewable: false,
     };
-    await storage.writeSyncPreferencesRecord(nextPreferences);
+    await writeSignedInPreferences(storage, nextPreferences, preferences, sessionResult.session.accountID);
     await discardPreviousSessionBillingCache(storage);
 
     return {
@@ -722,6 +772,9 @@ export async function finalizeSyncSessionAfterTOTP(
 
   // A TOTP challenge only follows a login, so the package is left to the
   // upload, as on a login connect.
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "sync_not_prepared" };
+  }
   await secretStore.writeSyncSecrets({
     ...keyed.secrets,
     authSessionToken: input.sessionToken,
@@ -737,7 +790,7 @@ export async function finalizeSyncSessionAfterTOTP(
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
   };
-  await storage.writeSyncPreferencesRecord(nextPreferences);
+  await writeSignedInPreferences(storage, nextPreferences, preferences, input.accountID);
 
   return {
     ok: true,
@@ -793,10 +846,16 @@ export async function persistGuestPartnerSession(
     refreshTokenExpiresAt?: string;
   },
   now: Date,
-): Promise<{
-  capabilities: SyncCapabilityDocument;
-  preferences: SyncPreferencesRecord;
-}> {
+  // Captured by the caller before the accept request went out.
+  wipeEpoch: number = readSyncWipeEpoch(),
+): Promise<
+  | {
+      ok: true;
+      capabilities: SyncCapabilityDocument;
+      preferences: SyncPreferencesRecord;
+    }
+  | { ok: false; errorCode: "sync_not_prepared" }
+> {
   const existingSecrets = await secretStore.readSyncSecrets();
   const baseSecrets: SyncSecretsRecord =
     existingSecrets ?? createSyncSecretsRecord("", now).record;
@@ -827,6 +886,9 @@ export async function persistGuestPartnerSession(
   // New account boundary (a guest account is always freshly minted): drop
   // any billing-cache state derived under a previous session before the guest
   // session is stored, same as a normal managed connect.
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "sync_not_prepared" };
+  }
   await storage.writeManagedBillingCacheRecord(
     createDefaultManagedBillingCacheRecord(),
   );
@@ -861,6 +923,7 @@ export async function persistGuestPartnerSession(
   await discardPreviousSessionBillingCache(storage);
 
   return {
+    ok: true,
     // Guest partner accounts carry no sync entitlement by construction
     // (server-side SyncEntitlement.SyncAllowed=false — see
     // PartnerService.AcceptInviteAsGuest in the managed cloud) — never
@@ -891,6 +954,9 @@ export type UpgradeGuestPartnerAccountResult =
       // then forget it.
       recoveryCode: string;
       preferences: SyncPreferencesRecord;
+      // As on connectSyncAccount: the key last served another account and was
+      // replaced; its phrase waits in the account-change buffer.
+      accountKeyReset?: true;
     }
   | {
       ok: false;
@@ -919,6 +985,11 @@ export type UpgradeGuestPartnerAccountResult =
  * guest in the first place — a benign convergence with server truth, not a
  * failure worth retrying, so the local marker is brought in line with it
  * right away instead of lingering until the next reload.
+ *
+ * A success binds the device to the upgraded account like a sign-in: a key
+ * last used with another account is replaced (its phrase goes to the gated
+ * account-change reveal), and a key minted at the guest accept, bound to no
+ * account, stays and is bound to this one.
  */
 export async function upgradeGuestPartnerAccount(
   storage: LocalAppStorage,
@@ -926,6 +997,7 @@ export async function upgradeGuestPartnerAccount(
   preferences: SyncPreferencesRecord,
   input: { email: string; password: string },
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+  now: Date = new Date(),
 ): Promise<UpgradeGuestPartnerAccountResult> {
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets?.managedAuthSessionToken) {
@@ -968,19 +1040,33 @@ export async function upgradeGuestPartnerAccount(
     };
   }
 
+  const accountID = result.result.accountID;
+  // Re-read: the call may have renewed the session, and keySecretsForAccount
+  // carries the record's tokens over.
+  const currentSecrets = await secretStore.readSyncSecrets();
+  let keyReset: { accountKeyReset?: true } = {};
+  if (currentSecrets) {
+    const keyed = keySecretsForAccount(currentSecrets, preferences, accountID, now);
+    if (keyed.recoveryPhrase !== null) {
+      await secretStore.writeSyncSecrets(keyed.secrets);
+      keyReset = holdNewAccountKeyPhrase(keyed);
+    }
+  }
+
   const nextPreferences: SyncPreferencesRecord = {
-    ...preferences,
+    ...bindSyncPreferencesToAccount(preferences, accountID),
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
   };
-  await storage.writeSyncPreferencesRecord(nextPreferences);
+  await writeSignedInPreferences(storage, nextPreferences, preferences, accountID);
 
   return {
     ok: true,
-    accountID: result.result.accountID,
+    accountID,
     email: result.result.email,
     recoveryCode: result.result.recoveryCode,
     preferences: nextPreferences,
+    ...keyReset,
   };
 }
 
@@ -1134,6 +1220,7 @@ export async function recoverSyncAccess(
     return normalizedEndpoint;
   }
 
+  const wipeEpoch = readSyncWipeEpoch();
   if (preferences.mode === "managed") {
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const authResult = await managedClient.login({
@@ -1173,6 +1260,7 @@ export async function recoverSyncAccess(
       authResult.auth,
       normalizedRecoveryPhrase,
       now,
+      wipeEpoch,
     );
   }
 
@@ -1208,6 +1296,7 @@ export async function recoverSyncAccess(
     authResult.auth.accountID,
     normalizedRecoveryPhrase,
     now,
+    wipeEpoch,
   );
 }
 
@@ -1221,6 +1310,7 @@ async function completeManagedRecovery(
   managedAuth: ManagedCloudAuthResult,
   normalizedRecoveryPhrase: string,
   now: Date,
+  wipeEpoch: number,
 ): Promise<
   | RecoverSyncAccessSuccess
   | {
@@ -1288,6 +1378,9 @@ async function completeManagedRecovery(
 
   // Recovery establishes a fresh managed session context as well: purge the
   // previous session's billing cache before the recovered session is stored.
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "sync_not_prepared" };
+  }
   await storage.writeManagedBillingCacheRecord(
     createDefaultManagedBillingCacheRecord(),
   );
@@ -1319,7 +1412,7 @@ async function completeManagedRecovery(
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
   };
-  await storage.writeSyncPreferencesRecord(nextPreferences);
+  await writeSignedInPreferences(storage, nextPreferences, preferences, managedAuth.accountID);
   await discardPreviousSessionBillingCache(storage);
 
   return {
@@ -1391,6 +1484,7 @@ export async function finalizeSyncRecoveryAfterTOTP(
     return normalizedEndpoint;
   }
 
+  const wipeEpoch = readSyncWipeEpoch();
   if (preferences.mode === "managed") {
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     // The challenge answer carries no entitlement; the session read is the
@@ -1429,6 +1523,7 @@ export async function finalizeSyncRecoveryAfterTOTP(
       managedAuth,
       normalizedRecoveryPhrase,
       now,
+      wipeEpoch,
     );
   }
 
@@ -1442,6 +1537,7 @@ export async function finalizeSyncRecoveryAfterTOTP(
     input.accountID,
     normalizedRecoveryPhrase,
     now,
+    wipeEpoch,
   );
 }
 
@@ -1455,6 +1551,7 @@ async function completeCommunityRecovery(
   accountID: string | undefined,
   normalizedRecoveryPhrase: string,
   now: Date,
+  wipeEpoch: number,
 ): Promise<
   | RecoverSyncAccessSuccess
   | {
@@ -1510,6 +1607,9 @@ async function completeCommunityRecovery(
     };
   }
 
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "sync_not_prepared" };
+  }
   await secretStore.writeSyncSecrets({
     ...recoveredSecrets,
     authSessionToken: sessionToken,
@@ -1532,7 +1632,7 @@ async function completeCommunityRecovery(
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
   };
-  await storage.writeSyncPreferencesRecord(nextPreferences);
+  await writeSignedInPreferences(storage, nextPreferences, preferences, accountID);
 
   return {
     ok: true,
@@ -1580,6 +1680,7 @@ export async function runSyncUpload(
   // A restore that stopped partway left local data incomplete; uploading it
   // would replace the backup. The stored flag is read rather than the
   // caller's copy, which may predate the restore.
+  const wipeEpoch = readSyncWipeEpoch();
   const storedPreferences = await storage.readSyncPreferencesRecord();
   if (storedPreferences.restoreInProgress === true) {
     return { ok: false, errorCode: "sync_not_prepared" };
@@ -1707,6 +1808,14 @@ export async function runSyncUpload(
     preferences.lastSyncedAt,
   );
   if (!putBlobResult.ok) {
+    if (syncedRecoveryKey.replacedPackage && isDefinitiveBlobRefusal(putBlobResult.errorCode)) {
+      await putBackReplacedRecoveryKey(
+        client,
+        prepared.secrets.authSessionToken,
+        syncedRecoveryKey.replacedPackage,
+        recoveryKeyStepUp,
+      );
+    }
     if (putBlobResult.errorCode === "remote_backup_changed") {
       return { ok: false, errorCode: "remote_backup_changed" };
     }
@@ -1723,6 +1832,9 @@ export async function runSyncUpload(
     putBlobResult.blob.updatedAt,
     "connected",
   );
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "sync_not_prepared" };
+  }
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
   return { ok: true, preferences: nextPreferences };
@@ -1747,6 +1859,7 @@ export async function runSyncRestore(
       retryAfterSeconds?: number;
     }
 > {
+  const wipeEpoch = readSyncWipeEpoch();
   const prepared = await readPreparedSyncContext(
     secretStore,
     preferences,
@@ -1761,6 +1874,9 @@ export async function runSyncRestore(
   const blobResult = await client.getBlob(prepared.secrets.authSessionToken);
   if (!blobResult.ok) {
     if (blobResult.errorCode === "blob_not_found") {
+      if (readSyncWipeEpoch() !== wipeEpoch) {
+        return { ok: false, errorCode: "sync_not_prepared" };
+      }
       // No backup is left for an unfinished restore to protect or finish.
       const stored = await storage.readSyncPreferencesRecord();
       if (stored.restoreInProgress === true) {
@@ -1833,6 +1949,9 @@ export async function runSyncRestore(
     ),
     restoreInProgress: false,
   };
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "sync_not_prepared" };
+  }
   await restoreSyncSnapshot(
     storage,
     snapshot,
@@ -2744,7 +2863,8 @@ async function syncRecoveryKeyBeforeBlob(
   },
   stepUp?: SyncRecoveryKeyStepUp,
 ): Promise<
-  | { ok: true }
+  // replacedPackage: the different package this call overwrote, if any.
+  | { ok: true; replacedPackage: SyncSecretsRecord["wrappedKey"] | null }
   | {
       ok: false;
       errorCode:
@@ -2754,13 +2874,13 @@ async function syncRecoveryKeyBeforeBlob(
     }
 > {
   if (!capabilities.recoverySupported) {
-    return { ok: true };
+    return { ok: true, replacedPackage: null };
   }
 
   const stored = await client.getRecoveryKey(sessionToken);
   if (stored.ok) {
     if (isSameRecoveryKeyPackage(stored.recoveryKey, wrappedKey)) {
-      return { ok: true };
+      return { ok: true, replacedPackage: null };
     }
     if (upload.rollbackFloor !== null) {
       return { ok: false, errorCode: "recovery_key_changed_elsewhere" };
@@ -2782,13 +2902,49 @@ async function syncRecoveryKeyBeforeBlob(
     return { ok: false, errorCode: "stale_generation" };
   }
 
-  return syncRecoveryKeyIfSupported(
+  const written = await syncRecoveryKeyIfSupported(
     client,
     sessionToken,
     capabilities,
     wrappedKey,
     stepUp,
   );
+  if (!written.ok) {
+    return written;
+  }
+  return { ok: true, replacedPackage: stored.ok ? stored.recoveryKey : null };
+}
+
+// A refusal the server answered for the blob itself: the blob did not land,
+// so the package replaced for it would orphan the backup still stored. A
+// network failure, a 5xx or an unmapped answer may hide a blob that landed,
+// so the new package stays and a retry heals it.
+function isDefinitiveBlobRefusal(errorCode: SyncAPIErrorCode | "remote_backup_changed"): boolean {
+  switch (errorCode) {
+    case "stale_generation":
+    case "remote_backup_changed":
+    case "invalid_blob":
+    case "unauthorized":
+    case "sync_disabled":
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Best effort: a refusal (a spent TOTP step-up code is refused as a replay)
+// or a failure leaves the new package in place.
+async function putBackReplacedRecoveryKey(
+  client: SyncAPIClient,
+  sessionToken: string,
+  replacedPackage: SyncSecretsRecord["wrappedKey"],
+  stepUp: SyncRecoveryKeyStepUp | undefined,
+): Promise<void> {
+  try {
+    await client.putRecoveryKey(sessionToken, replacedPackage, stepUp);
+  } catch {
+    // Nothing further to undo.
+  }
 }
 
 // Mirrors the server's normalisation before its whole-package no-op check.
@@ -2812,12 +2968,16 @@ async function putRecoveryKeyWithoutStepUp(
   sessionToken: string,
   capabilities: SyncCapabilityDocument,
   wrappedKey: SyncSecretsRecord["wrappedKey"],
-): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }> {
+): Promise<
+  { ok: true; replacedPackage: null } | { ok: false; errorCode: SyncAPIErrorCode }
+> {
   if (!capabilities.recoverySupported) {
-    return { ok: true };
+    return { ok: true, replacedPackage: null };
   }
   const result = await client.putRecoveryKey(sessionToken, wrappedKey);
-  return result.ok ? { ok: true } : { ok: false, errorCode: result.errorCode };
+  return result.ok
+    ? { ok: true, replacedPackage: null }
+    : { ok: false, errorCode: result.errorCode };
 }
 
 function buildManagedCapabilitiesDocument(

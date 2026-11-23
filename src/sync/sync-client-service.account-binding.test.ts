@@ -158,6 +158,7 @@ describe("sign-in binds the rollback floor to the account", () => {
       });
       expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
         expect.objectContaining({ accountId: "account-b", lastRemoteGeneration: null }),
+        { restoreInProgress: false },
       );
     },
   );
@@ -235,7 +236,7 @@ describe("sign-in binds the rollback floor to the account", () => {
       NOW,
     );
 
-    expect(result.preferences).toMatchObject({
+    expect(result.ok && result.preferences).toMatchObject({
       accountId: "account-a",
       lastRemoteGeneration: null,
       lastSyncedAt: null,
@@ -251,7 +252,7 @@ describe("sign-in binds the rollback floor to the account", () => {
       NOW,
     );
 
-    expect(result.preferences.accountId).toBeNull();
+    expect(result.ok && result.preferences.accountId).toBeNull();
   });
 
   it("keeps the account a disconnect leaves, so the next sign-in is compared against it", async () => {

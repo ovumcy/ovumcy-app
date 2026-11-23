@@ -345,13 +345,23 @@ export function SettingsSyncSetupSection({
           </View>
 
           {presentation.shouldShowPrepareAction ? (
-            <AppButton
-              disabled={presentation.accountActionsDisabled}
-              label={presentation.actionLabel}
-              onPress={onPrepare}
-              testID="settings-sync-prepare-button"
-              variant="secondary"
-            />
+            <>
+              <AppButton
+                disabled={
+                  presentation.accountActionsDisabled ||
+                  Boolean(presentation.actionBlockedHint)
+                }
+                label={presentation.actionLabel}
+                onPress={onPrepare}
+                testID="settings-sync-prepare-button"
+                variant="secondary"
+              />
+              {presentation.actionBlockedHint ? (
+                <Text style={styles.helperText} testID="settings-sync-prepare-blocked-hint">
+                  {presentation.actionBlockedHint}
+                </Text>
+              ) : null}
+            </>
           ) : null}
           {recoveryRotationStepUp}
         </View>

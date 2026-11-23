@@ -4,6 +4,7 @@ import { getSubscriptionCopy } from "../../../i18n/subscription-copy";
 import {
   buildBackupSyncSetupPresentation,
   resolveBackupSyncErrorPresentation,
+  shouldBlockManagedRecoveryAction,
   shouldRotateManagedRecoveryPhrase,
 } from "../../../services/backup-sync-view-service";
 import {
@@ -184,6 +185,13 @@ export function useBackupSyncScreenController(
       preferences: state.savedSyncPreferences,
     })
       ? recovery.managedRecoveryRotationCopy.actionLabel
+      : null,
+    managedRecoveryBlockedHint: shouldBlockManagedRecoveryAction({
+      hasStoredSyncSecrets: state.hasStoredSyncSecrets,
+      hasSyncSession: state.hasSyncSession,
+      preferences: state.savedSyncPreferences,
+    })
+      ? recovery.managedRecoveryRotationCopy.noFloorHint
       : null,
     notSetLabel: viewData.common.notSet,
     preferences: state.syncPreferences,

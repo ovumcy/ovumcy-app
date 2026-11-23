@@ -31,6 +31,9 @@ export type BackupSyncSetupPresentation = {
   accountActionsDisabled: boolean;
   accountStepTitle: string;
   actionLabel: string;
+  // Set when the recovery action is disabled for a managed device with no
+  // rollback floor (`shouldBlockManagedRecoveryAction`).
+  actionBlockedHint: string | null;
   canShowSyncActions: boolean;
   endpointSummary: string;
   // guidanceMessage names the single next action (or current blocker) the owner
@@ -125,6 +128,24 @@ export function shouldRotateManagedRecoveryPhrase(input: {
   );
 }
 
+// The same managed account without a floor: a regenerated local key would be
+// refused by the managed sync host on the next upload, and rotation has no
+// proof yet that the local key opens the backup. The recovery action stays
+// disabled until an upload or restore raises the floor.
+export function shouldBlockManagedRecoveryAction(input: {
+  hasStoredSyncSecrets: boolean;
+  hasSyncSession: boolean;
+  preferences: SyncPreferencesRecord;
+}): boolean {
+  return (
+    input.hasStoredSyncSecrets &&
+    input.hasSyncSession &&
+    input.preferences.mode === "managed" &&
+    !isGuestPartnerAccount(input.preferences) &&
+    typeof input.preferences.lastRemoteGeneration !== "number"
+  );
+}
+
 const GUEST_SESSION_EXPIRY_NUDGE_THRESHOLD_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -197,6 +218,7 @@ export function buildBackupSyncSetupPresentation({
   locale,
   managedPlanStatus,
   managedRecoveryRotationLabel = null,
+  managedRecoveryBlockedHint = null,
   notSetLabel,
   preferences,
   subscriptionCountdownMessage = "",
@@ -206,6 +228,8 @@ export function buildBackupSyncSetupPresentation({
   // Set when the recovery action rotates the managed phrase instead of
   // regenerating local keys (`shouldRotateManagedRecoveryPhrase`).
   managedRecoveryRotationLabel?: string | null;
+  // Set when `shouldBlockManagedRecoveryAction` holds.
+  managedRecoveryBlockedHint?: string | null;
   hasStoredSyncSecrets: boolean;
   hasSyncSession: boolean;
   isAuthenticating: boolean;
@@ -288,6 +312,7 @@ export function buildBackupSyncSetupPresentation({
     actionLabel:
       managedRecoveryRotationLabel ??
       (hasStoredSyncSecrets ? viewData.regenerateLabel : viewData.prepareLabel),
+    actionBlockedHint: managedRecoveryBlockedHint,
     canShowSyncActions,
     endpointSummary,
     hasManagedPlan,
