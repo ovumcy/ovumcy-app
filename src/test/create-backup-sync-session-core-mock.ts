@@ -54,6 +54,7 @@ export function createLoadedSettingsStateFixture(
 function createPartnerShareSecretStoreStub(): PartnerShareSecretStore {
   return {
     clearPartnerShareSecrets: jest.fn().mockResolvedValue(undefined),
+    readPartnerShareClearEpoch: jest.fn().mockReturnValue(0),
     readPartnerShareSecrets: jest
       .fn()
       .mockResolvedValue(createEmptyPartnerShareSecretsRecord()),

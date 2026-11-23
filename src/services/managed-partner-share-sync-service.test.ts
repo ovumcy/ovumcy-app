@@ -1,6 +1,9 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import type { PartnerSharedProjectionPayload } from "../models/partner-share";
-import type { PartnerShareSecretStore } from "../security/partner-share-secret-store";
+import {
+  PartnerShareStoreClearedError,
+  type PartnerShareSecretStore,
+} from "../security/partner-share-secret-store";
 import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
@@ -16,6 +19,10 @@ import { syncManagedPartnerSharedProjections } from "./managed-partner-share-syn
 import * as syncSetupService from "../sync/sync-setup-service";
 
 const FIXED_NOW = new Date("2026-03-20T08:00:00.000Z");
+
+function createStoreStub(): PartnerShareSecretStore {
+  return { readPartnerShareClearEpoch: () => 0 } as unknown as PartnerShareSecretStore;
+}
 
 describe("syncManagedPartnerSharedProjections", () => {
   afterEach(() => {
@@ -48,7 +55,7 @@ describe("syncManagedPartnerSharedProjections", () => {
       syncManagedPartnerSharedProjections(
         storage,
         syncSecretStore,
-        {} as PartnerShareSecretStore,
+        createStoreStub(),
         FIXED_NOW,
       ),
     ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
@@ -131,7 +138,7 @@ describe("syncManagedPartnerSharedProjections", () => {
       await syncManagedPartnerSharedProjections(
         storage,
         createSyncSecretStoreMock(),
-        {} as PartnerShareSecretStore,
+        createStoreStub(),
         FIXED_NOW,
       );
 
@@ -243,7 +250,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         .mockResolvedValue({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 30 });
       const storage = createLocalAppStorageMock();
       const syncSecretStore = createSyncSecretStoreMock();
-      const partnerShareSecretStore = {} as PartnerShareSecretStore;
+      const partnerShareSecretStore = createStoreStub();
 
       await expect(
         syncManagedPartnerSharedProjections(
@@ -281,7 +288,7 @@ describe("syncManagedPartnerSharedProjections", () => {
       await syncManagedPartnerSharedProjections(
         storage,
         syncSecretStore,
-        {} as PartnerShareSecretStore,
+        createStoreStub(),
         FIXED_NOW,
       );
       expect(isManagedPartnerProjectionPushBackedOff()).toBe(true);
@@ -293,7 +300,7 @@ describe("syncManagedPartnerSharedProjections", () => {
       await syncManagedPartnerSharedProjections(
         storage,
         syncSecretStore,
-        {} as PartnerShareSecretStore,
+        createStoreStub(),
         FIXED_NOW,
       );
 
@@ -309,7 +316,7 @@ describe("syncManagedPartnerSharedProjections", () => {
       await syncManagedPartnerSharedProjections(
         createLocalAppStorageMock(),
         createSyncSecretStoreMock(),
-        {} as PartnerShareSecretStore,
+        createStoreStub(),
         FIXED_NOW,
       );
 
@@ -333,7 +340,7 @@ describe("syncManagedPartnerSharedProjections", () => {
       await syncManagedPartnerSharedProjections(
         storage,
         syncSecretStore,
-        {} as PartnerShareSecretStore,
+        createStoreStub(),
         FIXED_NOW,
       );
       expect(isManagedPartnerProjectionPushBackedOff()).toBe(true);
@@ -344,7 +351,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         syncManagedPartnerSharedProjections(
           storage,
           syncSecretStore,
-          {} as PartnerShareSecretStore,
+          createStoreStub(),
           FIXED_NOW,
         ),
       ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
@@ -367,7 +374,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         syncManagedPartnerSharedProjections(
           createLocalAppStorageMock(),
           createSyncSecretStoreMock(),
-          {} as PartnerShareSecretStore,
+          createStoreStub(),
           FIXED_NOW,
         ),
       ).resolves.toEqual({
@@ -376,7 +383,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         reshareRequiredGrantIDs: ["grant-legacy"],
       });
       expect(reserveSpy).toHaveBeenCalledTimes(1);
-      expect(reserveSpy).toHaveBeenCalledWith(expect.anything(), "grant-2");
+      expect(reserveSpy).toHaveBeenCalledWith(expect.anything(), "grant-2", 0);
       expect(uploadSpy).toHaveBeenCalledTimes(1);
       expect(uploadSpy.mock.calls[0]?.[2]).toMatchObject({
         listedSourceInviteID: "invite-2",
@@ -399,7 +406,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         syncManagedPartnerSharedProjections(
           createLocalAppStorageMock(),
           createSyncSecretStoreMock(),
-          {} as PartnerShareSecretStore,
+          createStoreStub(),
           FIXED_NOW,
         ),
       ).resolves.toEqual({
@@ -408,7 +415,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         reshareRequiredGrantIDs: ["grant-1"],
       });
       expect(reserveSpy).toHaveBeenCalledTimes(1);
-      expect(reserveSpy).toHaveBeenCalledWith(expect.anything(), "grant-2");
+      expect(reserveSpy).toHaveBeenCalledWith(expect.anything(), "grant-2", 0);
       expect(uploadSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -438,7 +445,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         syncManagedPartnerSharedProjections(
           createLocalAppStorageMock(),
           createSyncSecretStoreMock(),
-          {} as PartnerShareSecretStore,
+          createStoreStub(),
           FIXED_NOW,
         ),
       ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
@@ -456,7 +463,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         syncManagedPartnerSharedProjections(
           createLocalAppStorageMock(),
           createSyncSecretStoreMock(),
-          {} as PartnerShareSecretStore,
+          createStoreStub(),
           FIXED_NOW,
         ),
       ).resolves.toEqual({
@@ -497,7 +504,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         syncManagedPartnerSharedProjections(
           createLocalAppStorageMock(),
           createSyncSecretStoreMock(),
-          {} as PartnerShareSecretStore,
+          createStoreStub(),
           FIXED_NOW,
         );
 
@@ -530,7 +537,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         syncManagedPartnerSharedProjections(
           createLocalAppStorageMock(),
           createSyncSecretStoreMock(),
-          {} as PartnerShareSecretStore,
+          createStoreStub(),
           now,
         );
 
@@ -560,7 +567,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         syncManagedPartnerSharedProjections(
           createLocalAppStorageMock(),
           createSyncSecretStoreMock(),
-          {} as PartnerShareSecretStore,
+          createStoreStub(),
           FIXED_NOW,
         );
 
@@ -570,5 +577,70 @@ describe("syncManagedPartnerSharedProjections", () => {
       await expect(first).rejects.toThrow("storage unavailable");
       await expect(second).resolves.toMatchObject({ skipped: false, syncedCount: 1 });
     });
+  });
+});
+
+describe("syncManagedPartnerSharedProjections across a partner-share clear", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function mockPassUpToReconcile(reconcileError: Error) {
+    jest.spyOn(syncSetupService, "loadSyncSetupState").mockResolvedValue({
+      hasAuthSession: true,
+      preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+    } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
+    jest
+      .spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures")
+      .mockResolvedValue({
+        advancedFertility: false,
+        advancedInsights: false,
+        doctorPDF: false,
+        extendedReports: false,
+        partnerAccess: true,
+        reminders: false,
+      });
+    jest.spyOn(managedPartnerAccessService, "loadManagedPartnerAccess").mockResolvedValue({
+      ok: true,
+      value: { owned: { invites: [], grants: [] }, sharedWithMe: [] },
+    });
+    const reconcileSpy = jest
+      .spyOn(managedPartnerShareService, "reconcileManagedPartnerShareKeys")
+      .mockRejectedValue(reconcileError);
+    const uploadSpy = jest.spyOn(managedPartnerShareService, "uploadManagedPartnerProjection");
+    return { reconcileSpy, uploadSpy };
+  }
+
+  it("ends the pass as skipped when the store was cleared after the pass started", async () => {
+    const { reconcileSpy, uploadSpy } = mockPassUpToReconcile(
+      new PartnerShareStoreClearedError(),
+    );
+    const store = {
+      readPartnerShareClearEpoch: () => 3,
+    } as unknown as PartnerShareSecretStore;
+
+    await expect(
+      syncManagedPartnerSharedProjections(
+        createLocalAppStorageMock(),
+        createSyncSecretStoreMock(),
+        store,
+        FIXED_NOW,
+      ),
+    ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
+    expect(reconcileSpy).toHaveBeenCalledWith(store, expect.anything(), FIXED_NOW, 3);
+    expect(uploadSpy).not.toHaveBeenCalled();
+  });
+
+  it("still rejects on any other store failure", async () => {
+    mockPassUpToReconcile(new Error("keychain locked"));
+
+    await expect(
+      syncManagedPartnerSharedProjections(
+        createLocalAppStorageMock(),
+        createSyncSecretStoreMock(),
+        createStoreStub(),
+        FIXED_NOW,
+      ),
+    ).rejects.toThrow("keychain locked");
   });
 });

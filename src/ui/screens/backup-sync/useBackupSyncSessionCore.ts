@@ -49,7 +49,11 @@ import {
 } from "../../../security/partner-invite-link";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
-import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
+import {
+  isPartnerShareStoreClearedError,
+  type PartnerShareSecretStore,
+  type PartnerShareSecretsRecord,
+} from "../../../security/partner-share-secret-store";
 import type { WipeScopeSecretStores } from "../../../security/wipe-scope-secrets";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
@@ -252,6 +256,7 @@ export function useBackupSyncSessionCore({
         };
       }
 
+      const clearEpoch = partnerShareSecretStore.readPartnerShareClearEpoch();
       const premiumFeatures = await loadManagedPremiumFeatures(
         storage,
         syncSecretStore,
@@ -277,11 +282,27 @@ export function useBackupSyncSessionCore({
         };
       }
 
-      const partnerShareSecrets = await reconcileManagedPartnerShareKeys(
-        partnerShareSecretStore,
-        partnerResult.value,
-        effectiveNow,
-      );
+      let partnerShareSecrets: PartnerShareSecretsRecord;
+      try {
+        partnerShareSecrets = await reconcileManagedPartnerShareKeys(
+          partnerShareSecretStore,
+          partnerResult.value,
+          effectiveNow,
+          clearEpoch,
+        );
+      } catch (error) {
+        // Cleared (disconnect, local reset) while the listing was in flight:
+        // the listing belongs to a session that is gone.
+        if (isPartnerShareStoreClearedError(error)) {
+          return {
+            errorMessage: "",
+            overview: null as ManagedCloudPartnerAccessOverview | null,
+            reshareRequiredGrantIDs: [] as string[],
+            showOwnerControls: false,
+          };
+        }
+        throw error;
+      }
       // The push re-lists grants and may meet a re-share this listing missed.
       let pushedReshareGrantIDs: string[] = [];
       if (partnerResult.value.owned.grants.length > 0) {

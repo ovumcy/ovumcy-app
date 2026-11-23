@@ -96,6 +96,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     resetPartnerFeedback();
     setIsPartnerBusy(true);
 
+    const clearEpoch = partnerShareSecretStore.readPartnerShareClearEpoch();
     const result = await issueManagedPartnerInvite(
       syncSecretStore,
       state.syncPreferences.mode,
@@ -116,6 +117,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
         partnerShareSecretStore,
         result.value,
         partnerInviteAccessLevel,
+        clearEpoch,
       );
     } catch {
       setPartnerErrorMessage(partnerCopy.errors.generic);
@@ -142,6 +144,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     }
     setIsPartnerBusy(true);
 
+    const clearEpoch = partnerShareSecretStore.readPartnerShareClearEpoch();
     const result = await acceptManagedPartnerInvite(
       syncSecretStore,
       state.syncPreferences.mode,
@@ -160,6 +163,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
         pendingPartnerInviteToken,
         inviteSecretHex,
         effectiveNow,
+        clearEpoch,
       );
     } catch {
       setPartnerErrorMessage(partnerCopy.errors.generic);
@@ -201,6 +205,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     }
     setIsPartnerBusy(true);
 
+    const clearEpoch = partnerShareSecretStore.readPartnerShareClearEpoch();
     const result = await acceptBackupSyncPartnerInviteAsGuest(
       storage,
       syncSecretStore,
@@ -221,6 +226,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
         pendingPartnerInviteToken,
         inviteSecretHex,
         effectiveNow,
+        clearEpoch,
       );
     } catch {
       setPartnerErrorMessage(partnerCopy.errors.generic);

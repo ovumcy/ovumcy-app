@@ -74,6 +74,8 @@ export async function storeIssuedManagedPartnerInviteKey(
   result: ManagedCloudPartnerInviteIssueResult,
   // The level the owner chose, not the one the server echoes back.
   accessLevel: PartnerShareAccessLevel,
+  // Captured before the issue request; see `PartnerShareMutateOptions`.
+  clearEpoch?: number,
 ): Promise<string> {
   const inviteToken = parseInviteTokenFromURL(result.inviteURL);
   const inviteSecretHex = createPartnerInviteSecretHex();
@@ -82,10 +84,13 @@ export async function storeIssuedManagedPartnerInviteKey(
     result.inviteURL,
     inviteSecretHex,
   );
-  await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
-    record.pendingInviteKeysByInviteID[result.invite.id] = inviteKeyHex;
-    record.pendingInviteAccessLevelsByInviteID[result.invite.id] = accessLevel;
-  });
+  await partnerShareSecretStore.mutatePartnerShareSecrets(
+    (record) => {
+      record.pendingInviteKeysByInviteID[result.invite.id] = inviteKeyHex;
+      record.pendingInviteAccessLevelsByInviteID[result.invite.id] = accessLevel;
+    },
+    { clearEpoch },
+  );
   return shareableInviteURL;
 }
 
@@ -107,6 +112,8 @@ export async function storeAcceptedManagedPartnerGrantKey(
   inviteToken: string,
   inviteSecretHex: string,
   now: Date,
+  // Captured before the accept request; see `PartnerShareMutateOptions`.
+  clearEpoch?: number,
 ): Promise<void> {
   const sourceInviteID = grant.sourceInviteID?.trim() ?? "";
   if (sourceInviteID.length === 0) {
@@ -141,13 +148,15 @@ export async function storeAcceptedManagedPartnerGrantKey(
       role: "partner",
       ...(partnerAccountID.length > 0 ? { accountID: partnerAccountID } : {}),
     };
-  });
+  }, { clearEpoch });
 }
 
 export async function reconcileManagedPartnerShareKeys(
   partnerShareSecretStore: PartnerShareSecretStore,
   overview: ManagedCloudPartnerAccessOverview,
   now: Date,
+  // Captured before the listing request; see `PartnerShareMutateOptions`.
+  clearEpoch?: number,
 ): Promise<PartnerShareSecretsRecord> {
   const nowISO = now.toISOString();
   const activePendingInviteIDs = new Set(
@@ -246,7 +255,7 @@ export async function reconcileManagedPartnerShareKeys(
     }
 
     return record;
-  });
+  }, { clearEpoch });
 }
 
 /**
@@ -295,12 +304,17 @@ export async function clearManagedPartnerGrantKey(
 export async function reserveNextManagedPartnerProjectionGeneration(
   partnerShareSecretStore: PartnerShareSecretStore,
   grantID: string,
+  // Captured at the start of the projection pass; see `PartnerShareMutateOptions`.
+  clearEpoch?: number,
 ): Promise<number> {
-  return partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
-    const nextGeneration = (record.ownerGenerationByGrantID[grantID] ?? 0) + 1;
-    record.ownerGenerationByGrantID[grantID] = nextGeneration;
-    return nextGeneration;
-  });
+  return partnerShareSecretStore.mutatePartnerShareSecrets(
+    (record) => {
+      const nextGeneration = (record.ownerGenerationByGrantID[grantID] ?? 0) + 1;
+      record.ownerGenerationByGrantID[grantID] = nextGeneration;
+      return nextGeneration;
+    },
+    { clearEpoch },
+  );
 }
 
 export async function uploadManagedPartnerProjection(
