@@ -751,11 +751,18 @@ export async function clearUnauthorizedBackupSyncSession(
   secretStore: SyncSecretStore,
   currentState: LoadedSettingsState,
 ): Promise<LoadedSettingsState> {
-  const nextPreferences = await clearLocalSyncSession(
-    storage,
-    secretStore,
-    currentState.savedSyncPreferences,
-  );
+  let nextPreferences: SyncPreferencesRecord;
+  try {
+    nextPreferences = await clearLocalSyncSession(
+      storage,
+      secretStore,
+      currentState.savedSyncPreferences,
+    );
+  } catch {
+    // A sign-out that cannot finish keeps the session; the caller still
+    // reports the unauthorized answer, and the next load retries.
+    return currentState;
+  }
 
   return buildSignedOutBackupSyncState(currentState, nextPreferences);
 }

@@ -1734,6 +1734,26 @@ describe("clearUnauthorizedBackupSyncSession", () => {
     const remainingSecrets = await secretStore.readSyncSecrets();
     expect(remainingSecrets?.authSessionToken).toBeNull();
   });
+
+  it("keeps the current state when the local sign-out cannot finish", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock({
+      ...PREPARED_MANAGED_SECRETS,
+      authSessionToken: "stale-session-1",
+    });
+    const initialState = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 3, 5),
+    );
+    jest
+      .spyOn(secretStore, "readSyncSecrets")
+      .mockRejectedValue(new Error("secure store unavailable"));
+
+    await expect(
+      clearUnauthorizedBackupSyncSession(storage, secretStore, initialState),
+    ).resolves.toBe(initialState);
+  });
 });
 
 describe("account key reset hand-off to the screen", () => {

@@ -455,6 +455,7 @@ export async function connectSyncAccount(
       guestSessionRenewable: false,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
+    await discardPreviousSessionBillingCache(storage);
 
     const success: {
       ok: true;
@@ -686,6 +687,7 @@ export async function finalizeSyncSessionAfterTOTP(
       guestSessionRenewable: false,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
+    await discardPreviousSessionBillingCache(storage);
 
     return {
       ok: true,
@@ -856,6 +858,7 @@ export async function persistGuestPartnerSession(
     guestSessionRenewable: refreshFields.managedRefreshToken !== null,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
+  await discardPreviousSessionBillingCache(storage);
 
   return {
     // Guest partner accounts carry no sync entitlement by construction
@@ -1317,6 +1320,7 @@ async function completeManagedRecovery(
     guestSessionRenewable: false,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
+  await discardPreviousSessionBillingCache(storage);
 
   return {
     ok: true,
@@ -2175,6 +2179,17 @@ export async function clearLocalSyncSession(
   );
 
   return nextPreferences;
+}
+
+// Second half of the new-session purge: a billing load of the previous session
+// that passed its session check before the first reset can still cache its
+// snapshot until the new session is stored.
+async function discardPreviousSessionBillingCache(
+  storage: LocalAppStorage,
+): Promise<void> {
+  await storage.writeManagedBillingCacheRecord(
+    createDefaultManagedBillingCacheRecord(),
+  );
 }
 
 async function readPreparedSyncContext(

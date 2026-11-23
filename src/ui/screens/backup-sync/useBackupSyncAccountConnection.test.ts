@@ -795,6 +795,23 @@ describe("useBackupSyncAccountConnection", () => {
       );
     });
 
+    it("reports an error, keeps the session and releases the busy flag when the local sign-out fails", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockDisconnectBackupSyncAccount.mockRejectedValue(new Error("keychain locked"));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleDisconnectSync();
+      });
+
+      expect(core.setErrorState).toHaveBeenCalledWith({ code: "generic", scope: "sync" });
+      expect(core.setState).not.toHaveBeenCalled();
+      expect(core.setAccountStatusMessage).not.toHaveBeenCalledWith(
+        core.viewData.account.status.disconnected,
+      );
+      expect(result.current.isDisconnectingSync).toBe(false);
+    });
+
     it("holds the busy flag through the revoke and refuses a second disconnect meanwhile", async () => {
       const disconnectedState = createLoadedSettingsStateFixture({
         hasSyncSession: false,
@@ -847,7 +864,7 @@ describe("useBackupSyncAccountConnection", () => {
       const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
-        await expect(result.current.handleDisconnectSync()).rejects.toThrow("storage");
+        await result.current.handleDisconnectSync();
       });
       expect(result.current.isDisconnectingSync).toBe(false);
 

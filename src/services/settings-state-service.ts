@@ -89,7 +89,8 @@ export async function loadSettingsScreenState(
       );
     } else {
       // A sign-out that cannot finish keeps the session; the screen still
-      // loads, and the next load retries the sign-out.
+      // loads with whatever the failed sign-out left, and the next load
+      // retries it.
       try {
         syncPreferences = await clearLocalSyncSession(
           storage,
@@ -98,7 +99,13 @@ export async function loadSettingsScreenState(
         );
         hasSyncSession = false;
       } catch {
-        // keep the loaded session state
+        const leftState = await loadSyncSetupState(storage, secretStore).catch(
+          () => null,
+        );
+        if (leftState) {
+          syncPreferences = leftState.preferences;
+          hasSyncSession = leftState.hasAuthSession;
+        }
       }
     }
   }
