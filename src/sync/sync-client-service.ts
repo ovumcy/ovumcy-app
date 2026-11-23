@@ -1375,7 +1375,9 @@ async function completeManagedRecovery(
     };
   }
 
-  const capabilities = buildManagedCapabilitiesDocument(true);
+  const capabilities = buildManagedCapabilitiesDocument(
+    managedAuth.entitlement.syncAllowed,
+  );
   const attachDeviceResult = await client.attachDevice(
     syncSessionResult.auth.sessionToken,
     {
