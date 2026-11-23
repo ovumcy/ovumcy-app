@@ -213,7 +213,8 @@ export function useBackupSyncScreenController(
       partner.partnerInviteLink.length > 0 ||
       (partnerOverview?.owned.invites.length ?? 0) > 0 ||
       (partnerOverview?.owned.grants.length ?? 0) > 0 ||
-      (partnerOverview?.sharedWithMe.length ?? 0) > 0);
+      // Same filter as the shared-with-me list: a revoked grant renders nothing.
+      (partnerOverview?.sharedWithMe ?? []).some((grant) => !grant.revokedAt));
 
   return {
     accentColor: colors.accent,
