@@ -1,3 +1,4 @@
+import { createSyncSecretsRecord } from "../security/sync-crypto";
 import {
   createManagedCloudAPIClient,
   isManagedCloudTransportFailure,
@@ -657,6 +658,86 @@ describe("managed-cloud-api-client", () => {
       ).resolves.toEqual({ ok: false, errorCode: "rate_limited", ...expectedExtra });
     },
   );
+
+  function rateLimitedFetch(retryAfter: string) {
+    return jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "rate_limited" }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": retryAfter },
+      }),
+    );
+  }
+
+  it("surfaces Retry-After on a rate-limited managed login", async () => {
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      rateLimitedFetch("90") as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.login({ email: "alice@example.com", password: "pw" }),
+    ).resolves.toEqual({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 90 });
+  });
+
+  it("surfaces Retry-After on a rate-limited managed register", async () => {
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      rateLimitedFetch("15") as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.register({ email: "alice@example.com", password: "pw" }),
+    ).resolves.toEqual({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 15 });
+  });
+
+  it("maps a 503 trial_unavailable body to its own code, not to network_failed", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(503, { error: "trial_unavailable" }));
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.register({ email: "alice@example.com", password: "pw" }),
+    ).resolves.toEqual({ ok: false, errorCode: "trial_unavailable" });
+  });
+
+  it("maps a 503 sync_not_configured body to its own code, not to network_failed", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(503, { error: "sync_not_configured" }));
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.replaceRecoveryKey("managed-session-1", {
+        currentPassword: "pw",
+        recoveryKeyPackage: createSyncSecretsRecord(
+          "Pixel 7",
+          new Date("2026-03-20T08:00:00.000Z"),
+        ).record.wrappedKey,
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "sync_not_configured" });
+  });
+
+  it.each([
+    [404, "entitlement_not_found"],
+    [404, "account_not_found"],
+  ] as const)("keeps a %i %s body generic", async (status, error) => {
+    const fetch = jest.fn().mockResolvedValueOnce(jsonResponse(status, { error }));
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.register({ email: "alice@example.com", password: "pw" }),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+  });
 
   it("sends the encryption-time source_invite_id and maps 409 partner_grant_rekeyed", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(

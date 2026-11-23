@@ -735,6 +735,7 @@ describe("useBackupSyncAccountConnection", () => {
       mockDisconnectBackupSyncAccount.mockResolvedValue({
         ok: true,
         state: core.state!,
+        remoteSignOut: "confirmed",
       });
       const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
@@ -774,6 +775,7 @@ describe("useBackupSyncAccountConnection", () => {
       mockDisconnectBackupSyncAccount.mockResolvedValue({
         ok: true,
         state: disconnectedState,
+        remoteSignOut: "confirmed",
       });
       const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
@@ -791,6 +793,31 @@ describe("useBackupSyncAccountConnection", () => {
       expect(core.setState).toHaveBeenCalledWith(disconnectedState);
       expect(core.reloadPartnerAccess).toHaveBeenCalledWith(disconnectedState);
       expect(core.setAccountStatusMessage).toHaveBeenCalledWith(
+        core.viewData.account.status.disconnected,
+      );
+    });
+
+    it("tells the owner the server did not confirm the sign-out when the remote revoke failed", async () => {
+      const disconnectedState = createLoadedSettingsStateFixture({
+        hasSyncSession: false,
+      });
+      const core = createBackupSyncSessionCoreMock();
+      mockDisconnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        state: disconnectedState,
+        remoteSignOut: "unconfirmed",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleDisconnectSync();
+      });
+
+      expect(core.setState).toHaveBeenCalledWith(disconnectedState);
+      expect(core.setAccountStatusMessage).toHaveBeenCalledWith(
+        core.viewData.account.status.disconnectedRemoteUnconfirmed,
+      );
+      expect(core.setAccountStatusMessage).not.toHaveBeenCalledWith(
         core.viewData.account.status.disconnected,
       );
     });
@@ -817,8 +844,11 @@ describe("useBackupSyncAccountConnection", () => {
         hasSyncSession: false,
       });
       const core = createBackupSyncSessionCoreMock();
-      let finishRevoke: (value: { ok: true; state: typeof disconnectedState }) => void =
-        () => undefined;
+      let finishRevoke: (value: {
+        ok: true;
+        state: typeof disconnectedState;
+        remoteSignOut: "confirmed";
+      }) => void = () => undefined;
       mockDisconnectBackupSyncAccount.mockReturnValue(
         new Promise((resolve) => {
           finishRevoke = resolve;
@@ -839,7 +869,7 @@ describe("useBackupSyncAccountConnection", () => {
       expect(mockDisconnectBackupSyncAccount).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        finishRevoke({ ok: true, state: disconnectedState });
+        finishRevoke({ ok: true, state: disconnectedState, remoteSignOut: "confirmed" });
         await firstDisconnect;
       });
       expect(result.current.isDisconnectingSync).toBe(false);
@@ -871,6 +901,7 @@ describe("useBackupSyncAccountConnection", () => {
       mockDisconnectBackupSyncAccount.mockResolvedValue({
         ok: true,
         state: core.state!,
+        remoteSignOut: "confirmed",
       });
       await act(async () => {
         await result.current.handleDisconnectSync();

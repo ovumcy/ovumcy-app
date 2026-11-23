@@ -24,6 +24,7 @@ import {
   applyManagedAuthResultToSecrets,
   clearManagedSessionFromSecrets,
   endManagedSessionRefresh,
+  keepManagedSessionOf,
   settleInFlightManagedRefresh,
 } from "./managed-session-refresh-service";
 import {
@@ -59,6 +60,7 @@ import {
   createManagedCloudAPIClient,
   type ManagedCloudAPIClient,
   type ManagedCloudAPIErrorCode,
+  type ManagedCloudAuthFailure,
   type ManagedCloudAuthResult,
 } from "./managed-cloud-api-client";
 import {
@@ -173,7 +175,7 @@ export type SyncRetryAfter = { retryAfterSeconds?: number };
 
 function withRetryAfter<T extends { ok: false }>(
   failure: T,
-  source: SyncAPIFailure | { ok: false },
+  source: SyncAPIFailure | ManagedCloudAuthFailure | { ok: false },
 ): T & SyncRetryAfter {
   return "retryAfterSeconds" in source && source.retryAfterSeconds !== undefined
     ? { ...failure, retryAfterSeconds: source.retryAfterSeconds }
@@ -445,10 +447,10 @@ export async function connectSyncAccount(
             password: credentials.password,
           });
     if (!authResult.ok) {
-      return {
-        ok: false,
-        errorCode: mapManagedConnectAPIError(authResult.errorCode),
-      };
+      return withRetryAfter(
+        { ok: false, errorCode: mapManagedConnectAPIError(authResult.errorCode) },
+        authResult,
+      );
     }
 
     // Login may legitimately succeed at the password layer and then defer the
@@ -589,11 +591,12 @@ export async function connectSyncAccount(
     }
   }
 
-  if (readSyncWipeEpoch() !== wipeEpoch) {
+  const current = await secretStore.readSyncSecrets();
+  if (!current || readSyncWipeEpoch() !== wipeEpoch) {
     return failAfterRegister("sync_not_prepared");
   }
   await secretStore.writeSyncSecrets({
-    ...keyed.secrets,
+    ...keepManagedSessionOf(keyed.secrets, current),
     authSessionToken: authResult.auth.sessionToken,
   });
   const keyReset = holdNewAccountKeyPhrase(keyed);
@@ -776,11 +779,12 @@ export async function finalizeSyncSessionAfterTOTP(
 
   // A TOTP challenge only follows a login, so the package is left to the
   // upload, as on a login connect.
-  if (readSyncWipeEpoch() !== wipeEpoch) {
+  const current = await secretStore.readSyncSecrets();
+  if (!current || readSyncWipeEpoch() !== wipeEpoch) {
     return { ok: false, errorCode: "sync_not_prepared" };
   }
   await secretStore.writeSyncSecrets({
-    ...keyed.secrets,
+    ...keepManagedSessionOf(keyed.secrets, current),
     authSessionToken: input.sessionToken,
   });
   const keyReset = holdNewAccountKeyPhrase(keyed);
@@ -1245,10 +1249,10 @@ export async function recoverSyncAccess(
       password: credentials.password,
     });
     if (!authResult.ok) {
-      return {
-        ok: false,
-        errorCode: mapManagedRecoverAPIError(authResult.errorCode),
-      };
+      return withRetryAfter(
+        { ok: false, errorCode: mapManagedRecoverAPIError(authResult.errorCode) },
+        authResult,
+      );
     }
     // A deferred login carries no entitlement verdict yet; the resume reads it
     // from the post-challenge session.
@@ -2169,9 +2173,13 @@ export async function disconnectSyncAccount(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   remoteTimeoutMs: number = DISCONNECT_REMOTE_TIMEOUT_MS,
-): Promise<{ ok: true; preferences: SyncPreferencesRecord }> {
+): Promise<{
+  ok: true;
+  preferences: SyncPreferencesRecord;
+  remoteSignOut: SyncRemoteSignOut;
+}> {
   // The local wipe below must not wait on a slow or hanging server.
-  await settleWithin(
+  const confirmed = await settleWithin(
     revokeRemoteSessions(
       secretStore,
       preferences,
@@ -2187,8 +2195,17 @@ export async function disconnectSyncAccount(
     preferences,
   );
 
-  return { ok: true, preferences: nextPreferences };
+  return {
+    ok: true,
+    preferences: nextPreferences,
+    remoteSignOut: confirmed === true ? "confirmed" : "unconfirmed",
+  };
 }
+
+// The local session is cleared either way. "unconfirmed": no answer in time, a
+// refusal or a transport failure, so a server session may stay live until it
+// expires.
+export type SyncRemoteSignOut = "confirmed" | "unconfirmed";
 
 const DISCONNECT_REMOTE_TIMEOUT_MS = 10_000;
 
@@ -2197,7 +2214,7 @@ async function revokeRemoteSessions(
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory,
   managedClientFactory: ManagedCloudAPIClientFactory,
-): Promise<void> {
+): Promise<boolean> {
   const managed = preferences.mode === "managed";
   if (managed) {
     // A renewal in flight rotates the refresh token: revoke what it wrote,
@@ -2210,10 +2227,15 @@ async function revokeRemoteSessions(
     preferences.endpointInput,
   );
 
-  const revocations: Promise<unknown>[] = [];
-  if (secrets?.authSessionToken && normalizedEndpoint.ok) {
-    const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
-    revocations.push(client.logout(secrets.authSessionToken));
+  const revocations: Promise<boolean>[] = [];
+  if (secrets?.authSessionToken) {
+    revocations.push(
+      normalizedEndpoint.ok
+        ? apiClientFactory(normalizedEndpoint.endpoint.baseURL)
+            .logout(secrets.authSessionToken)
+            .then(isSignOutConfirmed)
+        : Promise.resolve(false),
+    );
   }
   const managedCredentials = {
     sessionToken: secrets?.managedAuthSessionToken || null,
@@ -2227,27 +2249,39 @@ async function revokeRemoteSessions(
       ),
     );
   }
-  await Promise.all(revocations);
+  const outcomes = await Promise.all(revocations);
+  return outcomes.every(Boolean);
+}
+
+// A 401 means the server holds no live session under that credential.
+function isSignOutConfirmed(
+  result: { ok: true } | { ok: false; errorCode: string },
+): boolean {
+  return result.ok || result.errorCode === "unauthorized";
 }
 
 async function revokeManagedSession(
   managedClient: ManagedCloudAPIClient,
   credentials: { sessionToken: string | null; refreshToken: string | null },
-): Promise<void> {
+): Promise<boolean> {
   const result = await managedClient.logout(credentials);
   // A 5xx means the logout rolled back and the family is still live.
   if (!result.ok && result.errorCode === "network_failed") {
-    await managedClient.logout(credentials);
+    return isSignOutConfirmed(await managedClient.logout(credentials));
   }
+  return isSignOutConfirmed(result);
 }
 
-async function settleWithin(work: Promise<unknown>, timeoutMs: number): Promise<void> {
+async function settleWithin<T>(
+  work: Promise<T>,
+  timeoutMs: number,
+): Promise<T | undefined> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await Promise.race([
+    return await Promise.race([
       work.catch(() => undefined),
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, timeoutMs);
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => resolve(undefined), timeoutMs);
       }),
     ]);
   } finally {

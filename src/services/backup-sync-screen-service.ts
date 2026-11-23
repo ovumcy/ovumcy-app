@@ -14,6 +14,7 @@ import {
   type RestoreOlderBackupGuard,
   type SyncConnectErrorCode,
   type SyncRecoverErrorCode,
+  type SyncRemoteSignOut,
   type SyncRunErrorCode,
   type UpgradeGuestPartnerAccountErrorCode,
   type UploadOverBackupGuard,
@@ -738,6 +739,7 @@ export async function disconnectBackupSyncAccount(
 ): Promise<{
   ok: true;
   state: LoadedSettingsState;
+  remoteSignOut: SyncRemoteSignOut;
 }> {
   const result = await disconnectSyncAccount(
     storage,
@@ -747,6 +749,7 @@ export async function disconnectBackupSyncAccount(
 
   return {
     ok: true,
+    remoteSignOut: result.remoteSignOut,
     state: createLoadedSettingsState(
       currentState.profile,
       result.preferences,

@@ -140,6 +140,9 @@ describe("rotateManagedRecoveryPhrase", () => {
     ["rate_limited", "rate_limited"],
     ["unauthorized", "unauthorized"],
     ["totp_not_configured", "totp_not_configured"],
+    // A deployment with no sync bridge replaced nothing: a refusal, not an
+    // unknown outcome.
+    ["sync_not_configured", "generic"],
   ] as const)(
     "keeps the old package on %s and retries with the same package",
     async (serverError, expected) => {
