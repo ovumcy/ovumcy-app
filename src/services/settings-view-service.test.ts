@@ -601,6 +601,12 @@ describe("buildSettingsSyncSummary (managed status)", () => {
     expect(summary.statusTone).toBe("info");
   });
 
+  it("names an active plan whose sync permission is not loaded as unconfirmed, not as active", () => {
+    const summary = summarize(null);
+    expect(summary.statusMessage).toBe(account.planCheckFailed);
+    expect(summary.statusTone).toBe("info");
+  });
+
   it("keeps the active-plan success status when sync is allowed", () => {
     const summary = summarize(true);
     expect(summary.statusMessage).toBe(account.planActive);
