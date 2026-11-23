@@ -331,7 +331,7 @@ describe("managed phrase recovery with two-factor on", () => {
         masterKeyHex: account.record.masterKeyHex,
       }),
     );
-    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledTimes(1);
+    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledTimes(2);
   });
 
   it("falls back to the session's expiry and stores no refresh pair when the challenge carried none", async () => {

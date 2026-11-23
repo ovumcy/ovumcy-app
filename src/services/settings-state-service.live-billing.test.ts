@@ -128,4 +128,28 @@ describe("loadSettingsScreenState managed billing", () => {
     expect(state.hasSyncSession).toBe(true);
     expect(state.managedPremiumAccess.doctorPDF).toBe(false);
   });
+
+  it("shows what a sign-out that failed partway left behind", async () => {
+    const storage = createSettingsStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const realSetup = await syncSetupService.loadSyncSetupState(storage, secretStore);
+    jest
+      .spyOn(syncSetupService, "loadSyncSetupState")
+      .mockResolvedValueOnce({
+        ...realSetup,
+        hasAuthSession: true,
+        preferences: { ...realSetup.preferences, mode: "managed" },
+      })
+      .mockResolvedValueOnce({ ...realSetup, hasAuthSession: false });
+    jest
+      .spyOn(syncClientService, "loadConnectedSyncCapabilities")
+      .mockResolvedValue({ ok: false, errorCode: "unauthorized" } as never);
+    jest
+      .spyOn(syncClientService, "clearLocalSyncSession")
+      .mockRejectedValue(new Error("preferences write failed"));
+
+    const state = await loadSettingsScreenState(storage, secretStore, NOW);
+
+    expect(state.hasSyncSession).toBe(false);
+  });
 });

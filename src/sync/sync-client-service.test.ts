@@ -1815,9 +1815,9 @@ describe("persistGuestPartnerSession", () => {
     expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
       expect.objectContaining({ mode: "managed", setupStatus: "connected" }),
     );
-    // New account boundary: the billing cache is reset exactly like a normal
-    // managed connect resets it.
-    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledTimes(1);
+    // New account boundary: the billing cache is reset before and after the
+    // session is stored, exactly like a normal managed connect.
+    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledTimes(2);
   });
 
   it("persists the refresh material a renewable guest received and marks the session renewable", async () => {

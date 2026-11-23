@@ -1,5 +1,6 @@
 import { createSyncSecretsRecord } from "../security/sync-crypto";
 import type { SyncSecretStore } from "../security/sync-secret-store";
+import { clearWipeScopeSecrets } from "../security/wipe-scope-secrets";
 import { resolveVerifiedEntitlements } from "../services/entitlement-token-service";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
@@ -114,20 +115,26 @@ function storedSecretStore(): SyncSecretStore {
   });
 }
 
-// The billing-cache reset must be written before the new session's secrets, so
-// a stop between the two never leaves the previous session's snapshot readable
-// as the new session's offline grace.
+// The billing cache is reset before the new session's secrets, so a stop
+// between the two never leaves the previous session's snapshot readable as the
+// new session's offline grace, and again after the session is stored, so a
+// previous-session billing load that slipped in between cannot leave one.
 function expectBillingResetBeforeSecretWrite(
   storage: ReturnType<typeof createLocalAppStorageMock>,
   writeSyncSecrets: jest.SpyInstance,
 ) {
   const reset = storage.writeManagedBillingCacheRecord as jest.Mock;
-  expect(reset).toHaveBeenCalledTimes(1);
-  expect(reset).toHaveBeenCalledWith({ snapshot: null, dismissedOfferIDs: [] });
+  const writePreferences = storage.writeSyncPreferencesRecord as jest.Mock;
+  expect(reset).toHaveBeenCalledTimes(2);
+  for (const call of reset.mock.calls) {
+    expect(call[0]).toEqual({ snapshot: null, dismissedOfferIDs: [] });
+  }
   expect(writeSyncSecrets).toHaveBeenCalled();
-  const resetOrder = reset.mock.invocationCallOrder[0] ?? Infinity;
+  const [firstReset = Infinity, lastReset = -Infinity] = reset.mock.invocationCallOrder;
   const firstSecretWrite = Math.min(...writeSyncSecrets.mock.invocationCallOrder);
-  expect(resetOrder).toBeLessThan(firstSecretWrite);
+  const lastPreferencesWrite = Math.max(...writePreferences.mock.invocationCallOrder);
+  expect(firstReset).toBeLessThan(firstSecretWrite);
+  expect(lastReset).toBeGreaterThan(lastPreferencesWrite);
 }
 
 beforeEach(() => {
@@ -307,6 +314,42 @@ describe("entitlement token at the end of a session", () => {
 
     await expect(resolving).resolves.toEqual({ status: "unavailable" });
     expect(tokenStore.clearEntitlementToken).toHaveBeenCalledTimes(1);
+    expect(tokenStore.writeEntitlementToken).not.toHaveBeenCalled();
+  });
+
+  it("never writes back a token whose mint was in flight across a local wipe", async () => {
+    let answerMint: (value: unknown) => void = () => undefined;
+    const client = {
+      getEntitlementToken: jest.fn(
+        () =>
+          new Promise((resolve) => {
+            answerMint = resolve;
+          }),
+      ),
+    } as unknown as ManagedCloudAPIClient;
+    const tokenStore = {
+      readEntitlementToken: jest.fn().mockResolvedValue(null),
+      writeEntitlementToken: jest.fn().mockResolvedValue(undefined),
+      clearEntitlementToken: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const resolving = resolveVerifiedEntitlements({
+      store: tokenStore,
+      managedSessionToken: "managed-session-0",
+      expectedSub: "account-1",
+      now: Math.floor(NOW.getTime() / 1000),
+      client,
+    });
+    await clearWipeScopeSecrets(storedSecretStore(), {
+      certPinStore: { clearAll: jest.fn().mockResolvedValue(undefined) },
+      entitlementTokenStore: tokenStore,
+      partnerShareSecretStore: {
+        clearPartnerShareSecrets: jest.fn().mockResolvedValue(undefined),
+      },
+    });
+    answerMint({ ok: true, result: { token: "minted-before-wipe" } });
+
+    await expect(resolving).resolves.toEqual({ status: "unavailable" });
     expect(tokenStore.writeEntitlementToken).not.toHaveBeenCalled();
   });
 });

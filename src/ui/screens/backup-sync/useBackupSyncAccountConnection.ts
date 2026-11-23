@@ -349,11 +349,18 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     }
 
     setIsDisconnectingSync(true);
-    const result = await disconnectBackupSyncAccount(
-      storage,
-      syncSecretStore,
-      currentState,
-    );
+    let result: Awaited<ReturnType<typeof disconnectBackupSyncAccount>>;
+    try {
+      result = await disconnectBackupSyncAccount(
+        storage,
+        syncSecretStore,
+        currentState,
+      );
+    } catch {
+      // The local sign-out could not finish and the session is kept.
+      setErrorState({ code: "generic", scope: "sync" });
+      return;
+    }
     // Drop any pending partner invite captured for the prior session so it
     // can't be redeemed under a different managed account after re-login.
     clearManagedPartnerInviteToken();
