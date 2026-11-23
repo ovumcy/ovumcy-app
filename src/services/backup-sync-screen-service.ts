@@ -19,6 +19,7 @@ import {
   type UploadOverBackupGuard,
 } from "../sync/sync-client-service";
 import type { SyncRecoveryKeyStepUp } from "../sync/sync-api-client";
+import { readSyncWipeEpoch } from "../sync/sync-wipe-epoch";
 import type {
   SyncCapabilityDocument,
   SyncPreferencesRecord,
@@ -296,9 +297,11 @@ export async function acceptBackupSyncPartnerInviteAsGuest(
     }
   | {
       ok: false;
-      errorCode: ManagedCloudAPIErrorCode;
+      // sync_not_prepared: a local wipe landed while the accept was in flight.
+      errorCode: ManagedCloudAPIErrorCode | "sync_not_prepared";
     }
 > {
+  const wipeEpoch = readSyncWipeEpoch();
   const acceptResult = await acceptManagedPartnerInviteAsGuest(inviteToken);
   if (!acceptResult.ok) {
     return acceptResult;
@@ -313,7 +316,11 @@ export async function acceptBackupSyncPartnerInviteAsGuest(
       sessionExpiresAt: acceptResult.value.sessionExpiresAt,
     },
     now,
+    wipeEpoch,
   );
+  if (!persisted.ok) {
+    return persisted;
+  }
 
   const managedPremiumAccess = await resolveManagedPremiumAccessAfterConnect(
     storage,
@@ -360,6 +367,7 @@ export async function upgradeBackupSyncGuestAccount(
       state: LoadedSettingsState;
       email: string;
       recoveryCode: string;
+      accountKeyReset?: true;
     }
   | {
       ok: false;
@@ -398,6 +406,7 @@ export async function upgradeBackupSyncGuestAccount(
     state: nextState,
     email: result.email,
     recoveryCode: result.recoveryCode,
+    ...(result.accountKeyReset ? { accountKeyReset: true as const } : {}),
   };
 }
 

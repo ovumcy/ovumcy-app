@@ -5,6 +5,7 @@ import type { SyncSecretStore } from "./sync-secret-store";
 import { clearAccountChangeRecoveryPhrase } from "../sync/account-change-recovery-phrase";
 import { clearPendingManagedRecoveryRotation } from "../sync/managed-recovery-rotation-service";
 import { endManagedSessionRefresh } from "../sync/managed-session-refresh-service";
+import { advanceSyncWipeEpoch } from "../sync/sync-wipe-epoch";
 
 // WipeScopeSecretStores names every SecureStore-backed store, besides the
 // sync secrets, whose entry belongs to the scope of a destructive local reset
@@ -24,7 +25,9 @@ export type WipeScopeSecretStores = {
  * Deletes every wipe-scope SecureStore entry: sync secrets, partner-share
  * secrets, the entitlement token and the sync certificate pins. The managed
  * session ends first, so a refresh or token mint still in flight cannot write
- * its result back over the wipe.
+ * its result back over the wipe. The sync wipe epoch advances before and after
+ * the clears, so a sync flow awaiting the network when the wipe starts, or one
+ * that read the secrets while it ran, writes nothing back.
  *
  * Every clear is attempted even when an earlier one throws, so one failing
  * entry never leaves the others behind; the first error is rethrown once all
@@ -35,6 +38,7 @@ export async function clearWipeScopeSecrets(
   syncSecretStore: Pick<SyncSecretStore, "clearSyncSecrets">,
   stores: WipeScopeSecretStores,
 ): Promise<void> {
+  advanceSyncWipeEpoch();
   endManagedSessionRefresh();
   clearPendingManagedRecoveryRotation();
   clearAccountChangeRecoveryPhrase();
@@ -53,6 +57,8 @@ export async function clearWipeScopeSecrets(
       failures.push(error);
     }
   }
+
+  advanceSyncWipeEpoch();
 
   if (failures.length > 0) {
     throw failures[0];

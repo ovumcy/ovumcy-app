@@ -130,6 +130,11 @@ export function useBackupSyncGuestUpgrade(core: BackupSyncSessionCore) {
     setEmailValue("");
     setPasswordValue("");
     setGeneratedRecoveryCode(result.recoveryCode);
+    // The upgrade replaced a key that served another account: the new phrase
+    // goes through the same gated reveal as an account-change sign-in.
+    if (result.accountKeyReset) {
+      core.setAccountChangeRecoveryPhrase("reveal");
+    }
     setIsSubmitting(false);
   }
 

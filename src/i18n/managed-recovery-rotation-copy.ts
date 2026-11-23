@@ -7,6 +7,8 @@ import {
 
 export type ManagedRecoveryRotationCopy = {
   actionLabel: string;
+  // Shown under the disabled action on a managed device with no rollback floor.
+  noFloorHint: string;
   confirmPrompt: string;
   confirmAccept: string;
   deviceAuthPrompt: string;
@@ -25,6 +27,8 @@ type RotationStrings = Omit<ManagedRecoveryRotationCopy, "stepUp"> & {
 const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
   en: {
     actionLabel: "Change recovery phrase",
+    noFloorHint:
+      "Restore or upload a backup first. Then you can change the recovery phrase.",
     confirmPrompt:
       "Create a new recovery phrase for your Ovumcy Cloud account? Your backup and your other devices keep working. The current phrase stops working for recovery once the new one is confirmed.",
     confirmAccept: "Change phrase",
@@ -41,6 +45,8 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
   },
   de: {
     actionLabel: "Wiederherstellungsphrase ändern",
+    noFloorHint:
+      "Stellen Sie zuerst ein Backup wieder her oder laden Sie eines hoch. Danach können Sie die Wiederherstellungsphrase ändern.",
     confirmPrompt:
       "Eine neue Wiederherstellungsphrase für Ihr Ovumcy-Cloud-Konto erstellen? Ihr Backup und Ihre anderen Geräte funktionieren weiter. Die aktuelle Phrase gilt nicht mehr für die Wiederherstellung, sobald die neue bestätigt ist.",
     confirmAccept: "Phrase ändern",
@@ -57,6 +63,8 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
   },
   fr: {
     actionLabel: "Changer la phrase de récupération",
+    noFloorHint:
+      "Restaurez ou envoyez d'abord une sauvegarde. Vous pourrez ensuite changer la phrase de récupération.",
     confirmPrompt:
       "Créer une nouvelle phrase de récupération pour votre compte Ovumcy Cloud ? Votre sauvegarde et vos autres appareils continuent de fonctionner. La phrase actuelle ne permet plus la récupération dès que la nouvelle est confirmée.",
     confirmAccept: "Changer la phrase",
@@ -73,6 +81,8 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
   },
   ru: {
     actionLabel: "Сменить фразу восстановления",
+    noFloorHint:
+      "Сначала восстановите или загрузите резервную копию. После этого можно сменить фразу восстановления.",
     confirmPrompt:
       "Создать новую фразу восстановления для аккаунта Ovumcy Cloud? Резервная копия и другие устройства продолжат работать. Текущая фраза перестанет подходить для восстановления, как только новая будет подтверждена.",
     confirmAccept: "Сменить фразу",
@@ -89,6 +99,8 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
   },
   es: {
     actionLabel: "Cambiar la frase de recuperación",
+    noFloorHint:
+      "Primero restaura o sube una copia de seguridad. Después podrás cambiar la frase de recuperación.",
     confirmPrompt:
       "¿Crear una nueva frase de recuperación para tu cuenta de Ovumcy Cloud? Tu copia de seguridad y tus otros dispositivos siguen funcionando. La frase actual deja de servir para recuperar la cuenta en cuanto se confirme la nueva.",
     confirmAccept: "Cambiar frase",
@@ -105,6 +117,8 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
   },
   it: {
     actionLabel: "Cambia la frase di recupero",
+    noFloorHint:
+      "Prima ripristina o carica un backup. Poi potrai cambiare la frase di recupero.",
     confirmPrompt:
       "Creare una nuova frase di recupero per il tuo account Ovumcy Cloud? Il backup e gli altri dispositivi continuano a funzionare. La frase attuale non vale più per il recupero non appena la nuova è confermata.",
     confirmAccept: "Cambia frase",
@@ -128,6 +142,7 @@ export function selectManagedRecoveryRotationCopy(
   const base = selectRecoveryKeyStepUpCopy(language);
   return {
     actionLabel: strings.actionLabel,
+    noFloorHint: strings.noFloorHint,
     confirmPrompt: strings.confirmPrompt,
     confirmAccept: strings.confirmAccept,
     deviceAuthPrompt: strings.deviceAuthPrompt,
