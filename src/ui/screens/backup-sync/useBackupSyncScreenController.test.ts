@@ -566,4 +566,49 @@ describe("useBackupSyncScreenController", () => {
       expect(nextState?.syncPreferences.endpointInput).toBe("");
     });
   });
+
+  describe("partner section visibility", () => {
+    function createSharedGrant(revokedAt: string | null) {
+      return {
+        id: revokedAt ? "grant-revoked" : "grant-live",
+        ownerAccountID: "owner-1",
+        partnerAccountID: "partner-1",
+        accessLevel: "summary" as const,
+        sourceInviteID: null,
+        acceptedAt: "2026-01-01T00:00:00Z",
+        lastSeenAt: null,
+        revokedAt,
+        revokedReason: revokedAt ? "owner_revoked" : "",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+      };
+    }
+
+    it("hides the partner section when every shared-with-me grant is revoked", async () => {
+      setUpLoadedController({
+        partnerOverview: {
+          owned: { invites: [], grants: [] },
+          sharedWithMe: [createSharedGrant("2026-02-01T00:00:00Z")],
+        },
+      });
+      const { result } = await renderHook(() => useBackupSyncScreenController({}));
+
+      expect(result.current.flowProps!.showPartnerSection).toBe(false);
+    });
+
+    it("shows the partner section for a live shared-with-me grant", async () => {
+      setUpLoadedController({
+        partnerOverview: {
+          owned: { invites: [], grants: [] },
+          sharedWithMe: [
+            createSharedGrant("2026-02-01T00:00:00Z"),
+            createSharedGrant(null),
+          ],
+        },
+      });
+      const { result } = await renderHook(() => useBackupSyncScreenController({}));
+
+      expect(result.current.flowProps!.showPartnerSection).toBe(true);
+    });
+  });
 });
