@@ -659,11 +659,13 @@ describe("sync-account-recovery-service", () => {
         .fn()
         .mockReturnValue(communityClientMock({ resetPassword, getSession }));
 
-      const initial = selfHostedPreferences();
+      const wiped = createDefaultSyncPreferencesRecord();
+      jest.mocked(storage.readSyncPreferencesRecord).mockResolvedValue(wiped);
+
       const result = await resetSyncAccountPassword(
         storage,
         secretStore,
-        initial,
+        selfHostedPreferences(),
         { resetToken: "reset-token-1", newPassword: "new password 12345" },
         apiFactory,
         jest.fn(),
@@ -672,7 +674,7 @@ describe("sync-account-recovery-service", () => {
       expect(result).toEqual({
         ok: true,
         recoveryCode: "rotated1234rotated1234rotated123",
-        preferences: initial,
+        preferences: wiped,
         signedOut: false,
       });
       expect(writeSecrets).not.toHaveBeenCalled();
@@ -686,6 +688,10 @@ describe("sync-account-recovery-service", () => {
       "skips the preferences write when a local wipe lands %s",
       async (_label, stage) => {
         const storage = createLocalAppStorageMock();
+        // An unreadable record after the wipe falls back to the caller's copy.
+        jest
+          .mocked(storage.readSyncPreferencesRecord)
+          .mockRejectedValue(new Error("storage unavailable"));
         const secretStore = createSyncSecretStoreMock(connectedSecrets());
         const getSession = jest
           .fn()

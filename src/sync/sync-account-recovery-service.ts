@@ -345,15 +345,25 @@ export async function resetSyncAccountPassword(
 
   // A Clear local data during the reset already dropped the session and the
   // setup; writing the start-captured copies would put pre-wipe state back.
-  // The server applied the reset, so its recovery code is still returned.
-  const kept = { ok: true as const, recoveryCode, preferences, signedOut: false };
-  if (!ownSessionRevoked || readSyncWipeEpoch() !== wipeEpoch) {
-    return kept;
+  // The server applied the reset, so its recovery code is still returned, with
+  // the preferences the wipe left rather than the pre-wipe copy.
+  const afterWipe = async () => ({
+    ok: true as const,
+    recoveryCode,
+    preferences:
+      (await storage.readSyncPreferencesRecord().catch(() => null)) ?? preferences,
+    signedOut: false,
+  });
+  if (!ownSessionRevoked) {
+    return { ok: true, recoveryCode, preferences, signedOut: false };
+  }
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return afterWipe();
   }
 
   const secrets = await secretStore.readSyncSecrets();
   if (readSyncWipeEpoch() !== wipeEpoch) {
-    return kept;
+    return afterWipe();
   }
   if (secrets) {
     await secretStore.writeSyncSecrets({
@@ -364,7 +374,7 @@ export async function resetSyncAccountPassword(
 
   let nextPreferences = preferences;
   if (readSyncWipeEpoch() !== wipeEpoch) {
-    return kept;
+    return afterWipe();
   }
   if (preferences.setupStatus === "connected") {
     nextPreferences = { ...preferences, setupStatus: "local_ready" };
