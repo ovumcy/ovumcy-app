@@ -314,6 +314,12 @@ export async function acceptBackupSyncPartnerInviteAsGuest(
     {
       sessionToken: acceptResult.value.sessionToken,
       sessionExpiresAt: acceptResult.value.sessionExpiresAt,
+      ...(acceptResult.value.refreshToken && acceptResult.value.refreshTokenExpiresAt
+        ? {
+            refreshToken: acceptResult.value.refreshToken,
+            refreshTokenExpiresAt: acceptResult.value.refreshTokenExpiresAt,
+          }
+        : {}),
     },
     now,
     wipeEpoch,

@@ -1496,6 +1496,57 @@ describe("managed-cloud-api-client", () => {
     );
   });
 
+  async function verifyManagedTOTPAnswering(body: Record<string, unknown>) {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+    const result = await client.verifyTOTPEnrollment("managed-session-1", {
+      code: "123456",
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://managed.example/auth/totp/verify",
+      expect.objectContaining({ method: "POST" }),
+    );
+    return result;
+  }
+
+  it("returns the rotated managed recovery code from totp verify", async () => {
+    await expect(
+      verifyManagedTOTPAnswering({
+        status: "totp_enabled",
+        recovery_code: "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      recoveryCode: "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
+    });
+  });
+
+  it("treats a missing managed recovery code from totp verify as none", async () => {
+    await expect(
+      verifyManagedTOTPAnswering({ status: "totp_enabled" }),
+    ).resolves.toEqual({ ok: true, recoveryCode: null });
+  });
+
+  it("treats a blank managed recovery code from totp verify as none", async () => {
+    await expect(
+      verifyManagedTOTPAnswering({ status: "totp_enabled", recovery_code: "   " }),
+    ).resolves.toEqual({ ok: true, recoveryCode: null });
+  });
+
+  it("rejects a non-string managed recovery code from totp verify as invalid_response", async () => {
+    await expect(
+      verifyManagedTOTPAnswering({ status: "totp_enabled", recovery_code: 42 }),
+    ).resolves.toEqual({ ok: false, errorCode: "invalid_response" });
+  });
+
   it.each([
     ["verifyTOTPEnrollment", "totp_enrollment_not_started"],
     ["verifyTOTPEnrollment", "totp_enrollment_discarded"],

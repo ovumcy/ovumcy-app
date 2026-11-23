@@ -1452,6 +1452,33 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.revealedRecoveryCode).toBe("");
     });
 
+    it("tells a managed user the rotated code was lost when 2FA turned out to be on", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValueOnce({ twoFactorEnabled: false })
+        .mockResolvedValueOnce({ twoFactorEnabled: true });
+      jest
+        .spyOn(syncTOTPService, "verifyTOTPEnrollment")
+        .mockResolvedValue({ ok: false, errorCode: "generic" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+
+      expect(result.current.totpErrorCode).toBe("totp_recovery_code_lost");
+      expect(result.current.twoFactorEnabled).toBe(true);
+      expect(result.current.totpStage).toBe("idle");
+      expect(result.current.revealedRecoveryCode).toBe("");
+    });
+
     it("keeps the original error when 2FA is still off after a lost response", async () => {
       const storage = createLocalAppStorageMock({
         readSyncPreferencesRecord: jest

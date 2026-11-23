@@ -18,7 +18,7 @@ After verification:
 - Two-factor is on for this account.
 - Every other session of this account is signed out — only the device that completed enrollment stays connected.
 - The next login on any device will ask for a 6-digit code in addition to the password.
-- On a self-hosted (community) server the account recovery code is **replaced**: the code from registration or your last regeneration stops working, and any pending password-reset token dies with it. The app shows the new code exactly once in the *Save this recovery code* dialog. It is held only in screen memory until you tap *I have saved it* (the system back gesture does not close the dialog) or leave the screen — never written to storage, logs, the clipboard, or a URL. Ovumcy Cloud does not rotate the code on enrollment, so no dialog appears there.
+- The account recovery code is **replaced**, on Ovumcy Cloud and on a self-hosted (community) server alike: the code from registration or your last regeneration stops working (on a self-hosted server any pending password-reset token dies with it). The app shows the new code exactly once in the *Save this recovery code* dialog. It is held only in screen memory until you tap *I have saved it* (the system back gesture does not close the dialog) or leave the screen — never written to storage, logs, the clipboard, or a URL. A self-hosted server too old to rotate the code sends none, and then no dialog appears.
 - If the response is lost on the way back (network drop) the server has still turned two-factor on and replaced the code. The app re-checks the account and, when two-factor is on, says the new code never arrived; use *Regenerate recovery code* to get one (see below).
 
 ## Regenerating The Recovery Code With Two-Factor On
@@ -77,7 +77,7 @@ If two-factor was already turned off elsewhere, the server (self-hosted or Ovumc
 Treat your account-level recovery code as your **only** backup for a lost authenticator:
 
 1. On the login screen, tap *Account Security → Forgot password*.
-2. Enter your login/email and the recovery code you saved last — shown once at registration, after the last reset or regeneration, or (self-hosted) when you turned two-factor on or changed the password.
+2. Enter your login/email and the recovery code you saved last — shown once at registration, after the last reset or regeneration, when you turned two-factor on, or (self-hosted) when you changed the password.
 3. Set a new password.
 
 A successful recovery-code-driven reset does three things together:
