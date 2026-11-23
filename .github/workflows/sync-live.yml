@@ -2,8 +2,9 @@ name: Sync live contract
 
 # Runs the community live suite (src/sync/sync-client-service.live.test.ts)
 # against a real ovumcy-sync-community server built from the commit pinned in
-# cross-repo-manifest.json, so a transport-contract change on either side fails
-# here instead of passing a mocked suite. The peer is public, so no secret is
+# cross-repo-manifest.json, so an app-side transport-contract change fails here
+# instead of passing a mocked suite; peer-side drift surfaces when the pin is
+# refreshed. The peer is public, so no secret is
 # needed. The managed live suite stays opt-in (TESTING.md): it needs the private
 # ovumcy-managed repo and an admin token.
 
@@ -101,4 +102,4 @@ jobs:
 
       - name: Server log
         if: ${{ failure() }}
-        run: cat "$RUNNER_TEMP/sync-server.log"
+        run: cat "$RUNNER_TEMP/sync-server.log" || true
