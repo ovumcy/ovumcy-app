@@ -33,6 +33,10 @@ jest.mock("../../../sync/sync-account-session-service");
 const mockRotateManagedRecoveryPhrase = jest.mocked(
   managedRecoveryRotationService.rotateManagedRecoveryPhrase,
 );
+const mockPrepareRotationCandidate = jest.mocked(
+  managedRecoveryRotationService.prepareManagedRecoveryRotationCandidate,
+);
+const CANDIDATE = "candidate words shown before the request";
 const mockDescribeSyncAccountTwoFactor = jest.mocked(
   syncAccountSessionService.describeSyncAccountTwoFactor,
 );
@@ -71,6 +75,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
     jest
       .mocked(accountChangeRecoveryPhrase.acknowledgeAccountChangeRecoveryPhrase)
       .mockResolvedValue(undefined);
+    mockPrepareRotationCandidate.mockResolvedValue(CANDIDATE);
   });
 
   describe("handlePrepareSyncSetup", () => {
@@ -411,6 +416,80 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
         codeRequired: true,
         errorCode: null,
+        candidatePhrase: CANDIDATE,
+      });
+    });
+
+    it.each([
+      ["no candidate", async (): Promise<string | null> => null],
+      ["a failed candidate read", async (): Promise<string | null> => {
+        throw new Error("secure store");
+      }],
+    ] as const)("opens no card and reports not-connected with %s", async (_label, read) => {
+      mockPrepareRotationCandidate.mockImplementation(read);
+      const { core, result } = await openRotationCard(true);
+
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "not_connected",
+        scope: "local",
+      });
+    });
+
+    it.each([
+      ["sync_not_configured", false],
+      ["totp_fresh_code_required", true],
+    ] as const)(
+      "keeps the card on %s with the code field %s",
+      async (errorCode, codeRequired) => {
+        const { result } = await openRotationCard(false);
+        mockRotateManagedRecoveryPhrase.mockResolvedValue({ ok: false, errorCode });
+
+        await act(async () => {
+          await result.current.handleSubmitManagedRecoveryRotationStepUp({
+            currentPassword: "pw",
+          });
+        });
+
+        expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
+          codeRequired,
+          errorCode,
+          candidatePhrase: CANDIDATE,
+        });
+      },
+    );
+
+    it("shows the replacement when a refusal dropped the shown candidate", async () => {
+      const { result } = await openRotationCard(false);
+      mockRotateManagedRecoveryPhrase.mockResolvedValue({ ok: false, errorCode: "generic" });
+      mockPrepareRotationCandidate.mockResolvedValue("a different candidate");
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(result.current.managedRecoveryRotationStepUpPrompt?.candidatePhrase).toBe(
+        "a different candidate",
+      );
+    });
+
+    it("closes the card when no candidate is left after a refusal", async () => {
+      const { core, result } = await openRotationCard(false);
+      mockRotateManagedRecoveryPhrase.mockResolvedValue({ ok: false, errorCode: "generic" });
+      mockPrepareRotationCandidate.mockResolvedValue(null);
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "not_connected",
+        scope: "local",
       });
     });
 
@@ -472,6 +551,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
           codeRequired: true,
           errorCode,
+          candidatePhrase: CANDIDATE,
         });
       },
     );
@@ -490,6 +570,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
         codeRequired: false,
         errorCode: "generic",
+        candidatePhrase: CANDIDATE,
       });
       expect(result.current.isRotatingRecoveryPhrase).toBe(false);
     });
@@ -626,6 +707,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
           codeRequired: true,
           errorCode,
+          candidatePhrase: CANDIDATE,
         });
       },
     );

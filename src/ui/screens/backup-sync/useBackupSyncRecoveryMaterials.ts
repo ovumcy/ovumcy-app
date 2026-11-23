@@ -16,6 +16,7 @@ import {
 } from "../../../sync/account-change-recovery-phrase";
 import {
   acknowledgeManagedRecoveryPhrase,
+  prepareManagedRecoveryRotationCandidate,
   rotateManagedRecoveryPhrase,
 } from "../../../sync/managed-recovery-rotation-service";
 import { describeSyncAccountTwoFactor } from "../../../sync/sync-account-session-service";
@@ -154,9 +155,14 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
       // Asked up front: a code-less try would spend the shared step-up budget.
       setIsPreparingSync(true);
       const codeRequired = await isCodeFieldNeeded(state);
+      const candidatePhrase = await readRotationCandidate();
       setIsPreparingSync(false);
+      if (!candidatePhrase) {
+        setErrorState({ code: "not_connected", scope: "local" });
+        return;
+      }
       setPendingRotationStepUp({
-        prompt: { codeRequired, errorCode: null },
+        prompt: { codeRequired, errorCode: null, candidatePhrase },
         forState: state,
       });
       return;
@@ -228,25 +234,28 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
         return;
       }
 
-      switch (result.errorCode) {
-        case "not_connected":
-        case "unauthorized":
-          setPendingRotationStepUp(null);
-          setErrorState({ code: result.errorCode, scope: "local" });
-          return;
-        case "totp_invalid_code":
-        case "totp_replayed":
-          setPendingRotationStepUp({
-            prompt: { codeRequired: true, errorCode: result.errorCode },
-            forState,
-          });
-          return;
-        default:
-          setPendingRotationStepUp({
-            prompt: { codeRequired: codeFieldShown, errorCode: result.errorCode },
-            forState,
-          });
+      if (result.errorCode === "not_connected" || result.errorCode === "unauthorized") {
+        setPendingRotationStepUp(null);
+        setErrorState({ code: result.errorCode, scope: "local" });
+        return;
       }
+      // Usually the same phrase again; a refused or dropped candidate is
+      // replaced, and the card asks for a new acknowledgement.
+      const candidatePhrase = await readRotationCandidate();
+      if (!candidatePhrase) {
+        setPendingRotationStepUp(null);
+        setErrorState({ code: "not_connected", scope: "local" });
+        return;
+      }
+      const codeRequired =
+        result.errorCode === "totp_invalid_code" ||
+        result.errorCode === "totp_replayed" ||
+        result.errorCode === "totp_fresh_code_required" ||
+        codeFieldShown;
+      setPendingRotationStepUp({
+        prompt: { codeRequired, errorCode: result.errorCode, candidatePhrase },
+        forState,
+      });
     } finally {
       rotationInFlightRef.current = false;
       setIsRotatingRecoveryPhrase(false);
@@ -255,6 +264,14 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
 
   function handleCancelManagedRecoveryRotationStepUp() {
     setPendingRotationStepUp(null);
+  }
+
+  async function readRotationCandidate(): Promise<string | null> {
+    try {
+      return await prepareManagedRecoveryRotationCandidate(syncSecretStore);
+    } catch {
+      return null;
+    }
   }
 
   // Unknown two-factor status shows the field; an empty code is not sent.

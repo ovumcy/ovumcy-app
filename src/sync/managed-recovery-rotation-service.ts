@@ -28,6 +28,11 @@ export type ManagedRecoveryRotationErrorCode =
   | "totp_replayed"
   | "rate_limited"
   | "totp_not_configured"
+  // 503: Ovumcy Cloud has no sync bridge, so nothing was replaced.
+  | "sync_not_configured"
+  // The code was spent on a refusal that replaced nothing (a 404 that
+  // provisioned the sync account); a resend needs a new code.
+  | "totp_fresh_code_required"
   // The server may already hold the new package (502, no answer, unreadable
   // answer, or a local write that failed after a 200). The old phrase stays
   // active here; a retry resends the same package with a fresh code.
@@ -43,7 +48,8 @@ type PendingRotation = {
 // Process memory only, never persisted: it outlives a cancelled card or a left
 // screen so a retry after an unconfirmed answer resends the SAME package, and
 // dies with the process. Cleared by a confirmed rotation, a definitive package
-// refusal, and every session end or wipe.
+// refusal, and every session end or wipe. The user sees its phrase before any
+// request, so a request only ever carries a candidate that was shown.
 let pendingRotation: PendingRotation | null = null;
 
 // A confirmed phrase the user has not acknowledged yet; the old phrase is
@@ -64,6 +70,23 @@ export function peekUnacknowledgedManagedRecoveryPhrase(): string | null {
 
 export function acknowledgeManagedRecoveryPhrase(): void {
   unacknowledgedPhrase = null;
+}
+
+/**
+ * The phrase the next rotation request will carry, for the user to write down
+ * before the request: inactive until Ovumcy Cloud confirms it. The same
+ * candidate comes back until a confirmed rotation, a definitive package
+ * refusal, a session end, a wipe or a different master key drops it. Null when
+ * this device holds no master key.
+ */
+export async function prepareManagedRecoveryRotationCandidate(
+  secretStore: SyncSecretStore,
+): Promise<string | null> {
+  const secrets = await secretStore.readSyncSecrets();
+  if (!secrets?.masterKeyHex) {
+    return null;
+  }
+  return resolvePendingRotation(secrets.masterKeyHex).recoveryPhrase;
 }
 
 /**
@@ -94,7 +117,11 @@ export async function rotateManagedRecoveryPhrase(
   if (!secrets?.masterKeyHex) {
     return { ok: false, errorCode: "not_connected" };
   }
-  const pending = resolvePendingRotation(secrets.masterKeyHex);
+  // Never a candidate made here: the user has not seen it.
+  const pending = pendingRotation;
+  if (!pending || pending.masterKeyTag !== masterKeyTag(secrets.masterKeyHex)) {
+    return { ok: false, errorCode: "generic" };
+  }
 
   const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
   const code = stepUp.code?.trim();
@@ -120,7 +147,7 @@ export async function rotateManagedRecoveryPhrase(
     // The server checked the code before it looked for the sync account, so
     // a code is spent; only a password-only step-up can be resent as is.
     if (code) {
-      return { ok: false, errorCode: "rotation_unconfirmed" };
+      return { ok: false, errorCode: "totp_fresh_code_required" };
     }
     result = await client.replaceRecoveryKey(session.sessionToken, input);
   }
@@ -180,6 +207,7 @@ function mapRotationError(
     case "rate_limited":
     case "totp_not_configured":
     case "unauthorized":
+    case "sync_not_configured":
       return errorCode;
     case "sync_bridge_unavailable":
     case "network_failed":

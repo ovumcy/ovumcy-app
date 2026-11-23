@@ -12,6 +12,7 @@ import {
   clearPendingManagedRecoveryRotation,
   acknowledgeManagedRecoveryPhrase,
   peekUnacknowledgedManagedRecoveryPhrase,
+  prepareManagedRecoveryRotationCandidate,
   rotateManagedRecoveryPhrase,
 } from "./managed-recovery-rotation-service";
 import type { SyncSecretsRecord, WrappedSyncKeyMetadata } from "./sync-contract";
@@ -79,9 +80,74 @@ function sentPackage(
   return call?.[1].recoveryKeyPackage;
 }
 
+// The screen shows the candidate before every submit.
+async function rotate(...args: Parameters<typeof rotateManagedRecoveryPhrase>) {
+  await prepareManagedRecoveryRotationCandidate(args[0]);
+  return rotateManagedRecoveryPhrase(...args);
+}
+
 describe("rotateManagedRecoveryPhrase", () => {
   beforeEach(() => {
     clearPendingManagedRecoveryRotation();
+  });
+
+  it("sends the candidate the user saw, unchanged across retries", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { factory } = createClient([
+      { ok: false, errorCode: "network_failed" },
+      { ok: true },
+    ]);
+
+    const shown = await prepareManagedRecoveryRotationCandidate(store);
+    expect(await prepareManagedRecoveryRotationCandidate(store)).toBe(shown);
+    await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory);
+    expect(await prepareManagedRecoveryRotationCandidate(store)).toBe(shown);
+    const confirmed = await rotateManagedRecoveryPhrase(
+      store,
+      { currentPassword: PASSWORD },
+      NOW,
+      factory,
+    );
+
+    expect(confirmed).toEqual({ ok: true, recoveryPhrase: shown });
+    const adopted = (await store.readSyncSecrets())?.wrappedKey;
+    expect(adopted && shown && unwrapMasterKeyWithRecoveryPhrase(shown, adopted)).toBe(
+      secrets.masterKeyHex,
+    );
+  });
+
+  it("sends nothing for a candidate the user never saw", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { factory, replaceRecoveryKey } = createClient([{ ok: true }]);
+
+    await expect(
+      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+    expect(replaceRecoveryKey).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing when the shown candidate wraps another master key", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { factory, replaceRecoveryKey } = createClient([{ ok: true }]);
+    await prepareManagedRecoveryRotationCandidate(store);
+    await store.writeSyncSecrets({
+      ...secrets,
+      masterKeyHex: createSyncSecretsRecord("Pixel 7", NOW).record.masterKeyHex,
+    });
+
+    await expect(
+      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+    expect(replaceRecoveryKey).not.toHaveBeenCalled();
+  });
+
+  it("prepares no candidate without a master key", async () => {
+    const store = createSyncSecretStoreMock(null);
+
+    await expect(prepareManagedRecoveryRotationCandidate(store)).resolves.toBeNull();
   });
 
   it("wraps the SAME master key under a new phrase and adopts it only after the 200", async () => {
@@ -89,7 +155,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     const store = createSyncSecretStoreMock(secrets);
     const { factory, replaceRecoveryKey } = createClient([{ ok: true }]);
 
-    const result = await rotateManagedRecoveryPhrase(
+    const result = await rotate(
       store,
       { currentPassword: PASSWORD, code: ` ${CODE} ` },
       NOW,
@@ -119,7 +185,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     const { secrets } = createConnectedSecrets();
     const { factory, replaceRecoveryKey } = createClient([{ ok: true }]);
 
-    await rotateManagedRecoveryPhrase(
+    await rotate(
       createSyncSecretStoreMock(secrets),
       { currentPassword: PASSWORD, code: "  " },
       NOW,
@@ -140,9 +206,9 @@ describe("rotateManagedRecoveryPhrase", () => {
     ["rate_limited", "rate_limited"],
     ["unauthorized", "unauthorized"],
     ["totp_not_configured", "totp_not_configured"],
-    // A deployment with no sync bridge replaced nothing: a refusal, not an
-    // unknown outcome.
-    ["sync_not_configured", "generic"],
+    // A deployment with no sync bridge replaced nothing: a refusal of its
+    // own, not an unknown outcome.
+    ["sync_not_configured", "sync_not_configured"],
   ] as const)(
     "keeps the old package on %s and retries with the same package",
     async (serverError, expected) => {
@@ -153,7 +219,7 @@ describe("rotateManagedRecoveryPhrase", () => {
         { ok: true },
       ]);
 
-      const failed = await rotateManagedRecoveryPhrase(
+      const failed = await rotate(
         store,
         { currentPassword: PASSWORD, code: CODE },
         NOW,
@@ -162,7 +228,7 @@ describe("rotateManagedRecoveryPhrase", () => {
       expect(failed).toEqual({ ok: false, errorCode: expected });
       expect((await store.readSyncSecrets())?.wrappedKey).toEqual(secrets.wrappedKey);
 
-      const retried = await rotateManagedRecoveryPhrase(
+      const retried = await rotate(
         store,
         { currentPassword: PASSWORD, code: "111222" },
         NOW,
@@ -185,9 +251,9 @@ describe("rotateManagedRecoveryPhrase", () => {
     ]);
 
     await expect(
-      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory),
+      rotate(store, { currentPassword: PASSWORD }, NOW, factory),
     ).resolves.toEqual({ ok: false, errorCode: "generic" });
-    await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory);
+    await rotate(store, { currentPassword: PASSWORD }, NOW, factory);
 
     expect(sentPackage(replaceRecoveryKey, 1)?.phraseFingerprintHex).not.toBe(
       sentPackage(replaceRecoveryKey, 0)?.phraseFingerprintHex,
@@ -199,7 +265,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     const store = createSyncSecretStoreMock(secrets);
     const { factory } = createClient([{ ok: true }, { ok: true }]);
 
-    const result = await rotateManagedRecoveryPhrase(
+    const result = await rotate(
       store,
       { currentPassword: PASSWORD },
       NOW,
@@ -212,7 +278,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     acknowledgeManagedRecoveryPhrase();
     expect(peekUnacknowledgedManagedRecoveryPhrase()).toBeNull();
 
-    await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory);
+    await rotate(store, { currentPassword: PASSWORD }, NOW, factory);
     clearPendingManagedRecoveryRotation();
     expect(peekUnacknowledgedManagedRecoveryPhrase()).toBeNull();
   });
@@ -222,8 +288,8 @@ describe("rotateManagedRecoveryPhrase", () => {
     const store = createSyncSecretStoreMock(secrets);
     const { factory, replaceRecoveryKey } = createClient([{ ok: true }, { ok: true }]);
 
-    await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory);
-    await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory);
+    await rotate(store, { currentPassword: PASSWORD }, NOW, factory);
+    await rotate(store, { currentPassword: PASSWORD }, NOW, factory);
 
     expect(sentPackage(replaceRecoveryKey, 1)?.phraseFingerprintHex).not.toBe(
       sentPackage(replaceRecoveryKey, 0)?.phraseFingerprintHex,
@@ -238,14 +304,14 @@ describe("rotateManagedRecoveryPhrase", () => {
       { ok: true },
     ]);
 
-    await rotateManagedRecoveryPhrase(
+    await rotate(
       createSyncSecretStoreMock(first.secrets),
       { currentPassword: PASSWORD },
       NOW,
       factory,
     );
     const store = createSyncSecretStoreMock(second.secrets);
-    const result = await rotateManagedRecoveryPhrase(
+    const result = await rotate(
       store,
       { currentPassword: PASSWORD },
       NOW,
@@ -272,7 +338,7 @@ describe("rotateManagedRecoveryPhrase", () => {
       { ok: true },
     ]);
 
-    const result = await rotateManagedRecoveryPhrase(
+    const result = await rotate(
       store,
       { currentPassword: PASSWORD },
       NOW,
@@ -293,14 +359,14 @@ describe("rotateManagedRecoveryPhrase", () => {
       { ok: false, errorCode: "sync_account_not_found" },
     ]);
 
-    const result = await rotateManagedRecoveryPhrase(
+    const result = await rotate(
       store,
       { currentPassword: PASSWORD, code: CODE },
       NOW,
       factory,
     );
 
-    expect(result).toEqual({ ok: false, errorCode: "rotation_unconfirmed" });
+    expect(result).toEqual({ ok: false, errorCode: "totp_fresh_code_required" });
     expect(replaceRecoveryKey).toHaveBeenCalledTimes(1);
     expect((await store.readSyncSecrets())?.wrappedKey).toEqual(secrets.wrappedKey);
   });
@@ -315,7 +381,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     const { factory } = createClient([{ ok: true }]);
 
     await expect(
-      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory),
+      rotate(store, { currentPassword: PASSWORD }, NOW, factory),
     ).resolves.toEqual({ ok: false, errorCode: "rotation_unconfirmed" });
   });
 
@@ -324,7 +390,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     const { factory, replaceRecoveryKey } = createClient([]);
 
     await expect(
-      rotateManagedRecoveryPhrase(
+      rotate(
         createSyncSecretStoreMock({ ...secrets, managedAuthSessionToken: null }),
         { currentPassword: PASSWORD },
         NOW,
@@ -349,7 +415,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     } as unknown as ManagedCloudAPIClient;
 
     await expect(
-      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, undefined, () => client),
+      rotate(store, { currentPassword: PASSWORD }, undefined, () => client),
     ).resolves.toEqual({ ok: false, errorCode: "unauthorized" });
     expect(replaceRecoveryKey).not.toHaveBeenCalled();
   });
@@ -359,7 +425,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     const { factory, replaceRecoveryKey } = createClient([]);
 
     await expect(
-      rotateManagedRecoveryPhrase(
+      rotate(
         createSyncSecretStoreMock({ ...secrets, masterKeyHex: "" }),
         { currentPassword: PASSWORD },
         NOW,
@@ -381,7 +447,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     } as never);
 
     await expect(
-      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, () => client),
+      rotate(store, { currentPassword: PASSWORD }, NOW, () => client),
     ).resolves.toEqual({ ok: false, errorCode: "rotation_unconfirmed" });
     expect(replaceRecoveryKey).toHaveBeenCalledTimes(1);
     expect((await store.readSyncSecrets())?.authSessionToken).toBe("sync-1");
@@ -395,7 +461,8 @@ describe("rotateManagedRecoveryPhrase", () => {
       ...backing,
       readSyncSecrets: jest.fn(async () => {
         reads += 1;
-        return reads === 3 ? null : backing.readSyncSecrets();
+        // Read 1 prepares the candidate; read 4 is the post-provision read.
+        return reads === 4 ? null : backing.readSyncSecrets();
       }),
       writeSyncSecrets: jest.fn(backing.writeSyncSecrets),
     };
@@ -404,7 +471,7 @@ describe("rotateManagedRecoveryPhrase", () => {
       { ok: true },
     ]);
 
-    const result = await rotateManagedRecoveryPhrase(
+    const result = await rotate(
       store,
       { currentPassword: PASSWORD },
       NOW,
@@ -424,14 +491,16 @@ describe("rotateManagedRecoveryPhrase", () => {
       ...backing,
       readSyncSecrets: jest.fn(async () => {
         reads += 1;
-        return reads >= 3 ? other : backing.readSyncSecrets();
+        // Read 1 prepares the candidate; read 4 is the post-200 read.
+        return reads >= 4 ? other : backing.readSyncSecrets();
       }),
     };
-    const { factory } = createClient([{ ok: true }]);
+    const { factory, replaceRecoveryKey } = createClient([{ ok: true }]);
 
     await expect(
-      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory),
+      rotate(store, { currentPassword: PASSWORD }, NOW, factory),
     ).resolves.toEqual({ ok: false, errorCode: "generic" });
+    expect(replaceRecoveryKey).toHaveBeenCalledTimes(1);
     expect((await backing.readSyncSecrets())?.wrappedKey).toEqual(secrets.wrappedKey);
   });
 
@@ -450,11 +519,11 @@ describe("rotateManagedRecoveryPhrase", () => {
       ]);
 
       const failures = [
-        await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD, code: CODE }, NOW, factory),
-        await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD, code: CODE }, NOW, factory),
-        await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD, code: CODE }, NOW, factory),
+        await rotate(store, { currentPassword: PASSWORD, code: CODE }, NOW, factory),
+        await rotate(store, { currentPassword: PASSWORD, code: CODE }, NOW, factory),
+        await rotate(store, { currentPassword: PASSWORD, code: CODE }, NOW, factory),
       ];
-      const success = await rotateManagedRecoveryPhrase(
+      const success = await rotate(
         store,
         { currentPassword: PASSWORD, code: CODE },
         NOW,

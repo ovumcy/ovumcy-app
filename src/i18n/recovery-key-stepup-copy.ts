@@ -9,6 +9,13 @@ export type RecoveryKeyStepUpCopy = {
   cancelLabel: string;
   // Managed recovery-phrase rotation only: shown while the change is in flight.
   inProgressLabel?: string;
+  // Managed recovery-phrase rotation only: the candidate phrase shown before
+  // the request.
+  candidate?: {
+    title: string;
+    notice: string;
+    acknowledgeLabel: string;
+  };
   errors: {
     invalidCurrentPassword: string;
     totpInvalidCode: string;
@@ -18,6 +25,8 @@ export type RecoveryKeyStepUpCopy = {
     rotationUnconfirmed?: string;
     rotationFailed?: string;
     totpNotConfigured?: string;
+    syncNotConfigured?: string;
+    totpFreshCodeRequired?: string;
   };
 };
 

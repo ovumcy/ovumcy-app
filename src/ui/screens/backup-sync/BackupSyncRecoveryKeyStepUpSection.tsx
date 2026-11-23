@@ -5,6 +5,7 @@ import type { RecoveryKeyStepUpCopy } from "../../../i18n/recovery-key-stepup-co
 import type { SyncRecoveryKeyStepUp } from "../../../sync/sync-api-client";
 import { AppButton } from "../../components/AppButton";
 import { AppTextInput } from "../../components/AppTextInput";
+import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { FeatureCard } from "../../components/FeatureCard";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { AppThemeColors } from "../../theme/tokens";
@@ -37,6 +38,13 @@ export function BackupSyncRecoveryKeyStepUpSection({
   const styles = useThemedStyles(createStyles);
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  // Tied to the phrase itself: a different candidate needs a new acknowledgement.
+  const [acknowledgedPhrase, setAcknowledgedPhrase] = useState<string | null>(null);
+  const candidatePhrase = prompt.candidatePhrase ?? "";
+  const candidateCopy = copy.candidate;
+  const showsCandidate = candidatePhrase.length > 0 && candidateCopy !== undefined;
+  const candidateAcknowledged =
+    !showsCandidate || acknowledgedPhrase === candidatePhrase;
 
   function clearFields() {
     setPassword("");
@@ -61,6 +69,22 @@ export function BackupSyncRecoveryKeyStepUpSection({
   return (
     <FeatureCard title={copy.title}>
       <Text style={styles.helperText}>{copy.explanation}</Text>
+      {showsCandidate && candidateCopy ? (
+        <View style={styles.candidateCard} testID={`${testIDPrefix}-candidate`}>
+          <Text style={styles.fieldLabel}>{candidateCopy.title}</Text>
+          <Text style={styles.candidatePhrase} testID={`${testIDPrefix}-candidate-phrase`}>
+            {candidatePhrase}
+          </Text>
+          <Text style={styles.helperText}>{candidateCopy.notice}</Text>
+          <BinaryToggleCard
+            compact
+            label={candidateCopy.acknowledgeLabel}
+            onValueChange={(value) => setAcknowledgedPhrase(value ? candidatePhrase : null)}
+            testID={`${testIDPrefix}-candidate-ack`}
+            value={candidateAcknowledged}
+          />
+        </View>
+      ) : null}
       <Text style={styles.fieldLabel}>{copy.passwordLabel}</Text>
       <AppTextInput
         accessibilityLabel={copy.passwordLabel}
@@ -110,7 +134,12 @@ export function BackupSyncRecoveryKeyStepUpSection({
       ) : null}
       <View style={styles.actions}>
         <AppButton
-          disabled={isBusy || password.length === 0 || !isSendableCode(code)}
+          disabled={
+            isBusy ||
+            !candidateAcknowledged ||
+            password.length === 0 ||
+            !isSendableCode(code)
+          }
           label={copy.confirmLabel}
           onPress={handleSubmit}
           testID={`${testIDPrefix}-confirm`}
@@ -149,6 +178,10 @@ function resolveErrorMessage(
       return copy.errors.rateLimited;
     case "totp_not_configured":
       return copy.errors.totpNotConfigured ?? "";
+    case "sync_not_configured":
+      return copy.errors.syncNotConfigured ?? "";
+    case "totp_fresh_code_required":
+      return copy.errors.totpFreshCodeRequired ?? "";
     case "rotation_unconfirmed":
       return copy.errors.rotationUnconfirmed ?? "";
     case "generic":
@@ -181,6 +214,21 @@ function createStyles(colors: AppThemeColors) {
     },
     actions: {
       gap: spacing.sm,
+    },
+    candidateCard: {
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.lineSoft,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: spacing.xs,
+      padding: spacing.md,
+    },
+    candidatePhrase: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "600",
+      letterSpacing: 0.3,
+      lineHeight: 24,
     },
   });
 }
