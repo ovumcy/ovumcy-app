@@ -14,6 +14,7 @@ import {
   finalizeSyncRecoveryAfterTOTP,
   recoverSyncAccess,
 } from "./sync-client-service";
+import { advanceSyncWipeEpoch } from "./sync-wipe-epoch";
 
 const NOW = new Date("2026-03-20T08:05:00.000Z");
 
@@ -430,5 +431,67 @@ describe("managed phrase recovery with two-factor on", () => {
 
     expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
     expect(managedClientFactory).not.toHaveBeenCalled();
+  });
+});
+
+describe("phrase recovery superseded by a local wipe", () => {
+  function wipingAttach() {
+    return jest.fn().mockImplementation(async () => {
+      advanceSyncWipeEpoch();
+      return { ok: true };
+    });
+  }
+
+  it("stores nothing when a wipe lands during the self-hosted device attach", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const account = serverAccount();
+    const client = apiClient({
+      getRecoveryKey: jest
+        .fn()
+        .mockResolvedValue({ ok: true, recoveryKey: account.record.wrappedKey }),
+      attachDevice: wipingAttach(),
+    });
+
+    const result = await finalizeSyncRecoveryAfterTOTP(
+      storage,
+      secretStore,
+      preferences,
+      { sessionToken: "session-after-totp", recoveryPhrase: account.recoveryPhrase },
+      NOW,
+      jest.fn().mockReturnValue(client),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("stores nothing when a wipe lands during the managed device attach", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const account = serverAccount();
+    const client = apiClient({
+      getRecoveryKey: jest
+        .fn()
+        .mockResolvedValue({ ok: true, recoveryKey: account.record.wrappedKey }),
+      putRecoveryKey: jest.fn().mockResolvedValue({ ok: true }),
+      attachDevice: wipingAttach(),
+    });
+
+    const result = await finalizeSyncRecoveryAfterTOTP(
+      storage,
+      secretStore,
+      managedPreferences,
+      { sessionToken: "managed-after-totp", recoveryPhrase: account.recoveryPhrase },
+      NOW,
+      jest.fn().mockReturnValue(client),
+      jest.fn().mockReturnValue(managedClient()),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    expect(storage.writeManagedBillingCacheRecord).not.toHaveBeenCalled();
   });
 });

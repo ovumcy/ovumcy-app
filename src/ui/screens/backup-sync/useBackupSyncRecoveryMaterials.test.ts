@@ -87,6 +87,30 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(result.current.isPreparingSync).toBe(false);
     });
 
+    it("runs no recovery action on a connected managed account with no rollback floor", async () => {
+      const connected = createConnectedManagedState();
+      const core = createBackupSyncSessionCoreMock({
+        state: {
+          ...connected,
+          savedSyncPreferences: {
+            ...connected.savedSyncPreferences,
+            lastRemoteGeneration: null,
+          },
+        },
+      });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+
+      await act(async () => {
+        await result.current.handlePrepareSyncSetup();
+      });
+
+      expect(core.resetFeedbackMessages).toHaveBeenCalled();
+      expect(mockOpenConfirmation).not.toHaveBeenCalled();
+      expect(mockRequestSensitiveActionChallenge).not.toHaveBeenCalled();
+      expect(mockPrepareBackupSyncSetup).not.toHaveBeenCalled();
+      expect(mockRotateManagedRecoveryPhrase).not.toHaveBeenCalled();
+    });
+
     it("skips the confirm and device-auth gate on first-time setup (no stored secrets yet) and reports 'prepared'", async () => {
       const preparedState = createLoadedSettingsStateFixture({
         hasStoredSyncSecrets: true,

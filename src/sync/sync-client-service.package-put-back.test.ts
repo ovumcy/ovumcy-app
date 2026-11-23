@@ -8,7 +8,7 @@ import { runSyncUpload } from "./sync-client-service";
 const NOW = new Date("2026-03-20T08:10:00.000Z");
 const STEP_UP = { currentPassword: "correct horse battery" };
 
-function setup(putBlobFailure: string) {
+function setup(putBlobFailure: string, overrides: Partial<SyncAPIClient> = {}) {
   const local = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
   const previous = createSyncSecretsRecord("Pixel 6", new Date("2026-03-01T08:00:00.000Z"));
   const preferences: SyncPreferencesRecord = {
@@ -40,6 +40,7 @@ function setup(putBlobFailure: string) {
     getBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: "blob_not_found" }),
     putRecoveryKey,
     putBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: putBlobFailure }),
+    ...overrides,
   } as unknown as SyncAPIClient;
   return {
     putRecoveryKey,
@@ -80,6 +81,36 @@ describe("runSyncUpload recovery-package put-back (self-hosted)", () => {
       );
     },
   );
+
+  it("puts the replaced package back when the stored blob shows another device wrote it", async () => {
+    const harness = setup("stale_generation", {
+      getBlob: jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, errorCode: "blob_not_found" })
+        .mockResolvedValue({
+          ok: true,
+          blob: {
+            schemaVersion: 1,
+            generation: 1,
+            checksumSHA256: "ff",
+            ciphertextBase64: "",
+            ciphertextSize: 0,
+            updatedAt: "2026-03-20T08:09:00.000Z",
+          },
+        }),
+    });
+
+    const result = await harness.upload();
+
+    expect(result).toMatchObject({ ok: false, errorCode: "remote_backup_changed" });
+    expect(harness.putRecoveryKey).toHaveBeenCalledTimes(2);
+    expect(harness.putRecoveryKey).toHaveBeenNthCalledWith(
+      2,
+      "session-1",
+      harness.previous,
+      STEP_UP,
+    );
+  });
 
   it.each(["network_failed", "server_busy", "generic"])(
     "keeps the new package after an ambiguous %s outcome",

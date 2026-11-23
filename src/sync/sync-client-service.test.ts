@@ -35,6 +35,7 @@ import {
   runSyncUpload,
   upgradeGuestPartnerAccount,
 } from "./sync-client-service";
+import { advanceSyncWipeEpoch } from "./sync-wipe-epoch";
 import {
   decodeSyncSnapshot,
   encodeSyncSnapshot,
@@ -5113,6 +5114,26 @@ describe("snapshot AAD across devices", () => {
 
     expect(result.ok).toBe(true);
     expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
+  });
+
+  it("restores nothing when a wipe lands while the older-backup confirm is open", async () => {
+    const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+    const { blob } = await uploadFromDevice(deviceA.record);
+    const guard = {
+      confirmRestoreOlderBackup: jest.fn().mockImplementation(async () => {
+        advanceSyncWipeEpoch();
+        return true;
+      }),
+    };
+
+    const { result, storage } = await restoreOnDevice(deviceA.record, blob, {
+      rollbackFloor: blob.generation + 1,
+      guard,
+    });
+
+    expect(guard.confirmRestoreOlderBackup).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    expectLocalDataUntouched(storage);
   });
 
   it("restores a legacy device-bound blob on the device that wrote it", async () => {

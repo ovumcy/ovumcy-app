@@ -2937,8 +2937,9 @@ async function syncRecoveryKeyBeforeBlob(
 // network failure, a 5xx or an unmapped answer may hide a blob that landed,
 // so the new package stays and a retry heals it.
 function isDefinitiveBlobRefusal(errorCode: SyncAPIErrorCode | "remote_backup_changed"): boolean {
+  // A stale_generation answer never reaches here: the put reconciles it into
+  // remote_backup_changed or into the blob read's own failure.
   switch (errorCode) {
-    case "stale_generation":
     case "remote_backup_changed":
     case "invalid_blob":
     case "unauthorized":

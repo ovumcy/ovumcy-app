@@ -16,6 +16,7 @@ import {
 } from "../sync/sync-contract";
 import * as syncClientService from "../sync/sync-client-service";
 import * as syncTotpService from "../sync/sync-totp-service";
+import { advanceSyncWipeEpoch } from "../sync/sync-wipe-epoch";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
@@ -327,6 +328,35 @@ describe("acceptBackupSyncPartnerInviteAsGuest", () => {
     );
   });
 
+  it("persists no guest session when a wipe lands while the accept is in flight", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const initialState = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 3, 5),
+    );
+    global.fetch = jest.fn().mockImplementation(async () => {
+      advanceSyncWipeEpoch();
+      return new Response(JSON.stringify(GUEST_ACCEPT_RESPONSE), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const result = await acceptBackupSyncPartnerInviteAsGuest(
+      storage,
+      secretStore,
+      initialState,
+      "invite-token-9-fixture-padding",
+      new Date(2026, 3, 5),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
   it("forwards each mapped error key and persists no session", async () => {
     const storage = createLocalAppStorageMock();
     const secretStore = createSyncSecretStoreMock();
@@ -505,6 +535,34 @@ describe("upgradeBackupSyncGuestAccount", () => {
     expect((upgradeCall[1]?.headers as Headers).get("Authorization")).toBe(
       "Bearer guest-session-1",
     );
+  });
+
+  it.each([
+    ["a replaced key", true],
+    ["a kept key", false],
+  ])("passes the upgrade's account key reset on for %s", async (_label, reset) => {
+    const { storage, secretStore, state } = await loadGuestState();
+    const upgrade = jest
+      .spyOn(syncClientService, "upgradeGuestPartnerAccount")
+      .mockResolvedValue({
+        ok: true,
+        preferences: { ...GUEST_SYNC_PREFERENCES, guestSessionExpiresAt: null },
+        accountID: "guest-account-1",
+        email: "owner@example.com",
+        recoveryCode: "fresh1234fresh1234fresh1234fresh",
+        ...(reset ? { accountKeyReset: true as const } : {}),
+      });
+
+    try {
+      const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
+        email: "owner@example.com",
+        password: "very secure password 12345",
+      });
+
+      expect(result.ok && result.accountKeyReset).toBe(reset ? true : undefined);
+    } finally {
+      upgrade.mockRestore();
+    }
   });
 
   it("clears the guest marker on account_not_guest so the CTA hides even though the call failed", async () => {
