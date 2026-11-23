@@ -59,6 +59,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
   const [isRotatingRecoveryPhrase, setIsRotatingRecoveryPhrase] = useState(false);
   const [isExportingRecoveryPhrase, setIsExportingRecoveryPhrase] = useState(false);
   const rotationInFlightRef = useRef(false);
+  const revealInFlightRef = useRef(false);
   const [pendingRotationStepUp, setPendingRotationStepUp] = useState<{
     prompt: RecoveryKeyStepUpPrompt;
     forState: NonNullable<typeof state>;
@@ -264,34 +265,43 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     if (accountChangeRecoveryPhrase !== "reveal") {
       return;
     }
-    resetFeedbackMessages();
-
-    const confirmed = await openConfirmation(
-      accountChangeCopy.confirmPrompt,
-      accountChangeCopy.confirmAccept,
-      viewData.common.cancelAction,
-    );
-    if (!confirmed) {
+    // A second tap during the confirm or device-auth await would open a second flow.
+    if (revealInFlightRef.current) {
       return;
     }
+    revealInFlightRef.current = true;
+    try {
+      resetFeedbackMessages();
 
-    const challengeResult = await requestSensitiveActionChallenge(
-      accountChangeCopy.deviceAuthPrompt,
-    );
-    if (!challengeResult.ok) {
-      reportDeviceAuthFailure(challengeResult.reason);
-      return;
-    }
-
-    const phrase = await readPendingAccountChangeRecoveryPhrase(syncSecretStore);
-    if (phrase === null) {
-      setAccountChangeRecoveryPhrase(
-        await loadAccountChangeRecoveryPhraseState(syncSecretStore),
+      const confirmed = await openConfirmation(
+        accountChangeCopy.confirmPrompt,
+        accountChangeCopy.confirmAccept,
+        viewData.common.cancelAction,
       );
-      return;
+      if (!confirmed) {
+        return;
+      }
+
+      const challengeResult = await requestSensitiveActionChallenge(
+        accountChangeCopy.deviceAuthPrompt,
+      );
+      if (!challengeResult.ok) {
+        reportDeviceAuthFailure(challengeResult.reason);
+        return;
+      }
+
+      const phrase = await readPendingAccountChangeRecoveryPhrase(syncSecretStore);
+      if (phrase === null) {
+        setAccountChangeRecoveryPhrase(
+          await loadAccountChangeRecoveryPhraseState(syncSecretStore),
+        );
+        return;
+      }
+      setErrorState(null);
+      setGeneratedRecoveryPhrase(phrase);
+    } finally {
+      revealInFlightRef.current = false;
     }
-    setErrorState(null);
-    setGeneratedRecoveryPhrase(phrase);
   }
 
   function handleAcknowledgeRecoveryPhrase() {

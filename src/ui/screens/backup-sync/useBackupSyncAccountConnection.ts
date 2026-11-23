@@ -166,6 +166,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
         challengeID: pendingTOTPChallenge.challengeID,
         code: totpChallengeCode,
       },
+      effectiveNow,
     );
     if (!result.ok) {
       setErrorState({

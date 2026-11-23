@@ -1023,6 +1023,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
       state,
       state.syncPreferences,
       { challengeID: "chal-1", code: "12" },
+      new Date(2026, 2, 19),
     );
 
     expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
@@ -1051,6 +1052,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
       state,
       state.syncPreferences,
       { challengeID: "chal-1", code: "123456" },
+      new Date(2026, 2, 19),
     );
 
     expect(result).toEqual({ ok: false, errorCode: "totp_challenge_invalid" });
@@ -1103,6 +1105,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
       state,
       state.syncPreferences,
       { challengeID: "chal-1", code: "123456" },
+      new Date(2026, 2, 19),
     );
 
     expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
@@ -1182,6 +1185,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
       state,
       state.syncPreferences,
       { challengeID: "chal-1", code: "123456" },
+      new Date(2026, 2, 19),
     );
 
     expect(result.ok).toBe(true);
@@ -1194,6 +1198,62 @@ describe("completeBackupSyncTOTPChallenge", () => {
     expect(result.state.managedPremiumAccess.planStatus).toBe("active");
     const secrets = await secretStore.readSyncSecrets();
     expect(secrets?.managedAuthSessionToken).toBe("totp-session-1");
+  });
+
+  it("dates the replacement device of an account-change TOTP sign-in with the screen's clock", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(PREPARED_MANAGED_SECRETS);
+    const state = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 2, 19),
+    );
+    const screenNow = new Date("2026-03-19T09:30:00.000Z");
+    const session = {
+      account_id: "managed-account-2",
+      email: "owner@example.com",
+      session_expires_at: "2026-03-20T08:15:00.000Z",
+      sync_entitlement: {
+        sync_allowed: true,
+        source: "manual",
+        updated_at: "2026-03-19T08:15:00.000Z",
+        effective_at: "2026-03-19T08:15:00.000Z",
+        explanation: "Trial active.",
+      },
+    };
+    global.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const json = (body: unknown) =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      if (url.endsWith("/auth/totp/challenge") && method === "POST") {
+        return json({ ...session, session_token: "totp-session-2" });
+      }
+      if (url.endsWith("/auth/session") && method === "GET") {
+        return json(session);
+      }
+      if (url.endsWith("/account/billing") && method === "GET") {
+        return json({ has_active_plan: false, premium_features: {} });
+      }
+      throw new Error(`Unexpected fetch in test: ${method} ${url}`);
+    }) as typeof fetch;
+
+    const result = await completeBackupSyncTOTPChallenge(
+      storage,
+      secretStore,
+      state,
+      { ...state.syncPreferences, accountId: "managed-account-1" },
+      { challengeID: "chal-1", code: "123456" },
+      screenNow,
+    );
+
+    expect(result.ok && result.accountKeyReset).toBe(true);
+    const secrets = await secretStore.readSyncSecrets();
+    expect(secrets?.device.deviceID).not.toBe(PREPARED_MANAGED_SECRETS.device.deviceID);
+    expect(secrets?.device.createdAt).toBe(screenNow.toISOString());
   });
 
   it("persists the refresh token issued alongside the post-2FA session", async () => {
@@ -1270,6 +1330,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
       state,
       state.syncPreferences,
       { challengeID: "chal-1", code: "123456" },
+      new Date(2026, 2, 19),
     );
 
     expect(result.ok).toBe(true);
@@ -1948,6 +2009,7 @@ describe("account key reset hand-off to the screen", () => {
       state,
       selfHostedConnected,
       { challengeID: "chal-1", code: "123456" },
+      new Date(2026, 2, 19),
     );
 
     expect(result.ok && result.accountKeyReset).toBe(reset ? true : undefined);

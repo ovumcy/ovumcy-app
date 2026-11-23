@@ -435,6 +435,7 @@ export async function completeBackupSyncTOTPChallenge(
   currentState: LoadedSettingsState,
   preferences: SyncPreferencesRecord,
   input: { challengeID: string; code: string },
+  now: Date,
 ): Promise<
   | {
       ok: true;
@@ -467,6 +468,9 @@ export async function completeBackupSyncTOTPChallenge(
           }
         : {}),
     },
+    undefined,
+    undefined,
+    now,
   );
   if (!finalizeResult.ok) {
     return { ok: false, errorCode: finalizeResult.errorCode };
