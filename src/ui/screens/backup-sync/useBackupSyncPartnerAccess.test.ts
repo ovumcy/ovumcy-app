@@ -376,6 +376,7 @@ describe("useBackupSyncPartnerAccess", () => {
         INVITE_TOKEN,
         INVITE_SECRET_HEX,
         core.effectiveNow,
+        0,
       );
       expect(core.setPartnerStatusMessage).toHaveBeenCalledWith(
         core.partnerCopy.statusInviteAccepted,
@@ -594,6 +595,7 @@ describe("useBackupSyncPartnerAccess", () => {
         INVITE_TOKEN,
         INVITE_SECRET_HEX,
         core.effectiveNow,
+        0,
       );
       // Unlike the logged-in accept path, the guest path DOES adopt the
       // freshly minted session state and reloads partner access using it

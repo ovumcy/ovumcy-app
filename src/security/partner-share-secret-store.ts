@@ -83,8 +83,31 @@ export interface PartnerShareSecretStoreBackend {
   setItem(key: string, value: string): Promise<void>;
 }
 
+// A mutate whose captured clear epoch is stale: the store was cleared after
+// the writer's flow started, so its write is dropped.
+export class PartnerShareStoreClearedError extends Error {
+  constructor() {
+    super("partner_share_store_cleared");
+    this.name = "PartnerShareStoreClearedError";
+  }
+}
+
+export function isPartnerShareStoreClearedError(error: unknown): boolean {
+  return error instanceof PartnerShareStoreClearedError;
+}
+
+export type PartnerShareMutateOptions = {
+  // From `readPartnerShareClearEpoch()` before the flow's first await. A
+  // clear that runs after the capture fails the mutate with
+  // `PartnerShareStoreClearedError` before anything is read or written.
+  clearEpoch?: number | undefined;
+};
+
 export interface PartnerShareSecretStore {
   clearPartnerShareSecrets(): Promise<void>;
+  // In memory, per store instance: a write in flight dies with the process,
+  // so only same-process races need it.
+  readPartnerShareClearEpoch(): number;
   readPartnerShareSecrets(): Promise<PartnerShareSecretsRecord>;
   writePartnerShareSecrets(record: PartnerShareSecretsRecord): Promise<void>;
   // Serializes a read-modify-write turn against the secret store. The
@@ -99,6 +122,7 @@ export interface PartnerShareSecretStore {
   // patterns).
   mutatePartnerShareSecrets<T>(
     updater: (record: PartnerShareSecretsRecord) => T | Promise<T>,
+    options?: PartnerShareMutateOptions,
   ): Promise<T>;
 }
 
@@ -131,6 +155,7 @@ export function createPartnerShareSecretStore(
   // promise.
   let mutateChain: Promise<unknown> = Promise.resolve();
   let legacyEntryDeleted = false;
+  let clearEpoch = 0;
 
   // Best-effort: a failed delete is retried on the next access, and the
   // legacy entry is never read either way.
@@ -147,9 +172,11 @@ export function createPartnerShareSecretStore(
   }
 
   // Queued on the mutate chain so a read-update-write turn already in flight
-  // cannot write the record back after the delete.
+  // cannot write the record back after the delete. The epoch moves even when
+  // the delete fails, so a writer that started earlier never lands.
   async function clearPartnerShareSecrets(): Promise<void> {
     const next = mutateChain.then(async () => {
+      clearEpoch += 1;
       const results = await Promise.allSettled([
         backend.deleteItem(PARTNER_SHARE_SECRET_STORE_KEY),
         backend.deleteItem(LEGACY_PARTNER_SHARE_SECRET_STORE_KEY),
@@ -231,10 +258,18 @@ export function createPartnerShareSecretStore(
     );
   }
 
+  function readPartnerShareClearEpoch(): number {
+    return clearEpoch;
+  }
+
   function mutatePartnerShareSecrets<T>(
     updater: (record: PartnerShareSecretsRecord) => T | Promise<T>,
+    options?: PartnerShareMutateOptions,
   ): Promise<T> {
     const next = mutateChain.then(async () => {
+      if (options?.clearEpoch !== undefined && options.clearEpoch !== clearEpoch) {
+        throw new PartnerShareStoreClearedError();
+      }
       const current = await readPartnerShareSecrets();
       const result = await updater(current);
       await writePartnerShareSecrets(current);
@@ -246,6 +281,7 @@ export function createPartnerShareSecretStore(
 
   return {
     clearPartnerShareSecrets,
+    readPartnerShareClearEpoch,
     readPartnerShareSecrets,
     writePartnerShareSecrets,
     mutatePartnerShareSecrets,

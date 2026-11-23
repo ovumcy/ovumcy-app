@@ -6,6 +6,7 @@ import * as managedPremiumFeaturesService from "../../../services/managed-premiu
 import * as managedPartnerShareService from "../../../services/managed-partner-share-service";
 import * as managedPartnerShareSyncService from "../../../services/managed-partner-share-sync-service";
 import * as settingsStateService from "../../../services/settings-state-service";
+import { PartnerShareStoreClearedError } from "../../../security/partner-share-secret-store";
 import { createLoadedSettingsStateFixture } from "../../../test/create-backup-sync-session-core-mock";
 import { createSettingsStorageMock } from "../../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../../test/create-sync-secret-store-mock";
@@ -129,7 +130,7 @@ describe("useBackupSyncSessionCore partner-access pre-check", () => {
     // Stable identities: the load callback depends on every store.
     const storage = createSettingsStorageMock();
     const syncSecretStore = createSyncSecretStoreMock();
-    const partnerShareSecretStore = {} as never;
+    const partnerShareSecretStore = { readPartnerShareClearEpoch: () => 0 } as never;
     const { result, unmount } = await renderHook(() =>
       useBackupSyncSessionCore({ storage, syncSecretStore, partnerShareSecretStore, now: FIXED_NOW }),
     );
@@ -143,6 +144,58 @@ describe("useBackupSyncSessionCore partner-access pre-check", () => {
         "grant-raced",
       ]),
     );
+    await unmount();
+  });
+
+  it("drops a listing whose reconcile met a partner-share clear, without pushing", async () => {
+    const loaded = createLoadedSettingsStateFixture();
+    jest.spyOn(settingsStateService, "loadSettingsScreenState").mockResolvedValue({
+      ...loaded,
+      hasSyncSession: true,
+      syncPreferences: { ...loaded.syncPreferences, mode: "managed" },
+    });
+    jest.spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures").mockResolvedValue({
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: true,
+      reminders: false,
+    });
+    jest.spyOn(managedPartnerAccessService, "loadManagedPartnerAccess").mockResolvedValue({
+      ok: true,
+      value: {
+        owned: {
+          invites: [],
+          grants: [{ id: "grant-1", ownerAccountID: "owner-1", revokedAt: null, sourceInviteID: "invite-1" } as never],
+        },
+        sharedWithMe: [],
+      },
+    });
+    const reconcileSpy = jest
+      .spyOn(managedPartnerShareService, "reconcileManagedPartnerShareKeys")
+      .mockRejectedValue(new PartnerShareStoreClearedError());
+    const pushSpy = jest.spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections");
+
+    const storage = createSettingsStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
+    const partnerShareSecretStore = { readPartnerShareClearEpoch: () => 5 } as never;
+    const { result, unmount } = await renderHook(() =>
+      useBackupSyncSessionCore({ storage, syncSecretStore, partnerShareSecretStore, now: FIXED_NOW }),
+    );
+
+    await waitFor(() =>
+      expect(reconcileSpy).toHaveBeenCalledWith(
+        partnerShareSecretStore,
+        expect.anything(),
+        FIXED_NOW,
+        5,
+      ),
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(result.current.partnerOverview).toBeNull();
+    expect(result.current.partnerErrorMessage).toBe("");
     await unmount();
   });
 });

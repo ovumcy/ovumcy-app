@@ -1,6 +1,7 @@
 import {
   createEmptyPartnerShareSecretsRecord,
   createPartnerShareSecretStore,
+  PartnerShareStoreClearedError,
   type PartnerShareSecretStoreBackend,
   type PartnerShareSecretsRecord,
 } from "./partner-share-secret-store";
@@ -492,5 +493,77 @@ describe("partner-share-secret-store", () => {
         }),
       );
     });
+  });
+});
+
+describe("partner-share-secret-store clear epoch", () => {
+  it("refuses a mutate whose epoch was captured before a clear, without reading or writing", async () => {
+    const backend = createBackendMock();
+    const store = createPartnerShareSecretStore(backend);
+    const clearEpoch = store.readPartnerShareClearEpoch();
+    await store.clearPartnerShareSecrets();
+    const updater = jest.fn((record: PartnerShareSecretsRecord) => {
+      record.pendingInviteKeysByInviteID.invite_1 = "aa".repeat(32);
+    });
+
+    await expect(
+      store.mutatePartnerShareSecrets(updater, { clearEpoch }),
+    ).rejects.toBeInstanceOf(PartnerShareStoreClearedError);
+    expect(updater).not.toHaveBeenCalled();
+    expect(backend.state.has(STORE_KEY)).toBe(false);
+  });
+
+  it("refuses a mutate queued behind a clear that started after the capture", async () => {
+    const backend = createBackendMock();
+    const store = createPartnerShareSecretStore(backend);
+    const clearEpoch = store.readPartnerShareClearEpoch();
+
+    const cleared = store.clearPartnerShareSecrets();
+    const write = store.mutatePartnerShareSecrets(
+      (record) => {
+        record.pendingInviteKeysByInviteID.invite_1 = "aa".repeat(32);
+      },
+      { clearEpoch },
+    );
+
+    await cleared;
+    await expect(write).rejects.toBeInstanceOf(PartnerShareStoreClearedError);
+    expect(backend.state.has(STORE_KEY)).toBe(false);
+  });
+
+  it("moves the epoch when the delete fails", async () => {
+    const backend = createBackendMock();
+    backend.deleteItem = async () => {
+      throw new Error("keychain locked");
+    };
+    const store = createPartnerShareSecretStore(backend);
+    const clearEpoch = store.readPartnerShareClearEpoch();
+
+    await expect(store.clearPartnerShareSecrets()).rejects.toThrow("keychain locked");
+    await expect(
+      store.mutatePartnerShareSecrets(() => undefined, { clearEpoch }),
+    ).rejects.toBeInstanceOf(PartnerShareStoreClearedError);
+  });
+
+  it("writes with a current epoch and without one", async () => {
+    const backend = createBackendMock();
+    const store = createPartnerShareSecretStore(backend);
+    await store.clearPartnerShareSecrets();
+
+    await store.mutatePartnerShareSecrets(
+      (record) => {
+        record.ownerGenerationByGrantID.grant_1 = 1;
+      },
+      { clearEpoch: store.readPartnerShareClearEpoch() },
+    );
+    await store.mutatePartnerShareSecrets((record) => {
+      record.ownerGenerationByGrantID.grant_2 = 2;
+    });
+
+    await expect(store.readPartnerShareSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        ownerGenerationByGrantID: { grant_1: 1, grant_2: 2 },
+      }),
+    );
   });
 });

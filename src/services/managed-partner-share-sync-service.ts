@@ -1,4 +1,7 @@
-import type { PartnerShareSecretStore } from "../security/partner-share-secret-store";
+import {
+  isPartnerShareStoreClearedError,
+  type PartnerShareSecretStore,
+} from "../security/partner-share-secret-store";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { loadManagedPremiumFeatures } from "./managed-premium-features-service";
@@ -94,6 +97,36 @@ async function runManagedPartnerProjectionPass(
     return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
   }
 
+  // Captured before the pass's first network call. A partner-share clear
+  // (disconnect, local reset) after it ends the pass: its reconcile and
+  // reserve writes must not land in the cleared store.
+  const clearEpoch = partnerShareSecretStore.readPartnerShareClearEpoch();
+  try {
+    return await projectManagedPartnerShares(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      now,
+      syncState,
+      clearEpoch,
+    );
+  } catch (error) {
+    if (isPartnerShareStoreClearedError(error)) {
+      return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
+    }
+    throw error;
+  }
+}
+
+async function projectManagedPartnerShares(
+  storage: LocalAppStorage,
+  syncSecretStore: SyncSecretStore,
+  partnerShareSecretStore: PartnerShareSecretStore,
+  now: Date,
+  syncState: Awaited<ReturnType<typeof loadSyncSetupState>>,
+  clearEpoch: number,
+): Promise<ManagedPartnerProjectionSyncResult> {
+
   const premiumFeatures = await loadManagedPremiumFeatures(
     storage,
     syncSecretStore,
@@ -118,6 +151,7 @@ async function runManagedPartnerProjectionPass(
     partnerShareSecretStore,
     partnerAccessResult.value,
     now,
+    clearEpoch,
   );
   const grants = partnerAccessResult.value.owned.grants.filter(
     (grant) => grant.revokedAt === null,
@@ -158,6 +192,7 @@ async function runManagedPartnerProjectionPass(
     const generation = await reserveNextManagedPartnerProjectionGeneration(
       partnerShareSecretStore,
       grant.id,
+      clearEpoch,
     );
     const projection = buildPartnerSharedProjectionPayload(
       {
