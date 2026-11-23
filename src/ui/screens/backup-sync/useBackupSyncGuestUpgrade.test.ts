@@ -220,6 +220,7 @@ describe("useBackupSyncGuestUpgrade", () => {
         core.syncSecretStore,
         core.state,
         { email: "owner@example.com", password: "a very secure password 123" },
+        core.effectiveNow,
       );
       expect(core.setState).toHaveBeenCalledWith(nextState);
       expect(result.current.isFormOpen).toBe(false);

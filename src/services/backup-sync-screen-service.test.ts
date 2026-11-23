@@ -540,10 +540,13 @@ describe("upgradeBackupSyncGuestAccount", () => {
     const secretStore = createSyncSecretStoreMock();
     const state = await loadSettingsScreenState(storage, secretStore, new Date(2026, 3, 5));
 
-    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
-      email: "owner@example.com",
-      password: "very secure password 12345",
-    });
+    const result = await upgradeBackupSyncGuestAccount(
+      storage,
+      secretStore,
+      state,
+      { email: "owner@example.com", password: "very secure password 12345" },
+      new Date(2026, 3, 5),
+    );
 
     expect(result.ok).toBe(false);
     if (result.ok) {
@@ -567,10 +570,13 @@ describe("upgradeBackupSyncGuestAccount", () => {
       ),
     ) as typeof fetch;
 
-    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
-      email: "owner@example.com",
-      password: "very secure password 12345",
-    });
+    const result = await upgradeBackupSyncGuestAccount(
+      storage,
+      secretStore,
+      state,
+      { email: "owner@example.com", password: "very secure password 12345" },
+      new Date(2026, 3, 5),
+    );
 
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -610,12 +616,18 @@ describe("upgradeBackupSyncGuestAccount", () => {
       });
 
     try {
-      const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
-        email: "owner@example.com",
-        password: "very secure password 12345",
-      });
+      const screenNow = new Date("2026-04-05T09:30:00.000Z");
+      const result = await upgradeBackupSyncGuestAccount(
+        storage,
+        secretStore,
+        state,
+        { email: "owner@example.com", password: "very secure password 12345" },
+        screenNow,
+      );
 
       expect(result.ok && result.accountKeyReset).toBe(reset ? true : undefined);
+      // The rekey dates its new device identity with the screen's clock.
+      expect(upgrade.mock.calls[0]?.[5]).toBe(screenNow);
     } finally {
       upgrade.mockRestore();
     }
@@ -631,10 +643,13 @@ describe("upgradeBackupSyncGuestAccount", () => {
       }),
     ) as typeof fetch;
 
-    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
-      email: "owner@example.com",
-      password: "very secure password 12345",
-    });
+    const result = await upgradeBackupSyncGuestAccount(
+      storage,
+      secretStore,
+      state,
+      { email: "owner@example.com", password: "very secure password 12345" },
+      new Date(2026, 3, 5),
+    );
 
     expect(result.ok).toBe(false);
     if (result.ok) {
@@ -655,10 +670,13 @@ describe("upgradeBackupSyncGuestAccount", () => {
       }),
     ) as typeof fetch;
 
-    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
-      email: "owner@example.com",
-      password: "very secure password 12345",
-    });
+    const result = await upgradeBackupSyncGuestAccount(
+      storage,
+      secretStore,
+      state,
+      { email: "owner@example.com", password: "very secure password 12345" },
+      new Date(2026, 3, 5),
+    );
 
     expect(result).toEqual(
       expect.objectContaining({ ok: false, errorCode: "unauthorized" }),
@@ -679,10 +697,13 @@ describe("upgradeBackupSyncGuestAccount", () => {
       }),
     ) as typeof fetch;
 
-    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
-      email: "owner@example.com",
-      password: "short",
-    });
+    const result = await upgradeBackupSyncGuestAccount(
+      storage,
+      secretStore,
+      state,
+      { email: "owner@example.com", password: "short" },
+      new Date(2026, 3, 5),
+    );
 
     expect(result.ok).toBe(false);
     if (result.ok) {

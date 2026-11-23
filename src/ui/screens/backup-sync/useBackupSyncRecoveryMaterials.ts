@@ -60,6 +60,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
   const [isExportingRecoveryPhrase, setIsExportingRecoveryPhrase] = useState(false);
   const rotationInFlightRef = useRef(false);
   const revealInFlightRef = useRef(false);
+  const prepareInFlightRef = useRef(false);
   const [pendingRotationStepUp, setPendingRotationStepUp] = useState<{
     prompt: RecoveryKeyStepUpPrompt;
     forState: NonNullable<typeof state>;
@@ -85,7 +86,21 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     }
   }
 
+  // A second tap during the confirm or device-auth await would start a second
+  // regeneration or rotation.
   async function handlePrepareSyncSetup() {
+    if (prepareInFlightRef.current) {
+      return;
+    }
+    prepareInFlightRef.current = true;
+    try {
+      await prepareSyncSetup();
+    } finally {
+      prepareInFlightRef.current = false;
+    }
+  }
+
+  async function prepareSyncSetup() {
     if (!state) {
       return;
     }

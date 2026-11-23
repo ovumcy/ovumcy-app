@@ -102,10 +102,13 @@ export function useBackupSyncGuestUpgrade(core: BackupSyncSessionCore) {
     }
 
     setIsSubmitting(true);
-    const result = await upgradeBackupSyncGuestAccount(storage, syncSecretStore, state, {
-      email: trimmedEmail,
-      password: passwordValue,
-    });
+    const result = await upgradeBackupSyncGuestAccount(
+      storage,
+      syncSecretStore,
+      state,
+      { email: trimmedEmail, password: passwordValue },
+      effectiveNow,
+    );
 
     // Applies on both branches: even a failed upgrade can legitimately
     // change local state (the account_not_guest race clears the local guest

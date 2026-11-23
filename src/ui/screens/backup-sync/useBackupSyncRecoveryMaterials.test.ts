@@ -334,6 +334,43 @@ describe("useBackupSyncRecoveryMaterials", () => {
       );
       expect(result.current.isPreparingSync).toBe(false);
     });
+
+    it("regenerates once for a second tap while the first confirm is still open", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        state: createLoadedSettingsStateFixture({
+          hasStoredSyncSecrets: true,
+          hasSyncSession: false,
+        }),
+      });
+      let resolveConfirm: (value: boolean) => void = () => undefined;
+      mockOpenConfirmation.mockImplementationOnce(
+        () => new Promise<boolean>((resolve) => { resolveConfirm = resolve; }),
+      );
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockPrepareBackupSyncSetup.mockResolvedValue({
+        ok: true,
+        state: createLoadedSettingsStateFixture({ hasStoredSyncSecrets: true }),
+        recoveryPhrase: "fresh phrase words here now go",
+        regenerated: true,
+      });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+
+      await act(async () => {
+        const first = result.current.handlePrepareSyncSetup();
+        await result.current.handlePrepareSyncSetup();
+        resolveConfirm(true);
+        await first;
+      });
+
+      expect(mockOpenConfirmation).toHaveBeenCalledTimes(1);
+      expect(mockPrepareBackupSyncSetup).toHaveBeenCalledTimes(1);
+
+      mockOpenConfirmation.mockResolvedValueOnce(false);
+      await act(async () => {
+        await result.current.handlePrepareSyncSetup();
+      });
+      expect(mockOpenConfirmation).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("managed recovery-phrase rotation", () => {
