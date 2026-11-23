@@ -336,6 +336,7 @@ describe("useBackupSyncAccountConnection", () => {
         core.state,
         core.state!.syncPreferences,
         { challengeID: "challenge-1", code: "123456" },
+        core.effectiveNow,
       );
     });
 

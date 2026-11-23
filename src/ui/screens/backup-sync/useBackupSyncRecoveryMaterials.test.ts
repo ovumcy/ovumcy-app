@@ -797,6 +797,44 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(core.setAccountChangeRecoveryPhrase).toHaveBeenCalledWith("replace");
     });
 
+    it("opens one confirm for a second tap while the first is still awaiting", async () => {
+      let resolveConfirm: (value: boolean) => void = () => undefined;
+      mockOpenConfirmation.mockImplementationOnce(
+        () => new Promise<boolean>((resolve) => { resolveConfirm = resolve; }),
+      );
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockReadPending.mockResolvedValue("alpha beta gamma");
+      const { core, result } = await renderWithOffer();
+
+      await act(async () => {
+        const first = result.current.handleRevealAccountChangeRecoveryPhrase();
+        await result.current.handleRevealAccountChangeRecoveryPhrase();
+        resolveConfirm(true);
+        await first;
+      });
+
+      expect(mockOpenConfirmation).toHaveBeenCalledTimes(1);
+      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1);
+      expect(core.setGeneratedRecoveryPhrase).toHaveBeenCalledTimes(1);
+    });
+
+    it("accepts a new tap once a dismissed confirm has settled", async () => {
+      mockOpenConfirmation.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockReadPending.mockResolvedValue("alpha beta gamma");
+      const { core, result } = await renderWithOffer();
+
+      await act(async () => {
+        await result.current.handleRevealAccountChangeRecoveryPhrase();
+      });
+      await act(async () => {
+        await result.current.handleRevealAccountChangeRecoveryPhrase();
+      });
+
+      expect(mockOpenConfirmation).toHaveBeenCalledTimes(2);
+      expect(core.setGeneratedRecoveryPhrase).toHaveBeenCalledWith("alpha beta gamma");
+    });
+
     it.each(["none", "replace"] as const)("does nothing on the %s offer", async (offer) => {
       const { result } = await renderWithOffer(offer);
 
