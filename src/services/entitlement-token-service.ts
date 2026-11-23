@@ -113,8 +113,10 @@ async function loadToken(
     // other refusal — a lapsed plan, an unauthorized session, an absent
     // endpoint — is an answer and the gate falls back to the snapshot. A plan
     // or endpoint refusal also discards the cached token so no later offline
-    // read can revive it; an unauthorized answer may only mean the bearer was
-    // rotated mid-request, and a dead session is wiped by sign-out anyway.
+    // read can revive it. An unauthorized answer may only mean the bearer was
+    // rotated mid-request, so it keeps the token; a managed session that is
+    // really over ends in clearLocalSyncSession (disconnect, or the
+    // unauthorized sign-out on settings load), which clears the token.
     if (!isManagedCloudTransportFailure(fetched.errorCode)) {
       if (fetched.errorCode !== "unauthorized") {
         await input.store.clearEntitlementToken();

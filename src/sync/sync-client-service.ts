@@ -30,7 +30,9 @@ import {
   callWithManagedSession,
   type ManagedSessionCallFailure,
 } from "./managed-session-call";
+import type { EntitlementTokenStore } from "../security/entitlement-token-store";
 import { holdAccountChangeRecoveryPhrase } from "./account-change-recovery-phrase";
+import { entitlementTokenStore as defaultEntitlementTokenStore } from "./app-wipe-scope-secret-stores";
 import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation-service";
 import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
 import {
@@ -426,6 +428,14 @@ export async function connectSyncAccount(
       authResult.auth.accountID,
       now,
     );
+    // New managed session (possibly a different account): drop billing-cache
+    // state derived under the previous session BEFORE the new session is
+    // stored, so a stop in between never leaves the previous account's
+    // snapshot readable as this session's offline grace. The post-connect
+    // billing refresh repopulates it.
+    await storage.writeManagedBillingCacheRecord(
+      createDefaultManagedBillingCacheRecord(),
+    );
     await secretStore.writeSyncSecrets(
       applyManagedAuthResultToSecrets(
         { ...keyed.secrets, authSessionToken: null },
@@ -445,13 +455,6 @@ export async function connectSyncAccount(
       guestSessionRenewable: false,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
-
-    // New managed session (possibly a different account): drop billing-cache
-    // state derived under the previous session. The post-connect billing
-    // refresh repopulates it.
-    await storage.writeManagedBillingCacheRecord(
-      createDefaultManagedBillingCacheRecord(),
-    );
 
     const success: {
       ok: true;
@@ -657,6 +660,11 @@ export async function finalizeSyncSessionAfterTOTP(
       sessionResult.session.accountID,
       now,
     );
+    // Same session-boundary purge as the password-only connect path, before
+    // the new session is stored.
+    await storage.writeManagedBillingCacheRecord(
+      createDefaultManagedBillingCacheRecord(),
+    );
     await secretStore.writeSyncSecrets({
       ...keyed.secrets,
       authSessionToken: null,
@@ -678,11 +686,6 @@ export async function finalizeSyncSessionAfterTOTP(
       guestSessionRenewable: false,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
-
-    // Same session-boundary purge as the password-only connect path.
-    await storage.writeManagedBillingCacheRecord(
-      createDefaultManagedBillingCacheRecord(),
-    );
 
     return {
       ok: true,
@@ -819,6 +822,12 @@ export async function persistGuestPartnerSession(
           managedRefreshTokenExpiresAt: null,
         };
 
+  // New account boundary (a guest account is always freshly minted): drop
+  // any billing-cache state derived under a previous session before the guest
+  // session is stored, same as a normal managed connect.
+  await storage.writeManagedBillingCacheRecord(
+    createDefaultManagedBillingCacheRecord(),
+  );
   await secretStore.writeSyncSecrets({
     ...baseSecrets,
     authSessionToken: null,
@@ -847,13 +856,6 @@ export async function persistGuestPartnerSession(
     guestSessionRenewable: refreshFields.managedRefreshToken !== null,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
-
-  // New account boundary (a guest account is always freshly minted): drop
-  // any billing-cache state derived under a previous session, same as a
-  // normal managed connect.
-  await storage.writeManagedBillingCacheRecord(
-    createDefaultManagedBillingCacheRecord(),
-  );
 
   return {
     // Guest partner accounts carry no sync entitlement by construction
@@ -1281,6 +1283,11 @@ async function completeManagedRecovery(
     recoveredSecrets.wrappedKey,
   );
 
+  // Recovery establishes a fresh managed session context as well: purge the
+  // previous session's billing cache before the recovered session is stored.
+  await storage.writeManagedBillingCacheRecord(
+    createDefaultManagedBillingCacheRecord(),
+  );
   await secretStore.writeSyncSecrets(
     applyManagedAuthResultToSecrets(
       {
@@ -1310,11 +1317,6 @@ async function completeManagedRecovery(
     guestSessionRenewable: false,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
-
-  // Recovery establishes a fresh managed session context as well.
-  await storage.writeManagedBillingCacheRecord(
-    createDefaultManagedBillingCacheRecord(),
-  );
 
   return {
     ok: true,
@@ -2117,9 +2119,17 @@ export async function clearLocalSyncSession(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
+  entitlementTokenStore: Pick<
+    EntitlementTokenStore,
+    "clearEntitlementToken"
+  > = defaultEntitlementTokenStore,
 ): Promise<SyncPreferencesRecord> {
   if (preferences.mode === "managed") {
     endManagedSessionRefresh();
+    // The cached entitlement token belongs to the managed session that ends
+    // here; cleared before the session itself, so no offline read under a
+    // later session can revive it.
+    await entitlementTokenStore.clearEntitlementToken();
   }
   clearPendingManagedRecoveryRotation();
   const secrets = await secretStore.readSyncSecrets();
