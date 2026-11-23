@@ -25,6 +25,7 @@ import {
 } from "./sync-endpoint-policy";
 import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
 import { isTOTPCodeFormat } from "./sync-totp-service";
+import { readSyncWipeEpoch } from "./sync-wipe-epoch";
 
 export type ChangeSyncPasswordErrorCode =
   | NormalizeSyncEndpointErrorCode
@@ -304,6 +305,7 @@ export async function resetSyncAccountPassword(
     return { ok: false, errorCode: "password_too_long" };
   }
 
+  const wipeEpoch = readSyncWipeEpoch();
   let recoveryCode: string;
   let ownSessionRevoked: boolean;
   if (preferences.mode === "managed") {
@@ -341,11 +343,18 @@ export async function resetSyncAccountPassword(
     ownSessionRevoked = await isCommunitySessionRevoked(secretStore, client);
   }
 
-  if (!ownSessionRevoked) {
-    return { ok: true, recoveryCode, preferences, signedOut: false };
+  // A Clear local data during the reset already dropped the session and the
+  // setup; writing the start-captured copies would put pre-wipe state back.
+  // The server applied the reset, so its recovery code is still returned.
+  const kept = { ok: true as const, recoveryCode, preferences, signedOut: false };
+  if (!ownSessionRevoked || readSyncWipeEpoch() !== wipeEpoch) {
+    return kept;
   }
 
   const secrets = await secretStore.readSyncSecrets();
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return kept;
+  }
   if (secrets) {
     await secretStore.writeSyncSecrets({
       ...clearManagedSessionFromSecrets(secrets),
@@ -354,6 +363,9 @@ export async function resetSyncAccountPassword(
   }
 
   let nextPreferences = preferences;
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return kept;
+  }
   if (preferences.setupStatus === "connected") {
     nextPreferences = { ...preferences, setupStatus: "local_ready" };
     await storage.writeSyncPreferencesRecord(nextPreferences);
