@@ -959,7 +959,7 @@ describe("BackupSyncScreen", () => {
               owner_account_id: "managed-account-1",
               access_level: "full",
               status: "pending",
-              expires_at: "2026-04-10T00:00:00.000Z",
+              expires_at: "2099-04-10T00:00:00.000Z",
               created_by: "managed-account-1",
               created_at: "2026-04-03T00:00:00.000Z",
               updated_at: "2026-04-03T00:00:00.000Z",
@@ -990,7 +990,7 @@ describe("BackupSyncScreen", () => {
                 owner_account_id: "managed-account-1",
                 access_level: "full",
                 status: "pending",
-                expires_at: "2026-04-10T00:00:00.000Z",
+                expires_at: "2099-04-10T00:00:00.000Z",
                 created_by: "managed-account-1",
                 created_at: "2026-04-03T00:00:00.000Z",
                 updated_at: "2026-04-03T00:00:00.000Z",
@@ -1697,7 +1697,7 @@ describe("BackupSyncScreen", () => {
     expect(screen.queryByText(rawLastSeen)).toBeNull();
     expect(
       screen.getByText(
-        `Last seen: ${formatBackupSyncLastSeen(rawLastSeen, "en", "Not opened yet.")}`,
+        `Shared view last fetched: ${formatBackupSyncLastSeen(rawLastSeen, "en", "Not fetched yet.")}`,
       ),
     ).toBeTruthy();
 

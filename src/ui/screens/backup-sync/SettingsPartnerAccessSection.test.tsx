@@ -22,7 +22,7 @@ function createInvite(
     ownerAccountID: "owner-1",
     accessLevel: "full",
     status: "pending",
-    expiresAt: "2026-04-01T00:00:00.000Z",
+    expiresAt: "2099-04-01T00:00:00.000Z",
     acceptedAt: null,
     acceptedAccountID: null,
     revokedAt: null,
@@ -329,5 +329,71 @@ describe("SettingsPartnerAccessSection", () => {
     expect(screen.getByText(copy.sharedGrantLegacyHint)).toBeTruthy();
     expect(screen.queryByTestId("settings-partner-shared-grant-legacy-grant-ok")).toBeNull();
     expect(screen.queryByTestId("settings-partner-shared-grant-legacy-grant-revoked")).toBeNull();
+  });
+
+  it("lists no expired invite as pending and keeps one whose expiry cannot be read", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection
+          {...createBaseProps()}
+          hasManagedSession
+          overview={{
+            owned: {
+              invites: [
+                createInvite({ id: "invite-expired", expiresAt: "2020-01-01T00:00:00.000Z" }),
+                createInvite({ id: "invite-live" }),
+                createInvite({ id: "invite-unreadable", expiresAt: "not-a-date" }),
+              ],
+              grants: [],
+            },
+            sharedWithMe: [],
+          }}
+          showOwnerControls
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("settings-partner-revoke-invite-invite-expired")).toBeNull();
+    expect(screen.getByTestId("settings-partner-revoke-invite-invite-live")).toBeTruthy();
+    expect(screen.getByTestId("settings-partner-revoke-invite-invite-unreadable")).toBeTruthy();
+  });
+
+  it("lists no revoked grant as shared with this account", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection
+          {...createBaseProps()}
+          hasManagedSession
+          overview={{
+            owned: { invites: [], grants: [] },
+            sharedWithMe: [
+              createGrant({ id: "grant-revoked", revokedAt: "2026-03-09T00:00:00.000Z" }),
+            ],
+          }}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("settings-partner-shared-grant-grant-revoked")).toBeNull();
+    expect(screen.queryByText(copy.sharedWithMeTitle)).toBeNull();
+  });
+
+  it("labels the last-seen time as a fetch of the shared view, not a read receipt", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection
+          {...createBaseProps()}
+          hasManagedSession
+          overview={{
+            owned: { invites: [], grants: [createGrant({ lastSeenAt: null })] },
+            sharedWithMe: [],
+          }}
+          showOwnerControls
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(`${copy.lastSeenLabel}: ${copy.lastSeenNever}`)).toBeTruthy();
+    expect(copy.lastSeenNever).not.toMatch(/open/i);
   });
 });
