@@ -46,6 +46,8 @@ jobs:
           commit=$(node -p 'require("./cross-repo-manifest.json").repos["ovumcy-sync-community"].commit')
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
 
+      # The pin comes from a file a pull request can change, so this job keeps
+      # no Go or npm cache: a poisoned entry could otherwise reach main's runs.
       - name: Checkout ovumcy-sync-community at the pin
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,7 +60,7 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .sync-community/go.mod
-          cache-dependency-path: .sync-community/go.sum
+          cache: false
 
       - name: Build, migrate and start the server
         working-directory: .sync-community
@@ -79,7 +81,6 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: npm
 
       - name: Install dependencies
         run: npm ci
