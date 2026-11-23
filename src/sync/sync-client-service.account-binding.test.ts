@@ -138,7 +138,9 @@ describe("sign-in binds the rollback floor to the account", () => {
   it.each(["managed", "self_hosted"] as const)(
     "%s login to another account resets the floor, so the first upload probes again",
     async (mode) => {
-      const storage = createLocalAppStorageMock();
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(floorFrom("account-a", mode)),
+      });
       const result = await connectSyncAccount(
         storage,
         preparedSecretStore(),

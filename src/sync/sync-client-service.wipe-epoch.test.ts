@@ -209,6 +209,28 @@ describe("unfinished-restore mark across an account change", () => {
     expect(write).toHaveBeenCalledTimes(1);
     expect(write.mock.calls[0]).toHaveLength(1);
   });
+
+  it("decides from the stored account, not the caller's stale copy", async () => {
+    const callerCopy = selfHosted({ accountId: "acct-a", setupStatus: "local_ready" });
+    const storage = storageFor(selfHosted({ accountId: "acct-b", setupStatus: "local_ready" }));
+    const api = {
+      getCapabilities: jest.fn().mockResolvedValue({ ok: true, capabilities: CAPABILITIES }),
+      attachDevice: jest.fn().mockResolvedValue({ ok: true }),
+    } as unknown as SyncAPIClient;
+
+    await finalizeSyncSessionAfterTOTP(
+      storage,
+      createSyncSecretStoreMock(preparedSecrets({ authSessionToken: null })),
+      callerCopy,
+      { sessionToken: "session-2", accountID: "acct-b" },
+      () => api,
+      jest.fn(),
+      NOW,
+    );
+
+    const write = storage.writeSyncPreferencesRecord as jest.Mock;
+    expect(write.mock.calls[0]).toHaveLength(1);
+  });
 });
 
 describe("guest upgrade binds the key to the upgraded account", () => {
@@ -268,5 +290,32 @@ describe("guest upgrade binds the key to the upgraded account", () => {
     const stored = await harness.secretStore.readSyncSecrets();
     expect(stored?.masterKeyHex).toBe(harness.secrets.masterKeyHex);
     expect(result.preferences.accountId).toBe("acct-upgraded");
+  });
+
+  it("writes no secrets or preferences when a wipe lands during the upgrade request", async () => {
+    const harness = upgradeWith("acct-previous-owner");
+    const writeSecrets = jest.spyOn(harness.secretStore, "writeSyncSecrets");
+    const managed = {
+      upgradeGuestAccount: jest.fn().mockImplementation(async () => {
+        advanceSyncWipeEpoch();
+        return {
+          ok: true,
+          result: { accountID: "acct-upgraded", email: "owner@example.com", recoveryCode: "RC" },
+        };
+      }),
+    } as unknown as ManagedCloudAPIClient;
+
+    const result = await upgradeGuestPartnerAccount(
+      harness.storage,
+      harness.secretStore,
+      { ...createDefaultSyncPreferencesRecord(), mode: "managed", accountId: "acct-previous-owner" },
+      { email: "owner@example.com", password: "correct horse battery" },
+      () => managed,
+      NOW,
+    );
+
+    expect(result).toMatchObject({ ok: false, errorCode: "unauthorized" });
+    expect(writeSecrets).not.toHaveBeenCalled();
+    expect(harness.storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 });

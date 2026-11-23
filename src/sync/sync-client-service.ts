@@ -246,7 +246,11 @@ async function writeSignedInPreferences(
   preferences: SyncPreferencesRecord,
   accountId: string | null | undefined,
 ): Promise<void> {
-  const options = restoreMarkWriteOptions(preferences, accountId);
+  // The stored record, not the caller's copy, holds the account the mark was
+  // raised under; the copy is the fallback when storage cannot be read.
+  const stored =
+    (await storage.readSyncPreferencesRecord().catch(() => null)) ?? preferences;
+  const options = restoreMarkWriteOptions(stored, accountId);
   if (options) {
     await storage.writeSyncPreferencesRecord(nextPreferences, options);
   } else {
@@ -999,6 +1003,7 @@ export async function upgradeGuestPartnerAccount(
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   now: Date = new Date(),
 ): Promise<UpgradeGuestPartnerAccountResult> {
+  const wipeEpoch = readSyncWipeEpoch();
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets?.managedAuthSessionToken) {
     return { ok: false, errorCode: "unauthorized", preferences };
@@ -1011,6 +1016,12 @@ export async function upgradeGuestPartnerAccount(
     (sessionToken) => managedClient.upgradeGuestAccount(sessionToken, credentials),
     { managedClientFactory },
   );
+
+  // A wipe during the request ended this device's session: nothing is written
+  // back, and the screen treats it like any ended session.
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "unauthorized", preferences };
+  }
 
   if (!result.ok) {
     if (isManagedSessionEnded(result.errorCode)) {
@@ -1044,6 +1055,9 @@ export async function upgradeGuestPartnerAccount(
   // Re-read: the call may have renewed the session, and keySecretsForAccount
   // carries the record's tokens over.
   const currentSecrets = await secretStore.readSyncSecrets();
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "unauthorized", preferences };
+  }
   let keyReset: { accountKeyReset?: true } = {};
   if (currentSecrets) {
     const keyed = keySecretsForAccount(currentSecrets, preferences, accountID, now);
@@ -1058,6 +1072,9 @@ export async function upgradeGuestPartnerAccount(
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
   };
+  if (readSyncWipeEpoch() !== wipeEpoch) {
+    return { ok: false, errorCode: "unauthorized", preferences };
+  }
   await writeSignedInPreferences(storage, nextPreferences, preferences, accountID);
 
   return {

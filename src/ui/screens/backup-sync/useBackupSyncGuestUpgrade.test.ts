@@ -227,6 +227,29 @@ describe("useBackupSyncGuestUpgrade", () => {
       expect(result.current.passwordValue).toBe("");
       expect(result.current.generatedRecoveryCode).toBe("fresh-code-1234");
       expect(result.current.isSubmitting).toBe(false);
+      expect(core.setAccountChangeRecoveryPhrase).not.toHaveBeenCalled();
+    });
+
+    it("opens the gated account-change reveal when the upgrade replaced the key", async () => {
+      mockUpgradeBackupSyncGuestAccount.mockResolvedValue({
+        ok: true,
+        state: createLoadedSettingsStateFixture({ hasSyncSession: true }),
+        email: "owner@example.com",
+        recoveryCode: "fresh-code-1234",
+        accountKeyReset: true,
+      });
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
+
+      await act(() => {
+        result.current.setEmailValue("owner@example.com");
+        result.current.setPasswordValue("a very secure password 123");
+      });
+      await act(async () => {
+        await result.current.handleSubmitUpgrade();
+      });
+
+      expect(core.setAccountChangeRecoveryPhrase).toHaveBeenCalledWith("reveal");
     });
 
     it("keeps the form open on a recoverable failure so the owner can retry", async () => {

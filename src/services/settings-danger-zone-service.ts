@@ -5,6 +5,7 @@ import {
   type WipeScopeSecretStores,
 } from "../security/wipe-scope-secrets";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { advanceSyncWipeEpoch } from "../sync/sync-wipe-epoch";
 
 export const CLEAR_LOCAL_DATA_CONFIRMATION = "CLEAR";
 
@@ -30,6 +31,9 @@ export async function clearAllLocalSettingsData(
       errorCode: "generic";
     }
 > {
+  // Before the database reset: a sync answer arriving while it runs must
+  // already see the wipe, or it writes into the reset database.
+  advanceSyncWipeEpoch();
   let storageCleared = true;
   try {
     await storage.clearAllLocalData();

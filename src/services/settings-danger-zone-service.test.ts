@@ -15,6 +15,7 @@ import {
   CLEAR_LOCAL_DATA_CONFIRMATION,
   isClearLocalDataConfirmationValid,
 } from "./settings-danger-zone-service";
+import { readSyncWipeEpoch } from "../sync/sync-wipe-epoch";
 
 describe("settings-danger-zone-service", () => {
   it("validates the destructive confirmation phrase strictly", () => {
@@ -41,6 +42,25 @@ describe("settings-danger-zone-service", () => {
     });
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
     await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+  });
+
+  it("advances the sync wipe epoch before the storage reset starts", async () => {
+    const before = readSyncWipeEpoch();
+    let epochDuringReset: number | null = null;
+    const storage = createLocalAppStorageMock({
+      clearAllLocalData: jest.fn().mockImplementation(async () => {
+        epochDuringReset = readSyncWipeEpoch();
+      }),
+    });
+
+    await clearAllLocalSettingsData(
+      storage,
+      createSyncSecretStoreMock(),
+      createWipeScopeSecretStoresMock(),
+    );
+
+    expect(epochDuringReset).not.toBeNull();
+    expect(epochDuringReset).not.toBe(before);
   });
 
   it("drops a pending managed partner invite token", async () => {
