@@ -111,4 +111,21 @@ describe("loadSettingsScreenState managed billing", () => {
     expect(state.hasSyncSession).toBe(false);
     expect(state.managedPremiumAccess.doctorPDF).toBe(false);
   });
+
+  it("still loads and keeps the session when the unauthorized sign-out cannot finish", async () => {
+    const storage = createSettingsStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    await stubManagedSession(storage, secretStore);
+    jest
+      .spyOn(syncClientService, "loadConnectedSyncCapabilities")
+      .mockResolvedValue({ ok: false, errorCode: "unauthorized" } as never);
+    jest
+      .spyOn(syncClientService, "clearLocalSyncSession")
+      .mockRejectedValue(new Error("secure store unavailable"));
+
+    const state = await loadSettingsScreenState(storage, secretStore, NOW);
+
+    expect(state.hasSyncSession).toBe(true);
+    expect(state.managedPremiumAccess.doctorPDF).toBe(false);
+  });
 });

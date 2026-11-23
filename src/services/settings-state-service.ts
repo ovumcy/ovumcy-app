@@ -88,12 +88,18 @@ export async function loadSettingsScreenState(
         syncState.preferences.mode,
       );
     } else {
-      syncPreferences = await clearLocalSyncSession(
-        storage,
-        secretStore,
-        syncState.preferences,
-      );
-      hasSyncSession = false;
+      // A sign-out that cannot finish keeps the session; the screen still
+      // loads, and the next load retries the sign-out.
+      try {
+        syncPreferences = await clearLocalSyncSession(
+          storage,
+          secretStore,
+          syncState.preferences,
+        );
+        hasSyncSession = false;
+      } catch {
+        // keep the loaded session state
+      }
     }
   }
 

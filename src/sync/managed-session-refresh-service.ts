@@ -89,6 +89,11 @@ export function endManagedSessionRefresh(): void {
   sessionEpoch += 1;
 }
 
+/** Changes whenever a managed session ends on this device. */
+export function readManagedSessionEpoch(): number {
+  return sessionEpoch;
+}
+
 /**
  * ensureFreshManagedSession returns a managed access token that is safe to use
  * right now, renewing it first when it is about to expire.
