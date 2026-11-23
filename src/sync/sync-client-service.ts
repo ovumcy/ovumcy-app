@@ -35,6 +35,8 @@ import type { EntitlementTokenStore } from "../security/entitlement-token-store"
 import { holdAccountChangeRecoveryPhrase } from "./account-change-recovery-phrase";
 import { readSyncWipeEpoch } from "./sync-wipe-epoch";
 import { entitlementTokenStore as defaultEntitlementTokenStore } from "./app-wipe-scope-secret-stores";
+import type { PartnerShareSecretStore } from "../security/partner-share-secret-store";
+import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "./app-partner-share-service";
 import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation-service";
 import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
 import {
@@ -2175,6 +2177,10 @@ export async function disconnectSyncAccount(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   remoteTimeoutMs: number = DISCONNECT_REMOTE_TIMEOUT_MS,
+  partnerShareSecretStore: Pick<
+    PartnerShareSecretStore,
+    "clearPartnerShareSecrets"
+  > = defaultPartnerShareSecretStore,
 ): Promise<{
   ok: true;
   preferences: SyncPreferencesRecord;
@@ -2190,6 +2196,13 @@ export async function disconnectSyncAccount(
     ),
     remoteTimeoutMs,
   );
+
+  // An explicit disconnect ends the device's partner sharing with the managed
+  // session; cleared before the session, so a failed clear keeps both. An
+  // unauthorized sign-out keeps the keys: the same account signs back in.
+  if (preferences.mode === "managed") {
+    await partnerShareSecretStore.clearPartnerShareSecrets();
+  }
 
   const nextPreferences = await clearLocalSyncSession(
     storage,

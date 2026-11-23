@@ -122,6 +122,6 @@ Reminders are local notifications, scheduled only after the owner grants permiss
 
 ## Known Gaps
 
-- Disconnect and sync-mode switch do not clear the partner-share secret store or the entitlement token; only a single grant key can be cleared outside the wipe paths (`clearManagedPartnerGrantKey`).
+- A managed disconnect clears the partner-share secret store, and every end of a managed session clears the entitlement token; an unauthorized sign-out, a self-hosted disconnect and a sync-mode switch keep the partner-share store. Outside those paths and the wipe paths only a single grant key can be cleared (`clearManagedPartnerGrantKey`).
 - The TLS pin store (`src/security/cert-pin-store.ts`) has a SecureStore backend, but no flow writes a pin yet; the wipe paths delete its entry.
 - Certificate pinning is not enforced natively (see `SECURITY.md`).

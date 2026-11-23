@@ -37,8 +37,9 @@ export type PartnerShareGrantKeyRole = "owner" | "partner";
 // partner accounts cannot trick the owner into deriving K_grant for the
 // second grant. Entries are kept indefinitely (the set is one row per
 // historical invite and only cleared by `clearPartnerShareSecrets`, which
-// runs on "clear local data" and account deletion; disconnect and mode
-// switch keep the entry).
+// runs on "clear local data", account deletion and a managed disconnect
+// together with every key; an unauthorized sign-out and a mode switch keep the
+// entry).
 export type PartnerShareConsumedInviteRecord = {
   grantID: string;
   consumedAtISO: string;
