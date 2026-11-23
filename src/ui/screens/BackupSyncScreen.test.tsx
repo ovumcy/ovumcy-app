@@ -3230,8 +3230,13 @@ describe("BackupSyncScreen", () => {
       ).toBeTruthy();
       expect(screen.queryByTestId("settings-sync-recovery-phrase")).toBeNull();
       expect(rotationBodies).toHaveLength(0);
+      const candidate = screen.getByTestId("sync-recovery-rotation-stepup-candidate-phrase")
+        .props.children as string;
 
       await fireEvent.changeText(password, "owner password 12345");
+      await fireEvent.press(screen.getByTestId("sync-recovery-rotation-stepup-confirm"));
+      expect(rotationBodies).toHaveLength(0);
+      await fireEvent.press(screen.getByTestId("sync-recovery-rotation-stepup-candidate-ack"));
       await fireEvent.press(screen.getByTestId("sync-recovery-rotation-stepup-confirm"));
 
       await waitFor(() =>
@@ -3241,6 +3246,7 @@ describe("BackupSyncScreen", () => {
       const phrase = screen.getByTestId("settings-sync-recovery-phrase")
         .props.children as string;
       expect(phrase.split(" ")).toHaveLength(12);
+      expect(phrase).toBe(candidate);
       expect(rotationBodies).toEqual([
         expect.objectContaining({ current_password: "owner password 12345" }),
       ]);

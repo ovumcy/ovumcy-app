@@ -24,9 +24,14 @@ export type RecoveryKeyStepUpPrompt = {
     | "rate_limited"
     // Managed recovery-phrase rotation only.
     | "totp_not_configured"
+    | "sync_not_configured"
+    | "totp_fresh_code_required"
     | "rotation_unconfirmed"
     | "generic"
     | null;
+  // Managed recovery-phrase rotation only: the phrase the request will carry,
+  // shown to be written down before the submit is enabled.
+  candidatePhrase?: string;
 };
 
 /**

@@ -18,6 +18,11 @@ describe("managed-recovery-rotation-copy", () => {
         copy.stepUp.explanation,
         copy.stepUp.errors.rotationUnconfirmed ?? "",
         copy.stepUp.errors.rotationFailed ?? "",
+        copy.stepUp.errors.syncNotConfigured ?? "",
+        copy.stepUp.errors.totpFreshCodeRequired ?? "",
+        copy.stepUp.candidate?.title ?? "",
+        copy.stepUp.candidate?.notice ?? "",
+        copy.stepUp.candidate?.acknowledgeLabel ?? "",
       ]) {
         expect(value.length).toBeGreaterThan(0);
       }
