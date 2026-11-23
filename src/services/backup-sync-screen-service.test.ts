@@ -395,6 +395,13 @@ describe("acceptBackupSyncPartnerInviteAsGuest", () => {
     );
 
     expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("expected a successful guest-accept result");
+    }
+    expect(result.state.syncPreferences.guestSessionRenewable).toBe(true);
+    expect(result.state.syncPreferences.guestSessionExpiresAt).toBe(
+      "2026-07-05T00:00:00.000Z",
+    );
     const storedSecrets = await secretStore.readSyncSecrets();
     expect(storedSecrets).toEqual(
       expect.objectContaining({
