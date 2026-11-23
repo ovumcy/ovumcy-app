@@ -220,6 +220,12 @@ export type SyncAPIClient = {
 
 type FetchLike = RedirectRefusingFetch;
 
+// Every request is aborted at its deadline and reported as network_failed.
+export const SYNC_REQUEST_TIMEOUT_MS = 30_000;
+// A blob may reach the server's 16 MiB default cap, which a slow mobile link
+// cannot move in 30 s.
+export const SYNC_BLOB_TRANSFER_TIMEOUT_MS = 120_000;
+
 type ErrorPayload = {
   error?: string;
 };
@@ -708,6 +714,7 @@ export function createSyncAPIClient(
               ? {}
               : { expected_generation: input.expectedGeneration }),
           },
+          timeoutMs: SYNC_BLOB_TRANSFER_TIMEOUT_MS,
         },
         isRawSyncBlobRecord,
         "invalid_response",
@@ -724,6 +731,7 @@ export function createSyncAPIClient(
         {
           method: "GET",
           sessionToken,
+          timeoutMs: SYNC_BLOB_TRANSFER_TIMEOUT_MS,
         },
         isRawSyncBlobRecord,
         "invalid_response",
@@ -781,6 +789,7 @@ async function requestJSON<T>(
     method: "GET" | "POST" | "PUT";
     body?: unknown;
     sessionToken?: string;
+    timeoutMs?: number;
   },
   guard: (value: unknown) => value is T,
   invalidResponseCode: SyncAPIErrorCode,
@@ -811,6 +820,7 @@ async function performFetch(
     method: "GET" | "POST" | "PUT" | "DELETE";
     body?: unknown;
     sessionToken?: string;
+    timeoutMs?: number;
   },
 ): Promise<Response> {
   const headers = new Headers();
@@ -822,26 +832,62 @@ async function performFetch(
     headers.set("Content-Type", "application/json");
   }
 
-  try {
-    const requestInit: RequestInit = {
-      method: options.method,
-      headers,
-      // A 307/308 to another host would re-send the bearer token and the JSON
-      // body there. The default fetchImpl enforces this natively; the origin
-      // check below fails closed for any fetch that ignores it.
-      redirect: "error",
-      // Bearer-only API; expo/fetch would otherwise attach the native cookie jar.
-      credentials: "omit",
-    };
-    if (options.body !== undefined) {
-      requestInit.body = JSON.stringify(options.body);
-    }
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<Response>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve(networkFailedResponse());
+    }, options.timeoutMs ?? SYNC_REQUEST_TIMEOUT_MS);
+  });
 
+  const requestInit: RequestInit = {
+    method: options.method,
+    headers,
+    // A 307/308 to another host would re-send the bearer token and the JSON
+    // body there. The default fetchImpl enforces this natively; the origin
+    // check below fails closed for any fetch that ignores it.
+    redirect: "error",
+    // Bearer-only API; expo/fetch would otherwise attach the native cookie jar.
+    credentials: "omit",
+    signal: controller.signal,
+  };
+  if (options.body !== undefined) {
+    requestInit.body = JSON.stringify(options.body);
+  }
+
+  try {
+    // The race settles on the deadline even if a fetch ignores the signal.
+    return await Promise.race([
+      fetchAndBuffer(fetchImpl, url, requestInit),
+      timedOut,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// The body is read inside the deadline too: a server that sends headers and
+// then stalls must not hold the caller past the timeout.
+async function fetchAndBuffer(
+  fetchImpl: FetchLike,
+  url: string,
+  requestInit: RequestInit,
+): Promise<Response> {
+  try {
     const response = await fetchImpl(url, requestInit);
     if (responseLeftRequestOrigin(url, response)) {
       return networkFailedResponse();
     }
-    return response;
+    const body = await response.text();
+    // Copied pair by pair: the platform Response may not accept another
+    // implementation's Headers object as its init.
+    const headers = new Headers();
+    response.headers.forEach((value, name) => headers.append(name, value));
+    return new Response(body === "" ? null : body, {
+      status: response.status,
+      headers,
+    });
   } catch {
     return networkFailedResponse();
   }
