@@ -55,7 +55,10 @@ variables, so a normal `npm test` never depends on external services:
 
 ```bash
 # Live sync against a running ovumcy-sync-community server (CI runs this
-# suite against the commit pinned in cross-repo-manifest.json)
+# suite against the commit pinned in cross-repo-manifest.json). The TOTP cases
+# need the server started with FIELD_ENCRYPTION_KEY (`openssl rand -hex 32`),
+# and the step-up budget case spends this address's 15-minute code budget, so
+# a second run needs a fresh server.
 OVUMCY_SYNC_LIVE_BASE_URL=http://127.0.0.1:8080 npm run test:live:sync
 
 # Live managed + community bridge (needs all three set)

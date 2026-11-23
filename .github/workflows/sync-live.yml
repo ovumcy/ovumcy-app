@@ -71,6 +71,10 @@ jobs:
           AUTH_RATE_LIMIT_COUNT: "1000"
           SYNC_RATE_LIMIT_COUNT: "1000"
         run: |
+          # Enables two-factor on the throwaway server (the suite's TOTP cases);
+          # the key dies with the runner.
+          FIELD_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+          export FIELD_ENCRYPTION_KEY
           go build -trimpath -o "$RUNNER_TEMP/ovumcy-sync-community" ./cmd/ovumcy-sync-community
           "$RUNNER_TEMP/ovumcy-sync-community" migrate
           nohup "$RUNNER_TEMP/ovumcy-sync-community" serve > "$RUNNER_TEMP/sync-server.log" 2>&1 &
