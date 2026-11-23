@@ -629,6 +629,7 @@ describe("sync-account-recovery-service", () => {
         preferences: expect.objectContaining({
           setupStatus: "local_ready",
         }),
+        signedOut: true,
       });
       await expect(secretStore.readSyncSecrets()).resolves.toEqual(
         expect.objectContaining({
@@ -812,6 +813,7 @@ describe("sync-account-recovery-service", () => {
         ok: true,
         recoveryCode: "rotated1234rotated1234rotated123",
         preferences: expect.objectContaining({ setupStatus: "local_ready" }),
+        signedOut: true,
       });
       expect(resetPassword).toHaveBeenCalledWith({
         resetToken: "reset-token-1",
@@ -893,6 +895,7 @@ describe("sync-account-recovery-service", () => {
           expect.objectContaining({
             ok: true,
             preferences: expect.objectContaining({ setupStatus: "local_ready" }),
+            signedOut: true,
           }),
         );
         expect(client.refreshSession).toHaveBeenCalledWith("refresh-1");
@@ -931,6 +934,7 @@ describe("sync-account-recovery-service", () => {
           ok: true,
           recoveryCode: "rotated1234rotated1234rotated123",
           preferences,
+          signedOut: false,
         });
         expect(getSession).toHaveBeenCalledWith("managed-session-1");
         await expect(secretStore.readSyncSecrets()).resolves.toEqual(before);

@@ -304,7 +304,7 @@ export function useSyncAccountSecurityController({
       setRevealedRecoveryCodeFromPasswordChange(false);
       setForgotStage("completed");
       setForgotStatus("success");
-      setForgotSignedOut(true);
+      setForgotSignedOut(result.signedOut);
       setForgotResetToken("");
       setForgotResetTokenExpiresAt("");
       setForgotNewPassword("");
