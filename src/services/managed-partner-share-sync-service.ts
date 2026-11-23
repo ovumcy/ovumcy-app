@@ -39,10 +39,10 @@ let queuedPass: QueuedProjectionPass | null = null;
 function startProjectionPass(
   args: ProjectionPassArgs,
 ): Promise<ManagedPartnerProjectionSyncResult> {
+  // A pass starts only while none is active, so the settling pass is always
+  // the active one.
   const pass = runManagedPartnerProjectionPass(...args).finally(() => {
-    if (activePass === pass) {
-      activePass = null;
-    }
+    activePass = null;
   });
   activePass = pass;
   return pass;
