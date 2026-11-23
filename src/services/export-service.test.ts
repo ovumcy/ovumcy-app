@@ -9,6 +9,7 @@ import type { ScreeningResponse } from "../models/screening";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { listCycleHistoryRecords } from "./cycle-history-records";
 import type { ExportPDFBuildInput } from "./export-pdf-service";
 import {
   buildLocalExportArtifact,
@@ -584,6 +585,56 @@ describe("export-service", () => {
       "2026-01-01",
       "2026-03-01",
       "2026-05-10",
+    ]);
+  });
+
+  it("keeps rows after today out of the PDF's cycle history when the range reaches past today", async () => {
+    const stored = [
+      { ...createEmptyDayLogRecord("2026-05-18"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-05-19"), isPeriod: true },
+      { ...createEmptyDayLogRecord("2026-05-25"), notes: "planned" },
+      { ...createEmptyDayLogRecord("2026-06-02"), isPeriod: true, cycleStart: true },
+    ];
+    const listDayLogRecordsInRange = jest
+      .fn()
+      .mockImplementation(async (from: string, to: string) =>
+        stored.filter((record) => record.date >= from && record.date <= to),
+      );
+    const storage = createStorageMock({
+      listDayLogRecordsInRange,
+      readDayLogSummary: jest.fn().mockResolvedValue({
+        totalEntries: stored.length,
+        hasData: true,
+        dateFrom: "2026-05-18",
+        dateTo: "2026-06-02",
+      }),
+    });
+    const now = new Date(2026, 4, 20, 10);
+    const loaded = await loadLocalExportState(storage, now, {
+      preset: "custom",
+      fromDate: "2026-05-01",
+      toDate: "2026-06-02",
+    });
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+    listDayLogRecordsInRange.mockClear();
+
+    const buildPDFContent = jest.fn().mockResolvedValue(new Uint8Array([0x25]));
+    const result = await buildLocalExportArtifact(storage, loaded.state, "pdf", now, {
+      buildPDFContent,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(listDayLogRecordsInRange).toHaveBeenCalledTimes(1);
+    const input = buildPDFContent.mock.calls[0]?.[0] as ExportPDFBuildInput;
+    expect(input.dayLogs).toEqual(
+      await storage.listDayLogRecordsInRange("2026-05-01", "2026-06-02"),
+    );
+    expect(input.cycleHistoryLogs).toEqual(await listCycleHistoryRecords(storage, now));
+    expect(input.cycleHistoryLogs.map((record) => record.date)).toEqual([
+      "2026-05-18",
+      "2026-05-19",
     ]);
   });
 
