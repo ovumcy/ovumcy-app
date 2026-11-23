@@ -54,8 +54,9 @@ you opt in. They use `describe.skip` / early-return guards keyed on environment
 variables, so a normal `npm test` never depends on external services:
 
 ```bash
-# Live sync against a running ovumcy-sync-community server
-OVUMCY_SYNC_LIVE_BASE_URL=http://127.0.0.1:8080 npx jest sync-client-service.live
+# Live sync against a running ovumcy-sync-community server (CI runs this
+# suite against the commit pinned in cross-repo-manifest.json)
+OVUMCY_SYNC_LIVE_BASE_URL=http://127.0.0.1:8080 npm run test:live:sync
 
 # Live managed + community bridge (needs all three set)
 OVUMCY_MANAGED_LIVE_BASE_URL=... \

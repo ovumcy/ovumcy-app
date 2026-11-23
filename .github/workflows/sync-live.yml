@@ -1,0 +1,104 @@
+name: Sync live contract
+
+# Runs the community live suite (src/sync/sync-client-service.live.test.ts)
+# against a real ovumcy-sync-community server built from the commit pinned in
+# cross-repo-manifest.json, so a transport-contract change on either side fails
+# here instead of passing a mocked suite. The peer is public, so no secret is
+# needed. The managed live suite stays opt-in (TESTING.md): it needs the private
+# ovumcy-managed repo and an admin token.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  # Merge-queue validation runs: a required check must also report on merge_group.
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-live-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  sync-live-community:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read pinned sync-community commit
+        id: pin
+        run: |
+          commit=$(node -p 'require("./cross-repo-manifest.json").repos["ovumcy-sync-community"].commit')
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout ovumcy-sync-community at the pin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ovumcy/ovumcy-sync-community
+          ref: ${{ steps.pin.outputs.commit }}
+          path: .sync-community
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .sync-community/go.mod
+          cache-dependency-path: .sync-community/go.sum
+
+      - name: Build, migrate and start the server
+        working-directory: .sync-community
+        env:
+          BIND_ADDR: 127.0.0.1:8080
+          DB_PATH: ${{ runner.temp }}/sync-live.sqlite
+          # The default auth limit (5 per 15 min per IP) is about what one suite
+          # run spends; one more test case would trip it.
+          AUTH_RATE_LIMIT_COUNT: "1000"
+          SYNC_RATE_LIMIT_COUNT: "1000"
+        run: |
+          go build -trimpath -o "$RUNNER_TEMP/ovumcy-sync-community" ./cmd/ovumcy-sync-community
+          "$RUNNER_TEMP/ovumcy-sync-community" migrate
+          nohup "$RUNNER_TEMP/ovumcy-sync-community" serve > "$RUNNER_TEMP/sync-server.log" 2>&1 &
+          timeout 60 sh -c 'until curl -sf http://127.0.0.1:8080/healthz > /dev/null; do sleep 1; done'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Live sync suite
+        env:
+          OVUMCY_SYNC_LIVE_BASE_URL: http://127.0.0.1:8080
+        run: npm run test:live:sync -- --json --outputFile="$RUNNER_TEMP/sync-live.json"
+
+      # The suite is env-gated with describe.skip, so a renamed variable would
+      # turn this job green with nothing run.
+      - name: Assert the suite ran
+        run: |
+          node -e '
+            const r = require(process.env.RUNNER_TEMP + "/sync-live.json");
+            if (r.numPassedTests === 0 || r.numPendingTests > 0) {
+              console.error(`live suite did not run: passed=${r.numPassedTests} pending=${r.numPendingTests}`);
+              process.exit(1);
+            }'
+
+      - name: Server log
+        if: ${{ failure() }}
+        run: cat "$RUNNER_TEMP/sync-server.log"
