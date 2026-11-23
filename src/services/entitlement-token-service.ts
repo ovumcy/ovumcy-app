@@ -8,6 +8,7 @@ import {
   isManagedCloudTransportFailure,
   type ManagedCloudAPIClient,
 } from "../sync/managed-cloud-api-client";
+import { readManagedSessionEpoch } from "../sync/managed-session-refresh-service";
 import { MANAGED_CLOUD_AUTH_BASE_URL } from "../sync/sync-contract";
 
 /**
@@ -102,7 +103,13 @@ async function loadToken(
     input.client ?? createManagedCloudAPIClient(MANAGED_CLOUD_AUTH_BASE_URL);
 
   if (input.managedSessionToken) {
+    const epoch = readManagedSessionEpoch();
     const fetched = await client.getEntitlementToken(input.managedSessionToken);
+    if (epoch !== readManagedSessionEpoch()) {
+      // The session ended while the mint was in flight: its sign-out already
+      // cleared the cache, and writing this token back would revive it.
+      return null;
+    }
     if (fetched.ok) {
       // Cache for offline use; the signed exp bounds how long it stays useful.
       await input.store.writeEntitlementToken({ token: fetched.result.token });

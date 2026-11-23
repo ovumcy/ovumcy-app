@@ -1,5 +1,6 @@
 import { createSyncSecretsRecord } from "../security/sync-crypto";
 import type { SyncSecretStore } from "../security/sync-secret-store";
+import { resolveVerifiedEntitlements } from "../services/entitlement-token-service";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import { entitlementTokenStore } from "./app-wipe-scope-secret-stores";
@@ -271,5 +272,41 @@ describe("entitlement token at the end of a session", () => {
     await expect(secretStore.readSyncSecrets()).resolves.toMatchObject({
       managedAuthSessionToken: "managed-session-0",
     });
+  });
+
+  it("never writes back a token whose mint was in flight across the sign-out", async () => {
+    let answerMint: (value: unknown) => void = () => undefined;
+    const client = {
+      getEntitlementToken: jest.fn(
+        () =>
+          new Promise((resolve) => {
+            answerMint = resolve;
+          }),
+      ),
+    } as unknown as ManagedCloudAPIClient;
+    const tokenStore = {
+      readEntitlementToken: jest.fn().mockResolvedValue(null),
+      writeEntitlementToken: jest.fn().mockResolvedValue(undefined),
+      clearEntitlementToken: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const resolving = resolveVerifiedEntitlements({
+      store: tokenStore,
+      managedSessionToken: "managed-session-0",
+      expectedSub: "account-1",
+      now: Math.floor(NOW.getTime() / 1000),
+      client,
+    });
+    await clearLocalSyncSession(
+      createLocalAppStorageMock(),
+      storedSecretStore(),
+      managedPreferences,
+      tokenStore,
+    );
+    answerMint({ ok: true, result: { token: "minted-before-sign-out" } });
+
+    await expect(resolving).resolves.toEqual({ status: "unavailable" });
+    expect(tokenStore.clearEntitlementToken).toHaveBeenCalledTimes(1);
+    expect(tokenStore.writeEntitlementToken).not.toHaveBeenCalled();
   });
 });
