@@ -117,6 +117,53 @@ describe("SettingsSyncSetupSection", () => {
     expect(screen.queryByTestId("settings-sync-step-done")).toBeNull();
   });
 
+  it("locks sync actions and says sync is not included when the server refuses sync under an active plan", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const syncCapabilities = {
+      mode: "managed" as const,
+      syncEnabled: false,
+      recoverySupported: true,
+      pushSupported: false,
+      portalSupported: false,
+      advancedCloudInsights: false,
+      maxDevices: 5,
+      maxBlobBytes: 1024,
+    };
+
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          hasStoredSyncSecrets
+          hasSyncSession
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: true,
+            hasSyncSession: true,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "active",
+            notSetLabel: "Not set",
+            preferences: props.preferences,
+            syncCapabilities,
+            viewData,
+          })}
+          syncCapabilities={syncCapabilities}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByTestId("settings-sync-plan-blocked-banner")).toBeTruthy();
+    expect(screen.getAllByText(viewData.status.syncNotIncluded).length).toBeGreaterThan(0);
+    expect(screen.queryByText(viewData.syncBlockedNoPlan)).toBeNull();
+    expect(screen.queryByTestId("settings-sync-upload-button")).toBeNull();
+    expect(screen.getByTestId("settings-sync-plan-retry-button")).toBeTruthy();
+  });
+
   it("marks a completed step with a done badge", async () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);

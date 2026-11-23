@@ -84,7 +84,12 @@ export function useBackupSyncDeviceManagement(core: BackupSyncSessionCore) {
     );
     if (!result.ok) {
       setDeviceErrorMessage(
-        resolveBackupSyncDeviceErrorMessage(result.errorCode, deviceCopy),
+        resolveBackupSyncDeviceErrorMessage(
+          result.errorCode,
+          deviceCopy,
+          undefined,
+          state.managedPremiumAccess.planStatus,
+        ),
       );
       return;
     }
@@ -200,10 +205,15 @@ export function useBackupSyncDeviceManagement(core: BackupSyncSessionCore) {
         return;
       }
       setDeviceErrorMessage(
-        resolveBackupSyncDeviceErrorMessage(result.errorCode, deviceCopy, {
-          retryAfterSeconds: result.retryAfterSeconds,
-          template: viewData.account.errors.retryInSeconds,
-        }),
+        resolveBackupSyncDeviceErrorMessage(
+          result.errorCode,
+          deviceCopy,
+          {
+            retryAfterSeconds: result.retryAfterSeconds,
+            template: viewData.account.errors.retryInSeconds,
+          },
+          forState.managedPremiumAccess.planStatus,
+        ),
       );
       if (result.errorCode === "device_not_found") {
         // Another device already removed this entry — the rendered list is

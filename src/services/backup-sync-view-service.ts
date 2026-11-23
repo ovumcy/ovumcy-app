@@ -45,6 +45,9 @@ export type BackupSyncSetupPresentation = {
   guidanceStepNumber: number;
   hasManagedPlan: boolean;
   isManaged: boolean;
+  // Why managed sync actions are locked for a signed-in account, or null when
+  // they are not locked (`resolveManagedSyncBlockedMessage`).
+  managedSyncBlockedMessage: string | null;
   lastSyncValue: string;
   localStepTitle: string;
   planMessage: string;
@@ -238,7 +241,7 @@ export function buildBackupSyncSetupPresentation({
   isRestoring: boolean;
   isSyncing: boolean;
   locale?: string;
-  managedPlanStatus: "unknown" | "inactive" | "active";
+  managedPlanStatus: ManagedPlanStatus;
   notSetLabel: string;
   preferences: SyncPreferencesRecord;
   subscriptionCountdownMessage?: string;
@@ -248,14 +251,18 @@ export function buildBackupSyncSetupPresentation({
   const isManaged = preferences.mode === "managed";
   const supportsInlineAccountAuth = supportsInlineSyncAccountAuth(preferences.mode);
   const hasManagedPlan = isManaged && managedPlanStatus === "active";
-  const syncEnabled = syncCapabilities?.syncEnabled !== false;
+  // Managed sync follows the server's `sync_allowed` alone, not the plan
+  // status; capabilities that are missing or failed to load keep it locked.
+  const syncEnabled = isManaged
+    ? syncCapabilities?.syncEnabled === true
+    : syncCapabilities?.syncEnabled !== false;
+  const managedSyncBlockedMessage =
+    isManaged && hasSyncSession && !syncEnabled
+      ? resolveManagedSyncBlockedMessage(managedPlanStatus, syncCapabilities, viewData)
+      : null;
   const accountActionsDisabled =
     isPreparing || isAuthenticating || isRecovering || isRestoring || isSyncing;
-  const canShowSyncActions =
-    hasStoredSyncSecrets &&
-    hasSyncSession &&
-    syncEnabled &&
-    (!isManaged || hasManagedPlan);
+  const canShowSyncActions = hasStoredSyncSecrets && hasSyncSession && syncEnabled;
   const selectedModeLabel =
     viewData.modeOptions.find((option) => option.value === preferences.mode)?.label ??
     preferences.mode;
@@ -287,12 +294,9 @@ export function buildBackupSyncSetupPresentation({
     guidanceMessage = isManaged
       ? viewData.accountStepHintManaged
       : viewData.accountStepHintSelfHosted;
-  } else if (isManaged && !hasManagedPlan) {
+  } else if (managedSyncBlockedMessage !== null) {
     guidanceStepNumber = 3;
-    guidanceMessage =
-      managedPlanStatus === "unknown"
-        ? viewData.planCheckFailed
-        : viewData.syncBlockedNoPlan;
+    guidanceMessage = managedSyncBlockedMessage;
   } else if (canShowSyncActions) {
     guidanceStepNumber = syncStepNumber;
     guidanceMessage = viewData.status.connected;
@@ -317,6 +321,7 @@ export function buildBackupSyncSetupPresentation({
     endpointSummary,
     hasManagedPlan,
     isManaged,
+    managedSyncBlockedMessage,
     lastSyncValue: preferences.lastSyncedAt
       ? formatSettingsLastSync(preferences.lastSyncedAt, locale)
       : viewData.lastSyncNever,
@@ -332,6 +337,25 @@ export function buildBackupSyncSetupPresentation({
     supportsInlineAccountAuth,
     syncStepTitle: renumberStepTitle(viewData.syncStepTitle, isManaged ? 4 : 3),
   };
+}
+
+type ManagedPlanStatus = "unknown" | "inactive" | "active";
+
+// The plan copy is reserved for an account the billing snapshot reports
+// without an active plan; an active plan whose server refuses sync gets the
+// "not included" copy, and an unconfirmed answer the check-failed copy.
+export function resolveManagedSyncBlockedMessage(
+  managedPlanStatus: ManagedPlanStatus,
+  syncCapabilities: SyncCapabilityDocument | null,
+  viewData: SettingsViewData["account"],
+): string {
+  if (managedPlanStatus === "inactive") {
+    return viewData.syncBlockedNoPlan;
+  }
+  if (managedPlanStatus === "active" && syncCapabilities?.syncEnabled === false) {
+    return viewData.status.syncNotIncluded;
+  }
+  return viewData.planCheckFailed;
 }
 
 export type BackupSyncDeviceListItemView = {
@@ -366,6 +390,7 @@ export function resolveBackupSyncDeviceErrorMessage(
   errorCode: SyncDeviceManagementErrorCode,
   copy: DeviceCopy,
   retry?: { retryAfterSeconds: number | undefined; template: string },
+  managedPlanStatus?: ManagedPlanStatus,
 ): string {
   if (errorCode === "rate_limited" && retry?.retryAfterSeconds !== undefined) {
     return `${copy.errors.rateLimited} ${retry.template.replace("%s", String(retry.retryAfterSeconds))}`;
@@ -376,7 +401,9 @@ export function resolveBackupSyncDeviceErrorMessage(
     case "unauthorized":
       return copy.errors.notConnected;
     case "sync_not_allowed":
-      return copy.errors.syncNotAllowed;
+      return managedPlanStatus === "active"
+        ? copy.errors.syncNotIncluded
+        : copy.errors.syncNotAllowed;
     case "device_not_found":
       return copy.errors.deviceNotFound;
     case "rate_limited":
@@ -403,6 +430,7 @@ export function formatBackupSyncLastSeen(
 export function resolveBackupSyncErrorMessage(
   errorCode: string,
   viewData: SettingsViewData["account"],
+  managedPlanStatus?: ManagedPlanStatus,
 ): string {
   switch (errorCode) {
     case "login_required":
@@ -454,7 +482,9 @@ export function resolveBackupSyncErrorMessage(
     case "restore_incomplete":
       return viewData.errors.restoreIncomplete;
     case "sync_not_allowed":
-      return viewData.syncBlockedNoPlan;
+      return managedPlanStatus === "active"
+        ? viewData.status.syncNotIncluded
+        : viewData.syncBlockedNoPlan;
     case "not_connected":
     case "unauthorized":
       return viewData.errors.notConnected;
@@ -498,9 +528,18 @@ export function resolveBackupSyncConnectedStatusMessage(
   state: LoadedSettingsState,
   viewData: SettingsViewData["account"],
 ): string {
-  return state.syncPreferences.mode === "managed" &&
-    state.managedPremiumAccess.planStatus === "inactive"
-    ? viewData.status.connectedNoPlan
+  if (
+    state.syncPreferences.mode !== "managed" ||
+    state.syncCapabilities?.syncEnabled === true
+  ) {
+    return viewData.status.connected;
+  }
+  const planStatus = state.managedPremiumAccess.planStatus;
+  if (planStatus === "inactive") {
+    return viewData.status.connectedNoPlan;
+  }
+  return planStatus === "active" && state.syncCapabilities?.syncEnabled === false
+    ? viewData.status.syncNotIncluded
     : viewData.status.connected;
 }
 
@@ -509,6 +548,7 @@ export function resolveBackupSyncErrorPresentation(
   scope: BackupSyncErrorScope | null | undefined,
   viewData: SettingsViewData["account"],
   retryAfterSeconds?: number,
+  managedPlanStatus?: ManagedPlanStatus,
 ): BackupSyncErrorPresentation {
   const emptyPresentation: BackupSyncErrorPresentation = {
     accountMessage: "",
@@ -526,7 +566,11 @@ export function resolveBackupSyncErrorPresentation(
     return emptyPresentation;
   }
 
-  const baseMessage = resolveBackupSyncErrorMessage(errorCode, viewData);
+  const baseMessage = resolveBackupSyncErrorMessage(
+    errorCode,
+    viewData,
+    managedPlanStatus,
+  );
   const message =
     retryAfterSeconds !== undefined &&
     (errorCode === "rate_limited" || errorCode === "server_busy")

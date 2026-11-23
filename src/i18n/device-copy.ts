@@ -28,6 +28,7 @@ export type DeviceCopy = {
   errors: {
     notConnected: string;
     syncNotAllowed: string;
+    syncNotIncluded: string;
     deviceNotFound: string;
     rateLimited: string;
     networkFailed: string;
@@ -63,6 +64,8 @@ const deviceCopyEn: DeviceCopy = {
   errors: {
     notConnected: "Connect this device to your sync account first.",
     syncNotAllowed: "Managing devices requires an active Ovumcy Cloud plan.",
+    syncNotIncluded:
+      "Managing devices needs cloud sync, which your Ovumcy Cloud plan does not include.",
     deviceNotFound: "That device is no longer in the list.",
     rateLimited:
       "Too many requests. Please wait a moment before trying again.",
@@ -100,6 +103,8 @@ const deviceCopyDe: DeviceCopy = {
     notConnected: "Verbinden Sie dieses Gerät zuerst mit Ihrem Sync-Konto.",
     syncNotAllowed:
       "Die Geräteverwaltung erfordert einen aktiven Ovumcy-Cloud-Plan.",
+    syncNotIncluded:
+      "Die Geräteverwaltung braucht Cloud-Synchronisierung, die Ihr Ovumcy-Cloud-Plan nicht enthält.",
     deviceNotFound: "Dieses Gerät ist nicht mehr in der Liste.",
     rateLimited:
       "Zu viele Anfragen. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
@@ -138,6 +143,8 @@ const deviceCopyFr: DeviceCopy = {
     notConnected: "Connectez d'abord cet appareil à votre compte de sync.",
     syncNotAllowed:
       "La gestion des appareils demande un plan Ovumcy Cloud actif.",
+    syncNotIncluded:
+      "La gestion des appareils nécessite la synchronisation cloud, que votre plan Ovumcy Cloud n'inclut pas.",
     deviceNotFound: "Cet appareil n'est plus dans la liste.",
     rateLimited:
       "Trop de requêtes. Veuillez patienter un instant avant de réessayer.",
@@ -176,6 +183,8 @@ const deviceCopyRu: DeviceCopy = {
     notConnected: "Сначала подключите это устройство к sync-аккаунту.",
     syncNotAllowed:
       "Для управления устройствами нужен активный план Ovumcy Cloud.",
+    syncNotIncluded:
+      "Для управления устройствами нужна облачная синхронизация, а ваш план Ovumcy Cloud её не включает.",
     deviceNotFound: "Этого устройства уже нет в списке.",
     rateLimited:
       "Слишком много запросов. Подождите немного и повторите попытку.",
@@ -213,6 +222,8 @@ const deviceCopyEs: DeviceCopy = {
     notConnected: "Primero conecta este dispositivo a tu cuenta de sync.",
     syncNotAllowed:
       "Gestionar dispositivos requiere un plan activo de Ovumcy Cloud.",
+    syncNotIncluded:
+      "Gestionar dispositivos requiere la sincronización en la nube, que tu plan de Ovumcy Cloud no incluye.",
     deviceNotFound: "Ese dispositivo ya no está en la lista.",
     rateLimited:
       "Demasiadas solicitudes. Espera un momento antes de volver a intentarlo.",
@@ -251,6 +262,8 @@ const deviceCopyIt: DeviceCopy = {
     notConnected: "Collega prima questo dispositivo al tuo account di sync.",
     syncNotAllowed:
       "La gestione dei dispositivi richiede un piano Ovumcy Cloud attivo.",
+    syncNotIncluded:
+      "La gestione dei dispositivi richiede la sincronizzazione cloud, che il tuo piano Ovumcy Cloud non include.",
     deviceNotFound: "Questo dispositivo non è più nell'elenco.",
     rateLimited:
       "Troppe richieste. Attendi un momento prima di riprovare.",

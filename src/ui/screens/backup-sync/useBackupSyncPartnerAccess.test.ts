@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react-native";
+import { Platform } from "react-native";
 
 import {
   clearManagedPartnerInviteToken,
@@ -491,6 +492,26 @@ describe("useBackupSyncPartnerAccess", () => {
       });
 
       expect(mockAcceptBackupSyncPartnerInviteAsGuest).not.toHaveBeenCalled();
+    });
+
+    it("redeems no invite as a guest on web and keeps the pending token", async () => {
+      const originalOS = Platform.OS;
+      Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+      try {
+        const core = createBackupSyncSessionCoreMock({
+          pendingPartnerInviteToken: INVITE_TOKEN,
+        });
+        const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+
+        await act(async () => {
+          await result.current.handleAcceptPartnerInviteAsGuest();
+        });
+
+        expect(mockAcceptBackupSyncPartnerInviteAsGuest).not.toHaveBeenCalled();
+        expect(core.setPendingPartnerInviteToken).not.toHaveBeenCalled();
+      } finally {
+        Object.defineProperty(Platform, "OS", { configurable: true, value: originalOS });
+      }
     });
 
     it("surfaces the mapped error message when the guest accept fails", async () => {

@@ -143,7 +143,7 @@ describe("backup sync view service", () => {
       preferences,
       {
         mode: "managed",
-        syncEnabled: true,
+        syncEnabled: false,
         recoverySupported: true,
         pushSupported: false,
         portalSupported: false,
@@ -162,7 +162,7 @@ describe("backup sync view service", () => {
     ).toBe(viewData.account.status.connectedNoPlan);
   });
 
-  it("keeps the no-plan managed status when sync entitlement is true but billing plan is inactive", () => {
+  it("reports a plain connected status when sync is allowed though the billing plan is inactive", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
     const preferences = createDefaultSyncPreferencesRecord();
     const state = createLoadedSettingsState(
@@ -213,7 +213,7 @@ describe("backup sync view service", () => {
 
     expect(
       resolveBackupSyncConnectedStatusMessage(state, viewData.account),
-    ).toBe(viewData.account.status.connectedNoPlan);
+    ).toBe(viewData.account.status.connected);
   });
 
   it("builds sync setup presentation with preformatted last sync and self-hosted step numbering", () => {
@@ -1010,5 +1010,167 @@ describe("backup sync limits, waits and refusals", () => {
   it("names a rate limit in device management", () => {
     const copy = getDeviceCopy("en");
     expect(resolveBackupSyncDeviceErrorMessage("rate_limited", copy)).toBe(copy.errors.rateLimited);
+  });
+});
+
+describe("managed sync gate from sync_allowed", () => {
+  const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en").account;
+  const managedPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+  };
+  const capabilities = (syncEnabled: boolean) => ({
+    mode: "managed" as const,
+    syncEnabled,
+    recoverySupported: true,
+    pushSupported: false,
+    portalSupported: false,
+    advancedCloudInsights: false,
+    maxDevices: 5,
+    maxBlobBytes: 1024,
+  });
+  const input = {
+    hasStoredSyncSecrets: true,
+    hasSyncSession: true,
+    isAuthenticating: false,
+    isPreparing: false,
+    isRecovering: false,
+    isRestoring: false,
+    isSyncing: false,
+    locale: "en",
+    notSetLabel: "Not set",
+    preferences: managedPreferences,
+    viewData,
+  };
+  const loadedState = (
+    syncCapabilities: ReturnType<typeof capabilities> | null,
+    planStatus: "unknown" | "inactive" | "active",
+  ) =>
+    createLoadedSettingsState(
+      createDefaultProfileRecord(),
+      managedPreferences,
+      true,
+      true,
+      createDefaultSymptomRecords(),
+      {
+        values: { preset: "all", fromDate: "", toDate: "" },
+        availableSummary: { totalEntries: 0, hasData: false, dateFrom: null, dateTo: null },
+        summary: { totalEntries: 0, hasData: false, dateFrom: null, dateTo: null },
+        bounds: { minDate: null, maxDate: null },
+      },
+      managedPreferences,
+      syncCapabilities,
+      { ...createEmptySettingsManagedPremiumAccess(), planStatus },
+    );
+
+  it("locks managed sync actions when sync_allowed is false even with an active plan", () => {
+    const presentation = buildBackupSyncSetupPresentation({
+      ...input,
+      managedPlanStatus: "active",
+      syncCapabilities: capabilities(false),
+    });
+
+    expect(presentation.canShowSyncActions).toBe(false);
+    expect(presentation.shouldShowDisconnectOnly).toBe(true);
+    expect(presentation.managedSyncBlockedMessage).toBe(viewData.status.syncNotIncluded);
+    expect(presentation.guidanceMessage).toBe(viewData.status.syncNotIncluded);
+    expect(presentation.guidanceStepNumber).toBe(3);
+  });
+
+  it("locks managed sync actions while the capabilities are not loaded", () => {
+    const presentation = buildBackupSyncSetupPresentation({
+      ...input,
+      managedPlanStatus: "active",
+      syncCapabilities: null,
+    });
+
+    expect(presentation.canShowSyncActions).toBe(false);
+    expect(presentation.managedSyncBlockedMessage).toBe(viewData.planCheckFailed);
+  });
+
+  it("unlocks managed sync actions from sync_allowed without an active plan", () => {
+    const presentation = buildBackupSyncSetupPresentation({
+      ...input,
+      managedPlanStatus: "inactive",
+      syncCapabilities: capabilities(true),
+    });
+
+    expect(presentation.canShowSyncActions).toBe(true);
+    expect(presentation.managedSyncBlockedMessage).toBeNull();
+    expect(presentation.guidanceComplete).toBe(true);
+    expect(presentation.hasManagedPlan).toBe(false);
+  });
+
+  it("shows the plan copy only when the billing snapshot reports no active plan", () => {
+    expect(
+      buildBackupSyncSetupPresentation({
+        ...input,
+        managedPlanStatus: "inactive",
+        syncCapabilities: capabilities(false),
+      }).managedSyncBlockedMessage,
+    ).toBe(viewData.syncBlockedNoPlan);
+    expect(
+      buildBackupSyncSetupPresentation({
+        ...input,
+        managedPlanStatus: "unknown",
+        syncCapabilities: capabilities(false),
+      }).managedSyncBlockedMessage,
+    ).toBe(viewData.planCheckFailed);
+  });
+
+  it("names no managed lock for a self-hosted account or before sign-in", () => {
+    const selfHosted = buildBackupSyncSetupPresentation({
+      ...input,
+      managedPlanStatus: "unknown",
+      preferences: { ...managedPreferences, mode: "self_hosted" },
+      syncCapabilities: null,
+    });
+    expect(selfHosted.canShowSyncActions).toBe(true);
+    expect(selfHosted.managedSyncBlockedMessage).toBeNull();
+
+    expect(
+      buildBackupSyncSetupPresentation({
+        ...input,
+        hasSyncSession: false,
+        managedPlanStatus: "unknown",
+        syncCapabilities: null,
+      }).managedSyncBlockedMessage,
+    ).toBeNull();
+  });
+
+  it("reports sync_not_allowed under an active plan as sync not included", () => {
+    const deviceCopy = getDeviceCopy("en");
+
+    expect(resolveBackupSyncErrorMessage("sync_not_allowed", viewData, "active")).toBe(
+      viewData.status.syncNotIncluded,
+    );
+    expect(resolveBackupSyncErrorMessage("sync_not_allowed", viewData, "inactive")).toBe(
+      viewData.syncBlockedNoPlan,
+    );
+    expect(
+      resolveBackupSyncErrorPresentation("sync_not_allowed", "sync", viewData, undefined, "active")
+        .syncMessage,
+    ).toBe(viewData.status.syncNotIncluded);
+    expect(
+      resolveBackupSyncDeviceErrorMessage("sync_not_allowed", deviceCopy, undefined, "active"),
+    ).toBe(deviceCopy.errors.syncNotIncluded);
+    expect(
+      resolveBackupSyncDeviceErrorMessage("sync_not_allowed", deviceCopy, undefined, "inactive"),
+    ).toBe(deviceCopy.errors.syncNotAllowed);
+  });
+
+  it("announces a managed connection from sync_allowed, not from the plan alone", () => {
+    expect(
+      resolveBackupSyncConnectedStatusMessage(loadedState(capabilities(false), "active"), viewData),
+    ).toBe(viewData.status.syncNotIncluded);
+    expect(
+      resolveBackupSyncConnectedStatusMessage(loadedState(capabilities(true), "active"), viewData),
+    ).toBe(viewData.status.connected);
+    expect(
+      resolveBackupSyncConnectedStatusMessage(loadedState(null, "inactive"), viewData),
+    ).toBe(viewData.status.connectedNoPlan);
+    expect(
+      resolveBackupSyncConnectedStatusMessage(loadedState(null, "unknown"), viewData),
+    ).toBe(viewData.status.connected);
   });
 });

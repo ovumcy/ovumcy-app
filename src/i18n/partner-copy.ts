@@ -53,6 +53,8 @@ const partnerCopyEn = {
   acceptActionLabel: "Accept invite",
   acceptChoiceHint:
     "Accept this invite as a guest on this device, or sign in to your Ovumcy Cloud account first.",
+  acceptChoiceHintWeb:
+    "Guest access works only in the Ovumcy app: open this invite link there to accept it as a guest. The invite stays unused until then. Or sign in to your Ovumcy Cloud account to accept it here.",
   acceptAsGuestActionLabel: "Accept as guest",
   acceptSignInActionLabel: "Sign in to accept",
   statusInviteIssued: "Partner invite link created.",
@@ -203,6 +205,8 @@ const partnerCopyDe = {
   acceptActionLabel: "Einladung annehmen",
   acceptChoiceHint:
     "Nimm diese Einladung als Gast auf diesem Gerät an oder melde dich zuerst bei deinem Ovumcy-Cloud-Konto an.",
+  acceptChoiceHintWeb:
+    "Der Gastzugang funktioniert nur in der Ovumcy-App: Öffnen Sie diesen Einladungslink dort, um die Einladung als Gast anzunehmen. Bis dahin bleibt sie unbenutzt. Oder melden Sie sich bei Ihrem Ovumcy-Cloud-Konto an, um sie hier anzunehmen.",
   acceptAsGuestActionLabel: "Als Gast annehmen",
   acceptSignInActionLabel: "Zum Annehmen anmelden",
   statusInviteIssued: "Partner-Einladungslink erstellt.",
@@ -358,6 +362,8 @@ const partnerCopyFr = {
   acceptActionLabel: "Accepter l’invitation",
   acceptChoiceHint:
     "Acceptez cette invitation en tant qu’invité sur cet appareil, ou connectez-vous d’abord à votre compte Ovumcy Cloud.",
+  acceptChoiceHintWeb:
+    "L’accès invité ne fonctionne que dans l’app Ovumcy : ouvrez-y ce lien d’invitation pour l’accepter en tant qu’invité. D’ici là, l’invitation reste inutilisée. Ou connectez-vous à votre compte Ovumcy Cloud pour l’accepter ici.",
   acceptAsGuestActionLabel: "Accepter en tant qu’invité",
   acceptSignInActionLabel: "Se connecter pour accepter",
   statusInviteIssued: "Lien d’invitation partenaire créé.",
@@ -512,6 +518,8 @@ const partnerCopyRu = {
   acceptActionLabel: "Принять приглашение",
   acceptChoiceHint:
     "Примите это приглашение как гость на этом устройстве или сначала войдите в свой аккаунт Ovumcy Cloud.",
+  acceptChoiceHintWeb:
+    "Гостевой доступ работает только в приложении Ovumcy: откройте эту ссылку-приглашение там, чтобы принять его как гость. До этого приглашение остаётся неиспользованным. Или войдите в аккаунт Ovumcy Cloud, чтобы принять его здесь.",
   acceptAsGuestActionLabel: "Принять как гость",
   acceptSignInActionLabel: "Войти, чтобы принять",
   statusInviteIssued: "Ссылка-приглашение для партнёра создана.",
@@ -662,6 +670,8 @@ const partnerCopyEs = {
   acceptActionLabel: "Aceptar invitación",
   acceptChoiceHint:
     "Acepta esta invitación como invitado en este dispositivo, o inicia sesión primero en tu cuenta de Ovumcy Cloud.",
+  acceptChoiceHintWeb:
+    "El acceso como invitado solo funciona en la app de Ovumcy: abre allí este enlace de invitación para aceptarla como invitado. Hasta entonces, la invitación sigue sin usarse. O inicia sesión en tu cuenta de Ovumcy Cloud para aceptarla aquí.",
   acceptAsGuestActionLabel: "Aceptar como invitado",
   acceptSignInActionLabel: "Iniciar sesión para aceptar",
   statusInviteIssued: "Se creó el enlace de invitación de pareja.",
@@ -814,6 +824,8 @@ const partnerCopyIt = {
   acceptActionLabel: "Accetta invito",
   acceptChoiceHint:
     "Accetta questo invito come ospite su questo dispositivo, oppure accedi prima al tuo account Ovumcy Cloud.",
+  acceptChoiceHintWeb:
+    "L'accesso come ospite funziona solo nell'app Ovumcy: apri lì questo link di invito per accettarlo come ospite. Fino ad allora l'invito resta inutilizzato. Oppure accedi al tuo account Ovumcy Cloud per accettarlo qui.",
   acceptAsGuestActionLabel: "Accetta come ospite",
   acceptSignInActionLabel: "Accedi per accettare",
   statusInviteIssued: "Link di invito partner creato.",
