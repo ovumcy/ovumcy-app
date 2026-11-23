@@ -9,6 +9,7 @@ import {
   callWithManagedSession,
   type ManagedSessionCallFailure,
 } from "./managed-session-call";
+import { clearManagedSessionFromSecrets } from "./managed-session-refresh-service";
 import {
   createSyncAPIClient,
   type SyncAPIClient,
@@ -259,10 +260,15 @@ export async function requestSyncPasswordReset(
 }
 
 /**
- * Consumes a reset token to rotate password + recovery code. Backend revokes
- * every session of the account on success, so local session tokens become
- * invalid; we clear them and drop the setup status back to `local_ready` so
- * the next connect attempt forces a fresh login with the new password.
+ * Consumes a reset token to rotate password + recovery code. The backend
+ * revokes every session of the reset account, but the form may have named
+ * another account than this device's, and the answer names none. So this
+ * device's own session is probed afterwards: only when the probe shows it
+ * revoked are its access and refresh credentials cleared and a connected setup
+ * dropped to `local_ready`, so the next connect forces a fresh login. A live
+ * session, no stored session, or a probe that failed in transport leaves
+ * everything as it was; a dead token kept that way is cleared by the next
+ * authorized call's own 401 handling.
  */
 export async function resetSyncAccountPassword(
   storage: LocalAppStorage,
@@ -296,6 +302,7 @@ export async function resetSyncAccountPassword(
   }
 
   let recoveryCode: string;
+  let ownSessionRevoked: boolean;
   if (preferences.mode === "managed") {
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const result = await client.resetPassword(input);
@@ -306,6 +313,11 @@ export async function resetSyncAccountPassword(
       };
     }
     recoveryCode = result.result.recoveryCode;
+    ownSessionRevoked = await isManagedSessionRevoked(
+      secretStore,
+      client,
+      managedClientFactory,
+    );
   } else {
     const normalizedEndpoint = normalizeSyncEndpoint(
       preferences.mode,
@@ -323,16 +335,18 @@ export async function resetSyncAccountPassword(
       };
     }
     recoveryCode = result.result.recoveryCode;
+    ownSessionRevoked = await isCommunitySessionRevoked(secretStore, client);
   }
 
-  // Backend revoked all sessions for the account. Wipe local session tokens
-  // so subsequent connect attempts go through a fresh login.
+  if (!ownSessionRevoked) {
+    return { ok: true, recoveryCode, preferences };
+  }
+
   const secrets = await secretStore.readSyncSecrets();
   if (secrets) {
     await secretStore.writeSyncSecrets({
-      ...secrets,
+      ...clearManagedSessionFromSecrets(secrets),
       authSessionToken: null,
-      managedAuthSessionToken: null,
     });
   }
 
@@ -343,6 +357,38 @@ export async function resetSyncAccountPassword(
   }
 
   return { ok: true, recoveryCode, preferences: nextPreferences };
+}
+
+// Revoked = the stored access token is refused and so is its refresh (the
+// session wrapper clears the managed credentials and answers `session_expired`
+// only then). A 200, possibly after a renewal, means another account was reset.
+async function isManagedSessionRevoked(
+  secretStore: SyncSecretStore,
+  client: ManagedCloudAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory,
+): Promise<boolean> {
+  const secrets = await secretStore.readSyncSecrets();
+  if (!secrets?.managedAuthSessionToken) {
+    return false;
+  }
+  const probe = await callWithManagedSession(
+    secretStore,
+    (sessionToken) => client.getSession(sessionToken),
+    { managedClientFactory },
+  );
+  return !probe.ok && probe.errorCode === "session_expired";
+}
+
+async function isCommunitySessionRevoked(
+  secretStore: SyncSecretStore,
+  client: SyncAPIClient,
+): Promise<boolean> {
+  const secrets = await secretStore.readSyncSecrets();
+  if (!secrets?.authSessionToken) {
+    return false;
+  }
+  const probe = await client.getSession(secrets.authSessionToken);
+  return !probe.ok && probe.errorCode === "unauthorized";
 }
 
 /**

@@ -596,16 +596,19 @@ describe("sync-account-recovery-service", () => {
   });
 
   describe("resetSyncAccountPassword", () => {
-    it("clears session tokens and downgrades preferences to local_ready on success", async () => {
+    it("clears this device's session and downgrades to local_ready when the reset revoked it", async () => {
       const storage = createLocalAppStorageMock();
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
       const resetPassword = jest.fn().mockResolvedValue({
         ok: true,
         result: { recoveryCode: "rotated1234rotated1234rotated123" },
       });
+      const getSession = jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "unauthorized" });
       const apiFactory = jest
         .fn()
-        .mockReturnValue(communityClientMock({ resetPassword }));
+        .mockReturnValue(communityClientMock({ resetPassword, getSession }));
 
       const initial = selfHostedPreferences();
       const result = await resetSyncAccountPassword(
@@ -782,16 +785,19 @@ describe("sync-account-recovery-service", () => {
       expect(apiFactory).not.toHaveBeenCalled();
     });
 
-    it("dispatches to the managed client and clears session tokens on success", async () => {
+    it("dispatches to the managed client and clears session tokens when the reset revoked them", async () => {
       const storage = createLocalAppStorageMock();
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
       const resetPassword = jest.fn().mockResolvedValue({
         ok: true,
         result: { recoveryCode: "rotated1234rotated1234rotated123" },
       });
+      const getSession = jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "unauthorized" });
       const managedFactory = jest
         .fn()
-        .mockReturnValue(managedClientMock({ resetPassword }));
+        .mockReturnValue(managedClientMock({ resetPassword, getSession }));
 
       const result = await resetSyncAccountPassword(
         storage,
@@ -840,6 +846,274 @@ describe("sync-account-recovery-service", () => {
       );
 
       expect(result).toEqual({ ok: false, errorCode: "invalid_reset_token" });
+    });
+
+    describe("probing this device's own session after the reset", () => {
+      const RESET_INPUT = {
+        resetToken: "reset-token-1",
+        newPassword: "new password 12345",
+      };
+      const RESET_OK = {
+        ok: true,
+        result: { recoveryCode: "rotated1234rotated1234rotated123" },
+      };
+
+      function managedSecretsWithRefresh() {
+        return {
+          ...connectedSecrets(),
+          managedAuthSessionExpiresAt: "2099-01-01T00:00:00.000Z",
+          managedRefreshToken: "refresh-1",
+          managedRefreshTokenExpiresAt: "2099-02-01T00:00:00.000Z",
+        };
+      }
+
+      it("clears all four managed fields and the sync session when the reset revoked this account", async () => {
+        const storage = createLocalAppStorageMock();
+        const secretStore = createSyncSecretStoreMock(managedSecretsWithRefresh());
+        const client = managedClientMock({
+          resetPassword: jest.fn().mockResolvedValue(RESET_OK),
+          getSession: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+          refreshSession: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+        });
+
+        const result = await resetSyncAccountPassword(
+          storage,
+          secretStore,
+          managedPreferences(),
+          RESET_INPUT,
+          jest.fn(),
+          () => client,
+        );
+
+        expect(result).toEqual(
+          expect.objectContaining({
+            ok: true,
+            preferences: expect.objectContaining({ setupStatus: "local_ready" }),
+          }),
+        );
+        expect(client.refreshSession).toHaveBeenCalledWith("refresh-1");
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+          expect.objectContaining({
+            authSessionToken: null,
+            managedAuthSessionToken: null,
+            managedAuthSessionExpiresAt: null,
+            managedRefreshToken: null,
+            managedRefreshTokenExpiresAt: null,
+          }),
+        );
+      });
+
+      it("keeps this device's managed session when the reset named another account", async () => {
+        const storage = createLocalAppStorageMock();
+        const before = managedSecretsWithRefresh();
+        const secretStore = createSyncSecretStoreMock(before);
+        const getSession = jest.fn().mockResolvedValue({ ok: true, session: {} });
+        const client = managedClientMock({
+          resetPassword: jest.fn().mockResolvedValue(RESET_OK),
+          getSession,
+        });
+        const preferences = managedPreferences();
+
+        const result = await resetSyncAccountPassword(
+          storage,
+          secretStore,
+          preferences,
+          RESET_INPUT,
+          jest.fn(),
+          () => client,
+        );
+
+        expect(result).toEqual({
+          ok: true,
+          recoveryCode: "rotated1234rotated1234rotated123",
+          preferences,
+        });
+        expect(getSession).toHaveBeenCalledWith("managed-session-1");
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(before);
+        expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+      });
+
+      it("keeps a managed session renewed after a 401 on the probe", async () => {
+        const storage = createLocalAppStorageMock();
+        const secretStore = createSyncSecretStoreMock(managedSecretsWithRefresh());
+        const getSession = jest
+          .fn()
+          .mockResolvedValueOnce({ ok: false, errorCode: "unauthorized" })
+          .mockResolvedValueOnce({ ok: true, session: {} });
+        const client = managedClientMock({
+          resetPassword: jest.fn().mockResolvedValue(RESET_OK),
+          getSession,
+          refreshSession: jest.fn().mockResolvedValue({
+            ok: true,
+            auth: {
+              accountID: "acct-1",
+              sessionToken: "managed-session-2",
+              sessionExpiresAt: "2099-01-02T00:00:00.000Z",
+              refreshToken: "refresh-2",
+              refreshTokenExpiresAt: "2099-02-02T00:00:00.000Z",
+              recoveryCode: null,
+              totpChallenge: null,
+            },
+          }),
+        });
+
+        const result = await resetSyncAccountPassword(
+          storage,
+          secretStore,
+          managedPreferences(),
+          RESET_INPUT,
+          jest.fn(),
+          () => client,
+        );
+
+        expect(result).toEqual(
+          expect.objectContaining({
+            preferences: expect.objectContaining({ setupStatus: "connected" }),
+          }),
+        );
+        expect(getSession).toHaveBeenLastCalledWith("managed-session-2");
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+          expect.objectContaining({
+            authSessionToken: "community-session-1",
+            managedAuthSessionToken: "managed-session-2",
+            managedRefreshToken: "refresh-2",
+          }),
+        );
+      });
+
+      it.each([
+        ["a transport failure", { ok: false, errorCode: "network_failed" }],
+        ["a server fault", { ok: false, errorCode: "generic" }],
+      ])("keeps the managed session when the probe ends in %s", async (_label, answer) => {
+        const storage = createLocalAppStorageMock();
+        const before = managedSecretsWithRefresh();
+        const secretStore = createSyncSecretStoreMock(before);
+        const client = managedClientMock({
+          resetPassword: jest.fn().mockResolvedValue(RESET_OK),
+          getSession: jest.fn().mockResolvedValue(answer),
+        });
+
+        await resetSyncAccountPassword(
+          storage,
+          secretStore,
+          managedPreferences(),
+          RESET_INPUT,
+          jest.fn(),
+          () => client,
+        );
+
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(before);
+        expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+      });
+
+      it("keeps the managed session when its refresh after a 401 cannot complete", async () => {
+        const storage = createLocalAppStorageMock();
+        const before = managedSecretsWithRefresh();
+        const secretStore = createSyncSecretStoreMock(before);
+        const client = managedClientMock({
+          resetPassword: jest.fn().mockResolvedValue(RESET_OK),
+          getSession: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+          refreshSession: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+        });
+
+        await resetSyncAccountPassword(
+          storage,
+          secretStore,
+          managedPreferences(),
+          RESET_INPUT,
+          jest.fn(),
+          () => client,
+        );
+
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(before);
+        expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+      });
+
+      it("probes nothing when this device holds no managed session", async () => {
+        const storage = createLocalAppStorageMock();
+        const before = { ...connectedSecrets(), managedAuthSessionToken: null };
+        const secretStore = createSyncSecretStoreMock(before);
+        const getSession = jest.fn();
+        const client = managedClientMock({
+          resetPassword: jest.fn().mockResolvedValue(RESET_OK),
+          getSession,
+        });
+
+        await resetSyncAccountPassword(
+          storage,
+          secretStore,
+          managedPreferences(),
+          RESET_INPUT,
+          jest.fn(),
+          () => client,
+        );
+
+        expect(getSession).not.toHaveBeenCalled();
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(before);
+      });
+
+      it.each([
+        ["a live session (another account was reset)", { ok: true, session: { twoFactorEnabled: false } }],
+        ["a transport failure", { ok: false, errorCode: "network_failed" }],
+      ])("keeps the self-hosted session on %s", async (_label, answer) => {
+        const storage = createLocalAppStorageMock();
+        const before = connectedSecrets();
+        const secretStore = createSyncSecretStoreMock(before);
+        const getSession = jest.fn().mockResolvedValue(answer);
+        const apiFactory = jest.fn().mockReturnValue(
+          communityClientMock({
+            resetPassword: jest.fn().mockResolvedValue(RESET_OK),
+            getSession,
+          }),
+        );
+        const preferences = selfHostedPreferences();
+
+        const result = await resetSyncAccountPassword(
+          storage,
+          secretStore,
+          preferences,
+          RESET_INPUT,
+          apiFactory,
+          jest.fn(),
+        );
+
+        expect(result).toEqual(expect.objectContaining({ ok: true, preferences }));
+        expect(getSession).toHaveBeenCalledWith("community-session-1");
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(before);
+        expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+      });
+
+      it("probes nothing when this device holds no self-hosted session", async () => {
+        const before = { ...connectedSecrets(), authSessionToken: null };
+        const secretStore = createSyncSecretStoreMock(before);
+        const getSession = jest.fn();
+        const apiFactory = jest.fn().mockReturnValue(
+          communityClientMock({
+            resetPassword: jest.fn().mockResolvedValue(RESET_OK),
+            getSession,
+          }),
+        );
+
+        await resetSyncAccountPassword(
+          createLocalAppStorageMock(),
+          secretStore,
+          selfHostedPreferences(),
+          RESET_INPUT,
+          apiFactory,
+          jest.fn(),
+        );
+
+        expect(getSession).not.toHaveBeenCalled();
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(before);
+      });
     });
 
     it("maps an unrecognized community error code to generic", async () => {
