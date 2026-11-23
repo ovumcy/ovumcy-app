@@ -433,6 +433,12 @@ describe("useBackupSyncScreenController", () => {
 
     void flowProps.onPartnerRevokeInvite("invite-3");
     expect(partner.handleRevokePartnerInvite).toHaveBeenCalledWith("invite-3");
+
+    flowProps.accountChangeRecovery.onReveal();
+    expect(recovery.handleRevealAccountChangeRecoveryPhrase).toHaveBeenCalledTimes(1);
+
+    flowProps.accountChangeRecovery.onReplace();
+    expect(recovery.handlePrepareSyncSetup).toHaveBeenCalledTimes(1);
   });
 
   // ---------------------------------------------------------------------

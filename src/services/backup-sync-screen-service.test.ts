@@ -15,6 +15,7 @@ import {
   type SyncSecretsRecord,
 } from "../sync/sync-contract";
 import * as syncClientService from "../sync/sync-client-service";
+import * as syncTotpService from "../sync/sync-totp-service";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
@@ -1732,5 +1733,89 @@ describe("clearUnauthorizedBackupSyncSession", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     const remainingSecrets = await secretStore.readSyncSecrets();
     expect(remainingSecrets?.authSessionToken).toBeNull();
+  });
+});
+
+describe("account key reset hand-off to the screen", () => {
+  const selfHostedConnected = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "self_hosted" as const,
+    endpointInput: "192.168.1.20:8080",
+    normalizedEndpoint: "http://192.168.1.20:8080",
+    deviceLabel: "Pixel 7",
+    setupStatus: "connected" as const,
+  };
+  const capabilities = {
+    mode: "self_hosted",
+    syncEnabled: true,
+    recoverySupported: true,
+    pushSupported: false,
+    portalSupported: false,
+    advancedCloudInsights: false,
+    maxDevices: 5,
+    maxBlobBytes: 16 << 20,
+  } as const;
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it.each([
+    ["a replaced key", true],
+    ["a kept key", false],
+  ])("passes the connect's account key reset on for %s", async (_label, reset) => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(PREPARED_MANAGED_SECRETS);
+    const state = await loadSettingsScreenState(storage, secretStore, new Date(2026, 2, 19));
+    jest.spyOn(syncClientService, "connectSyncAccount").mockResolvedValue({
+      ok: true,
+      capabilities,
+      preferences: selfHostedConnected,
+      ...(reset ? { accountKeyReset: true as const } : {}),
+    });
+
+    const result = await connectBackupSyncAccount(
+      storage,
+      secretStore,
+      state,
+      { login: "owner@example.com", password: "very-secure-pass" },
+      "login",
+      new Date(2026, 2, 19),
+    );
+
+    expect(result.ok && "state" in result && result.accountKeyReset).toBe(reset ? true : undefined);
+  });
+
+  it.each([
+    ["a replaced key", true],
+    ["a kept key", false],
+  ])("passes the TOTP finalize's account key reset on for %s", async (_label, reset) => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(PREPARED_MANAGED_SECRETS);
+    const state = await loadSettingsScreenState(storage, secretStore, new Date(2026, 2, 19));
+    jest.spyOn(syncTotpService, "completeTOTPChallenge").mockResolvedValue({
+      ok: true,
+      auth: {
+        accountID: "account-b",
+        sessionToken: "community-after-totp",
+        sessionExpiresAt: "2026-03-20T08:00:00.000Z",
+      },
+    } as Awaited<ReturnType<typeof syncTotpService.completeTOTPChallenge>>);
+    jest.spyOn(syncClientService, "finalizeSyncSessionAfterTOTP").mockResolvedValue({
+      ok: true,
+      capabilities,
+      preferences: selfHostedConnected,
+      ...(reset ? { accountKeyReset: true as const } : {}),
+    });
+
+    const result = await completeBackupSyncTOTPChallenge(
+      storage,
+      secretStore,
+      state,
+      selfHostedConnected,
+      { challengeID: "chal-1", code: "123456" },
+    );
+
+    expect(result.ok && result.accountKeyReset).toBe(reset ? true : undefined);
   });
 });

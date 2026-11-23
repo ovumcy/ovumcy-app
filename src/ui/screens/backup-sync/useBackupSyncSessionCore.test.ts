@@ -389,6 +389,31 @@ describe("useBackupSyncSessionCore", () => {
   // refocus/unmount.
   // ---------------------------------------------------------------------
   describe("focus-load effect stops when torn down mid-flight", () => {
+    it("applies no loaded state when unmounted while the account-change phrase state loads", async () => {
+      const deferred = createDeferred<
+        Awaited<ReturnType<typeof accountChangeRecoveryPhrase.loadAccountChangeRecoveryPhraseState>>
+      >();
+      const phraseStateSpy = jest
+        .spyOn(accountChangeRecoveryPhrase, "loadAccountChangeRecoveryPhraseState")
+        .mockReturnValue(deferred.promise);
+      const storage = createSettingsStorageMock();
+      const syncSecretStore = createSyncSecretStoreMock();
+
+      const { result, unmount } = await renderHook(() =>
+        useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
+      );
+      await waitFor(() => expect(phraseStateSpy).toHaveBeenCalled());
+      await unmount();
+
+      await act(async () => {
+        deferred.resolve("reveal");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.state).toBeNull();
+    });
+
     it("does not continue past readHasCompletedOnboarding once unmounted", async () => {
       const deferred = createDeferred<boolean>();
       jest

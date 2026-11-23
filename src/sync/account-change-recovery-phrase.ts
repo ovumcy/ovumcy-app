@@ -85,9 +85,7 @@ function matchPending(secrets: SyncSecretsRecord): string | null {
     return null;
   }
   if (!secrets.masterKeyHex || masterKeyTag(secrets.masterKeyHex) !== held.masterKeyTag) {
-    if (pending === held) {
-      pending = null;
-    }
+    pending = null;
     return null;
   }
   return held.recoveryPhrase;
