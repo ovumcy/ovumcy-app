@@ -18,18 +18,44 @@ import {
 import { buildPartnerSharedProjectionPayload } from "./partner-shared-projection-service";
 import { loadSyncSetupState } from "../sync/sync-setup-service";
 
-export async function syncManagedPartnerSharedProjections(
-  storage: LocalAppStorage,
-  syncSecretStore: SyncSecretStore,
-  partnerShareSecretStore: PartnerShareSecretStore,
-  now: Date,
-): Promise<{
+type ManagedPartnerProjectionSyncResult = {
   skipped: boolean;
   syncedCount: number;
   // Grants whose key context the server will not accept: legacy grants and
   // grants re-keyed since this device derived its key.
   reshareRequiredGrantIDs: string[];
-}> {
+};
+
+let projectionPassTail: Promise<unknown> = Promise.resolve();
+
+// Passes run one at a time, in call order. The lock spans the whole pass
+// (storage read, generation reserve, build, PUT): with overlapping passes, one
+// that read storage earlier could still reserve a higher generation or finish
+// its PUT last, leaving the server holding older data.
+export function syncManagedPartnerSharedProjections(
+  storage: LocalAppStorage,
+  syncSecretStore: SyncSecretStore,
+  partnerShareSecretStore: PartnerShareSecretStore,
+  now: Date,
+): Promise<ManagedPartnerProjectionSyncResult> {
+  const pass = projectionPassTail.then(() =>
+    runManagedPartnerProjectionPass(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      now,
+    ),
+  );
+  projectionPassTail = pass.catch(() => undefined);
+  return pass;
+}
+
+async function runManagedPartnerProjectionPass(
+  storage: LocalAppStorage,
+  syncSecretStore: SyncSecretStore,
+  partnerShareSecretStore: PartnerShareSecretStore,
+  now: Date,
+): Promise<ManagedPartnerProjectionSyncResult> {
   const syncState = await loadSyncSetupState(storage, syncSecretStore);
   if (!syncState.hasAuthSession || syncState.preferences.mode !== "managed") {
     // The rate limit is per account: a back-off armed by a previous session
@@ -148,11 +174,16 @@ export async function syncManagedPartnerSharedProjections(
       // The limit is per account, so the remaining grants would 429 too.
       backOffManagedPartnerProjectionPush(uploadResult.retryAfterSeconds);
       break;
-    } else if (uploadResult.errorCode === "payload_too_large") {
-      // The projection grows with the owner's history, so retrying it on every
-      // sync cannot succeed; hold later pushes for the default window. The
-      // remaining grants in this pass still run: a summary-level grant's
-      // payload is far smaller than a full-level one's.
+    } else if (
+      uploadResult.errorCode === "payload_too_large" ||
+      uploadResult.errorCode === "invalid_partner_projection" ||
+      uploadResult.errorCode === "generic"
+    ) {
+      // A refusal of the body itself (too large, malformed — the managed
+      // client reads 400 `invalid_json` as `generic`) repeats on every sync;
+      // hold later pushes for the default window. The remaining grants in
+      // this pass still run: a summary-level grant's payload is far smaller
+      // than a full-level one's.
       backOffManagedPartnerProjectionPush(undefined);
     }
   }

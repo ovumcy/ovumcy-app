@@ -367,7 +367,7 @@ Decision (2026-07-23): a revoke is permanent for the issued handshake — a repe
 
 *Medical safety.* While an active pregnancy record exists, or the owner is pregnancy-paused, the snapshot carries no prediction value (cycle day, dates all null, state and hint `facts_only`); the wording is the neutral facts-only one, never pregnancy-specific.
 
-**Upload size.** The managed API refuses a projection ciphertext over 2 MiB (`413 payload_too_large`, also read from a bare 413). The client refuses a larger ciphertext locally without sending a request, and a `payload_too_large` result backs off later pushes like a rate limit does.
+**Upload size.** The managed API refuses a projection ciphertext over 2 MiB (`413 payload_too_large`, also read from a bare 413). The client refuses a larger ciphertext locally without sending a request, and a `payload_too_large` result backs off later pushes like a rate limit does; so does `invalid_partner_projection` or an unrecognized 4xx such as `400 invalid_json`. Pushes run one pass at a time, so an overlapping trigger never lands an older snapshot after a newer one.
 
 ## Managed Session Renewal
 

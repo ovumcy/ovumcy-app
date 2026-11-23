@@ -317,11 +317,16 @@ describe("syncManagedPartnerSharedProjections", () => {
       expect(isManagedPartnerProjectionPushBackedOff()).toBe(false);
     });
 
-    it("backs off the push on payload_too_large so the next sync sends no request", async () => {
+    it.each([
+      ["payload_too_large"],
+      ["invalid_partner_projection"],
+      // 400 invalid_json reaches the service as `generic`.
+      ["generic"],
+    ] as const)("backs off the push on %s so the next sync sends no request", async (errorCode) => {
       armTwoGrantPush();
       const uploadSpy = jest
         .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
-        .mockResolvedValue({ ok: false, errorCode: "payload_too_large" });
+        .mockResolvedValue({ ok: false, errorCode });
       const storage = createLocalAppStorageMock();
       const syncSecretStore = createSyncSecretStoreMock();
 
@@ -461,6 +466,73 @@ describe("syncManagedPartnerSharedProjections", () => {
       });
       expect(uploadSpy).toHaveBeenCalledTimes(2);
       expect(isManagedPartnerProjectionPushBackedOff()).toBe(false);
+    });
+
+    it("runs overlapping passes one at a time, so a later pass never uploads before an earlier one settles", async () => {
+      const setupSpy = armTwoGrantPush([{ id: "grant-1", sourceInviteID: "invite-1" }]);
+      let generation = 0;
+      jest
+        .mocked(managedPartnerShareService.reserveNextManagedPartnerProjectionGeneration)
+        .mockImplementation(async () => {
+          generation += 1;
+          return generation;
+        });
+      jest
+        .mocked(partnerSharedProjectionService.buildPartnerSharedProjectionPayload)
+        .mockImplementation(
+          (input) => ({ grantID: input.grantID, generation: input.generation }) as never,
+        );
+      const settleFirstUpload: (() => void)[] = [];
+      const uploadedGenerations: number[] = [];
+      jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockImplementation(async (_store, _mode, input) => {
+          if (input.projection.generation === 1) {
+            await new Promise<void>((resolve) => settleFirstUpload.push(resolve));
+          }
+          uploadedGenerations.push(input.projection.generation);
+          return { ok: true, value: {} as never };
+        });
+      const run = () =>
+        syncManagedPartnerSharedProjections(
+          createLocalAppStorageMock(),
+          createSyncSecretStoreMock(),
+          {} as PartnerShareSecretStore,
+          FIXED_NOW,
+        );
+
+      const first = run();
+      const second = run();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(settleFirstUpload).toHaveLength(1);
+      expect(setupSpy).toHaveBeenCalledTimes(1);
+      settleFirstUpload[0]?.();
+      await expect(first).resolves.toMatchObject({ syncedCount: 1 });
+      await expect(second).resolves.toMatchObject({ syncedCount: 1 });
+      expect(setupSpy).toHaveBeenCalledTimes(2);
+      expect(uploadedGenerations).toEqual([1, 2]);
+    });
+
+    it("keeps later passes running after a pass rejects", async () => {
+      const setupSpy = armTwoGrantPush([{ id: "grant-1", sourceInviteID: "invite-1" }]);
+      setupSpy.mockRejectedValueOnce(new Error("storage unavailable"));
+      jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockResolvedValue({ ok: true, value: {} as never });
+      const run = () =>
+        syncManagedPartnerSharedProjections(
+          createLocalAppStorageMock(),
+          createSyncSecretStoreMock(),
+          {} as PartnerShareSecretStore,
+          FIXED_NOW,
+        );
+
+      const first = run();
+      const second = run();
+
+      await expect(first).rejects.toThrow("storage unavailable");
+      await expect(second).resolves.toMatchObject({ skipped: false, syncedCount: 1 });
     });
   });
 });
