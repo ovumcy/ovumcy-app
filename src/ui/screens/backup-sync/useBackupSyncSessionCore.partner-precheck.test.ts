@@ -198,4 +198,54 @@ describe("useBackupSyncSessionCore partner-access pre-check", () => {
     expect(result.current.partnerErrorMessage).toBe("");
     await unmount();
   });
+
+  it("propagates a reconcile failure that is not a partner-share clear", async () => {
+    const loaded = createLoadedSettingsStateFixture();
+    // The mount load stays local, so only the explicit call below reaches reconcile.
+    jest.spyOn(settingsStateService, "loadSettingsScreenState").mockResolvedValue({
+      ...loaded,
+      hasSyncSession: false,
+    });
+    jest.spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures").mockResolvedValue({
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: true,
+      reminders: false,
+    });
+    jest.spyOn(managedPartnerAccessService, "loadManagedPartnerAccess").mockResolvedValue({
+      ok: true,
+      value: {
+        owned: {
+          invites: [],
+          grants: [{ id: "grant-1", ownerAccountID: "owner-1", revokedAt: null, sourceInviteID: "invite-1" } as never],
+        },
+        sharedWithMe: [],
+      },
+    });
+    const storeFailure = new Error("secure store write failed");
+    jest
+      .spyOn(managedPartnerShareService, "reconcileManagedPartnerShareKeys")
+      .mockRejectedValue(storeFailure);
+    const pushSpy = jest.spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections");
+
+    const storage = createSettingsStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
+    const partnerShareSecretStore = { readPartnerShareClearEpoch: () => 0 } as never;
+    const { result, unmount } = await renderHook(() =>
+      useBackupSyncSessionCore({ storage, syncSecretStore, partnerShareSecretStore, now: FIXED_NOW }),
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(
+      result.current.loadPartnerState({
+        ...loaded,
+        hasSyncSession: true,
+        syncPreferences: { ...loaded.syncPreferences, mode: "managed" },
+      }),
+    ).rejects.toBe(storeFailure);
+    expect(pushSpy).not.toHaveBeenCalled();
+    await unmount();
+  });
 });
