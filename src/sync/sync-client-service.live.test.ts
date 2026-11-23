@@ -1,3 +1,6 @@
+import { hmac } from "@noble/hashes/hmac.js";
+import { sha1 } from "@noble/hashes/legacy.js";
+
 import {
   createPregnancyRecord,
   type ContractionSession,
@@ -10,6 +13,8 @@ import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock
 import {
   connectSyncAccount,
   disconnectSyncAccount,
+  finalizeSyncSessionAfterTOTP,
+  removeSyncDevice,
   runSyncRestore,
   runSyncUpload,
 } from "./sync-client-service";
@@ -18,6 +23,11 @@ import {
   type SyncPreferencesRecord,
 } from "./sync-contract";
 import { prepareSyncSetup } from "./sync-setup-service";
+import {
+  completeTOTPChallenge,
+  startTOTPEnrollment,
+  verifyTOTPEnrollment,
+} from "./sync-totp-service";
 
 // The suite-wide expo/fetch stub forwards to globalThis.fetch, which jest-expo
 // points back at expo/fetch; a live run needs a fetch that reaches the network.
@@ -25,6 +35,129 @@ jest.mock("expo/fetch", () => ({ fetch: jest.requireActual("node-fetch") }));
 
 const liveBaseURL = process.env.OVUMCY_SYNC_LIVE_BASE_URL ?? "";
 const describeIfLive = liveBaseURL ? describe : describe.skip;
+
+const livePassword = "CorrectHorseBattery42!";
+const TOTP_PERIOD_SECONDS = 30;
+
+function decodeBase32(encoded: string): Uint8Array {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = encoded.replace(/=+$/, "").toUpperCase();
+  const bytes: number[] = [];
+  let buffer = 0;
+  let bits = 0;
+  for (const char of clean) {
+    const value = alphabet.indexOf(char);
+    if (value < 0) {
+      throw new Error("invalid base32 secret");
+    }
+    buffer = (buffer << 5) | value;
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes.push((buffer >> bits) & 0xff);
+    }
+  }
+  return Uint8Array.from(bytes);
+}
+
+// RFC 6238 over HMAC-SHA1, 6 digits, 30 s steps: the authenticator-app
+// parameters the server provisions.
+function totpCode(secretBase32: string, step: number): string {
+  const counter = new Uint8Array(8);
+  let value = step;
+  for (let index = 7; index >= 0; index -= 1) {
+    counter[index] = value & 0xff;
+    value = Math.floor(value / 256);
+  }
+  const digest = hmac(sha1, decodeBase32(secretBase32), counter);
+  const offset = digest[digest.length - 1]! & 0x0f;
+  const binary =
+    ((digest[offset]! & 0x7f) << 24) |
+    (digest[offset + 1]! << 16) |
+    (digest[offset + 2]! << 8) |
+    digest[offset + 3]!;
+  return String(binary % 1_000_000).padStart(6, "0");
+}
+
+function currentTOTPStep(): number {
+  return Math.floor(Date.now() / 1000 / TOTP_PERIOD_SECONDS);
+}
+
+// A code that matches none of the steps the server's skew window accepts.
+function wrongTOTPCode(secretBase32: string): string {
+  const step = currentTOTPStep();
+  const accepted = new Set(
+    [step - 2, step - 1, step, step + 1, step + 2].map((each) =>
+      totpCode(secretBase32, each),
+    ),
+  );
+  for (let candidate = 0; ; candidate += 1) {
+    const code = String(candidate).padStart(6, "0");
+    if (!accepted.has(code)) {
+      return code;
+    }
+  }
+}
+
+async function connectFreshSelfHostedDevice(
+  deviceLabel: string,
+  login: string,
+  mode: "register" | "login",
+  now: Date,
+) {
+  const storage = createVolatileWebAppStorage();
+  const secretStore = createSyncSecretStoreMock();
+  await storage.writeBootstrapState({
+    hasCompletedOnboarding: true,
+    profileVersion: 2,
+    incompleteOnboardingStep: null,
+  });
+  const prepareResult = await prepareSyncSetup(
+    storage,
+    secretStore,
+    {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted",
+      endpointInput: liveBaseURL,
+      normalizedEndpoint: liveBaseURL,
+      deviceLabel,
+    },
+    now,
+  );
+  if (!prepareResult.ok) {
+    throw new Error(`prepare failed: ${prepareResult.errorCode}`);
+  }
+  const connectResult = await connectSyncAccount(
+    storage,
+    secretStore,
+    prepareResult.preferences,
+    { login, password: livePassword },
+    mode,
+    now,
+  );
+  return { storage, secretStore, preferences: prepareResult.preferences, connectResult };
+}
+
+// Turns two-factor on for the signed-in account and returns its secret. The
+// enrollment code claims the current step, so a later code must come from a
+// later step.
+async function enrollTOTP(
+  secretStore: ReturnType<typeof createSyncSecretStoreMock>,
+  preferences: SyncPreferencesRecord,
+): Promise<string> {
+  const started = await startTOTPEnrollment(secretStore, preferences, {
+    currentPassword: livePassword,
+  });
+  if (!started.ok) {
+    throw new Error(`enrollment start failed: ${started.errorCode}`);
+  }
+  const secretBase32 = started.enrollment.secretBase32;
+  const verified = await verifyTOTPEnrollment(secretStore, preferences, {
+    code: totpCode(secretBase32, currentTOTPStep()),
+  });
+  expect(verified).toEqual({ ok: true, recoveryCode: expect.any(String) });
+  return secretBase32;
+}
 
 describeIfLive("sync-client-service live transport", () => {
   jest.setTimeout(30000);
@@ -433,5 +566,115 @@ describeIfLive("sync-client-service live transport", () => {
     expect(afterRestore.ok).toBe(true);
 
     await disconnectSyncAccount(storage, secretStore, restored.preferences);
+  });
+
+  it("signs a second device in through the TOTP challenge of a two-factor account", async () => {
+    const now = new Date("2026-03-23T09:00:00.000Z");
+    const login = `totp-${Date.now()}@ovumcy.test`;
+    const first = await connectFreshSelfHostedDevice("TOTP Device A", login, "register", now);
+    expect(first.connectResult.ok).toBe(true);
+    if (!first.connectResult.ok || "totpChallengeRequired" in first.connectResult) {
+      return;
+    }
+    const secretBase32 = await enrollTOTP(first.secretStore, first.connectResult.preferences);
+
+    const second = await connectFreshSelfHostedDevice("TOTP Device B", login, "login", now);
+    expect(second.connectResult).toEqual(
+      expect.objectContaining({
+        ok: true,
+        totpChallengeRequired: true,
+        challengeID: expect.any(String),
+        accountID: expect.any(String),
+      }),
+    );
+    if (!second.connectResult.ok || !("totpChallengeRequired" in second.connectResult)) {
+      return;
+    }
+    // The password alone never yields a session.
+    await expect(second.secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ authSessionToken: null }),
+    );
+
+    const completed = await completeTOTPChallenge(second.preferences, {
+      challengeID: second.connectResult.challengeID,
+      code: totpCode(secretBase32, currentTOTPStep() + 1),
+    });
+    expect(completed.ok).toBe(true);
+    if (!completed.ok) {
+      return;
+    }
+
+    const finalized = await finalizeSyncSessionAfterTOTP(
+      second.storage,
+      second.secretStore,
+      second.preferences,
+      {
+        sessionToken: completed.auth.sessionToken,
+        sessionExpiresAt: completed.auth.sessionExpiresAt,
+        accountID: completed.auth.accountID,
+      },
+    );
+    expect(finalized.ok).toBe(true);
+    if (!finalized.ok) {
+      return;
+    }
+    expect(finalized.preferences.setupStatus).toBe("connected");
+
+    await disconnectSyncAccount(second.storage, second.secretStore, finalized.preferences);
+    await disconnectSyncAccount(
+      first.storage,
+      first.secretStore,
+      first.connectResult.preferences,
+    );
+  });
+
+  it("answers rate_limited with Retry-After once the step-up code budget is spent", async () => {
+    const now = new Date("2026-03-24T09:00:00.000Z");
+    const device = await connectFreshSelfHostedDevice(
+      "Budget Device",
+      `budget-${Date.now()}@ovumcy.test`,
+      "register",
+      now,
+    );
+    expect(device.connectResult.ok).toBe(true);
+    if (!device.connectResult.ok || "totpChallengeRequired" in device.connectResult) {
+      return;
+    }
+    const preferences = device.connectResult.preferences;
+    const secretBase32 = await enrollTOTP(device.secretStore, preferences);
+    const secrets = await device.secretStore.readSyncSecrets();
+    const deviceID = secrets?.device.deviceID ?? "";
+
+    const removeWithWrongCode = () =>
+      removeSyncDevice(device.storage, device.secretStore, preferences, deviceID, {
+        currentPassword: livePassword,
+        code: wrongTOTPCode(secretBase32),
+      });
+
+    // The server's step-up budget is 5 wrong codes per 15 minutes; the sixth
+    // check is refused before the code is looked at.
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      await expect(removeWithWrongCode()).resolves.toEqual({
+        ok: false,
+        errorCode: "totp_invalid_code",
+      });
+    }
+    const refused = await removeWithWrongCode();
+    expect(refused).toEqual({
+      ok: false,
+      errorCode: "rate_limited",
+      retryAfterSeconds: expect.any(Number),
+    });
+    if (refused.ok) {
+      return;
+    }
+    expect(refused.retryAfterSeconds).toBeGreaterThan(0);
+    expect(refused.retryAfterSeconds).toBeLessThanOrEqual(15 * 60);
+
+    // Nothing was removed: the device still reaches its own account.
+    const upload = await runSyncUpload(device.storage, device.secretStore, preferences, now);
+    expect(upload.ok).toBe(true);
+
+    await disconnectSyncAccount(device.storage, device.secretStore, preferences);
   });
 });
