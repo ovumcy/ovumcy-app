@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Platform, Share, StyleSheet, Text, View } from "react-native";
 
 import type { PartnerCopy } from "../../../i18n/partner-copy";
@@ -81,9 +82,15 @@ export function SettingsPartnerAccessSection({
   // "Pending invites" should list only invites still awaiting a response: an
   // accepted invite already shows up as an active grant below, and a revoked
   // one is gone, so keeping either here makes the list lie about what is
-  // actionable.
+  // actionable. An expired invite can no longer be accepted either; an
+  // unparseable expiry stays listed so it can still be revoked. Expiry is
+  // judged against the mount-time clock.
+  const [nowMs] = useState(() => Date.now());
   const pendingOwnedInvites = ownedInvites.filter(
-    (invite) => !invite.acceptedAt && !invite.revokedAt,
+    (invite) =>
+      !invite.acceptedAt &&
+      !invite.revokedAt &&
+      !(Date.parse(invite.expiresAt) <= nowMs),
   );
   const ownedGrants = overview?.owned.grants ?? [];
   // "Active partner access" must list only live grants. A revoked grant stays in
@@ -91,7 +98,10 @@ export function SettingsPartnerAccessSection({
   // worked; filtering it out makes the success banner and the now-empty list
   // agree that access is gone.
   const activeOwnedGrants = ownedGrants.filter((grant) => !grant.revokedAt);
-  const sharedWithMeGrants = overview?.sharedWithMe ?? [];
+  // A grant the owner revoked no longer opens a shared view.
+  const sharedWithMeGrants = (overview?.sharedWithMe ?? []).filter(
+    (grant) => !grant.revokedAt,
+  );
   const hasOwnerHistory = ownedInvites.length > 0 || ownedGrants.length > 0;
   const hasSharedAccess = sharedWithMeGrants.length > 0;
 
