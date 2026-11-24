@@ -195,6 +195,8 @@ export type SyncCapabilityDocument = {
   advancedCloudInsights: boolean;
   maxDevices: number;
   maxBlobBytes: number;
+  // PUT /sync/rekey is offered; absent on servers that predate it.
+  atomicRekey?: boolean;
 };
 
 export type SyncDeviceRecord = {

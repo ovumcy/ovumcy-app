@@ -8,7 +8,7 @@ import {
 jest.mock("expo/fetch", () => ({ fetch: jest.fn() }));
 
 const BASE_URL = "https://sync.example.test/api";
-const BLOB_METHODS = new Set(["getBlob", "putBlob"]);
+const BLOB_METHODS = new Set(["getBlob", "putBlob", "rekey"]);
 
 function never(): Promise<never> {
   return new Promise<never>(() => undefined);

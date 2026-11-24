@@ -1259,4 +1259,172 @@ describe("sync-api-client", () => {
       "expected_generation",
     );
   });
+
+  const REKEY_PACKAGE: WrappedSyncKeyMetadata = {
+    algorithm: "xchacha20poly1305",
+    kdf: "bip39_seed_hkdf_sha256",
+    mnemonicWordCount: 12,
+    wrapNonceHex: "a".repeat(48),
+    wrappedMasterKeyHex: "b".repeat(96),
+    phraseFingerprintHex: "c".repeat(16),
+  };
+  const REKEY_BLOB = {
+    schemaVersion: 3,
+    generation: 20,
+    checksumSHA256: "d".repeat(64),
+    ciphertextBase64: "AA==",
+  };
+
+  it("sends the package, the blob and expected_generation in one PUT /sync/rekey", async () => {
+    const fetchMock = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          recovery_key: {
+            algorithm: "xchacha20poly1305",
+            kdf: "bip39_seed_hkdf_sha256",
+            mnemonic_word_count: 12,
+            wrap_nonce_hex: "a".repeat(48),
+            wrapped_master_key_hex: "b".repeat(96),
+            phrase_fingerprint_hex: "c".repeat(16),
+            updated_at: "2026-03-21T10:00:00.000Z",
+          },
+          blob: {
+            schema_version: 3,
+            generation: 20,
+            checksum_sha256: "d".repeat(64),
+            ciphertext_base64: "AA==",
+            ciphertext_size: 1,
+            updated_at: "2026-03-21T10:00:01.000Z",
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createSyncAPIClient(
+      "http://127.0.0.1:8080/",
+      fetchMock as jest.MockedFunction<typeof fetch>,
+    );
+
+    const result = await client.rekey(
+      "session-1",
+      { recoveryKey: REKEY_PACKAGE, blob: REKEY_BLOB, expectedGeneration: 0 },
+      { currentPassword: "pw", code: " 123456 " },
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      blob: {
+        schemaVersion: 3,
+        generation: 20,
+        checksumSHA256: "d".repeat(64),
+        ciphertextBase64: "AA==",
+        ciphertextSize: 1,
+        updatedAt: "2026-03-21T10:00:01.000Z",
+      },
+    });
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe("http://127.0.0.1:8080/sync/rekey");
+    expect(init?.method).toBe("PUT");
+    expect(JSON.parse(init?.body as string)).toEqual({
+      recovery_key: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonic_word_count: 12,
+        wrap_nonce_hex: "a".repeat(48),
+        wrapped_master_key_hex: "b".repeat(96),
+        phrase_fingerprint_hex: "c".repeat(16),
+      },
+      blob: {
+        schema_version: 3,
+        generation: 20,
+        checksum_sha256: "d".repeat(64),
+        ciphertext_base64: "AA==",
+      },
+      expected_generation: 0,
+      current_password: "pw",
+      code: "123456",
+    });
+  });
+
+  it("sends no step-up fields on a rekey without one and maps its refusals", async () => {
+    const fetchMock = jest.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ error: "stale_generation" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    const client = createSyncAPIClient(
+      "http://127.0.0.1:8080",
+      fetchMock as jest.MockedFunction<typeof fetch>,
+    );
+
+    await expect(
+      client.rekey("session-1", {
+        recoveryKey: REKEY_PACKAGE,
+        blob: REKEY_BLOB,
+        expectedGeneration: 7,
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "stale_generation" });
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body.expected_generation).toBe(7);
+    expect(body).not.toHaveProperty("current_password");
+    expect(body).not.toHaveProperty("code");
+  });
+
+  it("refuses a rekey answer without the stored blob as invalid_response", async () => {
+    const fetchMock = jest.fn().mockResolvedValue(
+      new Response(JSON.stringify({ recovery_key: null }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createSyncAPIClient(
+      "http://127.0.0.1:8080",
+      fetchMock as jest.MockedFunction<typeof fetch>,
+    );
+
+    await expect(
+      client.rekey("session-1", {
+        recoveryKey: REKEY_PACKAGE,
+        blob: REKEY_BLOB,
+        expectedGeneration: 0,
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "invalid_response" });
+  });
+
+  it("reports atomicRekey only when the capability document says true", async () => {
+    const document = {
+      mode: "self_hosted",
+      sync_enabled: true,
+      recovery_supported: true,
+      push_supported: false,
+      portal_supported: false,
+      advanced_cloud_insights: false,
+      max_devices: 5,
+      max_blob_bytes: 1024,
+    };
+    const respond = (body: unknown) =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(respond({ ...document, atomic_rekey: true }))
+      .mockResolvedValueOnce(respond({ ...document, atomic_rekey: false }))
+      .mockResolvedValueOnce(respond({ ...document, atomic_rekey: "yes" }));
+    const client = createSyncAPIClient(
+      "http://127.0.0.1:8080",
+      fetchMock as jest.MockedFunction<typeof fetch>,
+    );
+
+    const offered = await client.getCapabilities("session-1");
+    const declined = await client.getCapabilities("session-1");
+    const malformed = await client.getCapabilities("session-1");
+
+    expect(offered.ok && offered.capabilities.atomicRekey).toBe(true);
+    expect(declined.ok && declined.capabilities).not.toHaveProperty("atomicRekey");
+    expect(malformed).toEqual({ ok: false, errorCode: "invalid_response" });
+  });
 });
