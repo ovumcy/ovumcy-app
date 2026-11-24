@@ -3031,10 +3031,15 @@ async function syncRecoveryKeyBeforeBlob(
     return { ok: false, errorCode: "stale_generation" };
   }
   if (capabilities.atomicRekey === true) {
+    // A device that has synced expects its own floor, as a plain blob PUT
+    // does, so a blob another device wrote since is refused, not replaced.
     return {
       ok: true,
       replacedPackage: null,
-      rekeyExpectedGeneration: remoteBlob?.generation ?? 0,
+      rekeyExpectedGeneration:
+        upload.remoteBlob === undefined && upload.rollbackFloor !== null
+          ? upload.rollbackFloor
+          : (remoteBlob?.generation ?? 0),
     };
   }
 
