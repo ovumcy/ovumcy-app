@@ -171,6 +171,7 @@ describe("rotateManagedRecoveryPhrase", () => {
       currentPassword: PASSWORD,
       code: CODE,
       recoveryKeyPackage: expect.any(Object),
+      expectedPhraseFingerprintHex: secrets.wrappedKey.phraseFingerprintHex,
     });
     const stored = await store.readSyncSecrets();
     expect(stored?.wrappedKey).toEqual(sentPackage(replaceRecoveryKey, 0));
@@ -258,6 +259,71 @@ describe("rotateManagedRecoveryPhrase", () => {
     expect(sentPackage(replaceRecoveryKey, 1)?.phraseFingerprintHex).not.toBe(
       sentPackage(replaceRecoveryKey, 0)?.phraseFingerprintHex,
     );
+  });
+
+  it("expects the package this device holds on the first send and every resend", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { factory, replaceRecoveryKey } = createClient([
+      { ok: false, errorCode: "sync_bridge_unavailable" },
+      { ok: true },
+    ]);
+
+    await rotate(store, { currentPassword: PASSWORD, code: CODE }, NOW, factory);
+    await rotate(store, { currentPassword: PASSWORD, code: "111222" }, NOW, factory);
+
+    for (const call of replaceRecoveryKey.mock.calls as unknown as [
+      string,
+      { expectedPhraseFingerprintHex?: string },
+    ][]) {
+      expect(call[1].expectedPhraseFingerprintHex).toBe(secrets.wrappedKey.phraseFingerprintHex);
+    }
+  });
+
+  it("drops the candidate on a conflict and keeps the old package", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { factory, replaceRecoveryKey } = createClient([
+      { ok: false, errorCode: "recovery_key_conflict" },
+    ]);
+
+    const shown = await prepareManagedRecoveryRotationCandidate(store);
+    const result = await rotateManagedRecoveryPhrase(
+      store,
+      { currentPassword: PASSWORD, code: CODE },
+      NOW,
+      factory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "recovery_key_conflict" });
+    expect(replaceRecoveryKey).toHaveBeenCalledTimes(1);
+    expect((await store.readSyncSecrets())?.wrappedKey).toEqual(secrets.wrappedKey);
+    expect(peekUnacknowledgedManagedRecoveryPhrase()).toBeNull();
+    expect(await prepareManagedRecoveryRotationCandidate(store)).not.toBe(shown);
+  });
+
+  it("drops the expectation once provisioning shows the server holds no package", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { factory, replaceRecoveryKey } = createClient([
+      { ok: false, errorCode: "sync_account_not_found" },
+      { ok: true },
+    ]);
+
+    await expect(
+      rotate(store, { currentPassword: PASSWORD, code: CODE }, NOW, factory),
+    ).resolves.toEqual({ ok: false, errorCode: "totp_fresh_code_required" });
+    await expect(
+      rotate(store, { currentPassword: PASSWORD, code: "111222" }, NOW, factory),
+    ).resolves.toMatchObject({ ok: true });
+
+    const calls = replaceRecoveryKey.mock.calls as unknown as [string, object][];
+    expect(calls[0]?.[1]).toHaveProperty(
+      "expectedPhraseFingerprintHex",
+      secrets.wrappedKey.phraseFingerprintHex,
+    );
+    expect(calls[1]?.[1]).not.toHaveProperty("expectedPhraseFingerprintHex");
+    expect(sentPackage(replaceRecoveryKey, 1)).toEqual(sentPackage(replaceRecoveryKey, 0));
   });
 
   it("keeps a confirmed phrase across reads until it is acknowledged, and a session end clears it", async () => {
@@ -349,6 +415,9 @@ describe("rotateManagedRecoveryPhrase", () => {
     expect(createSyncSession).toHaveBeenCalledWith("access-1");
     expect(replaceRecoveryKey).toHaveBeenCalledTimes(2);
     expect(sentPackage(replaceRecoveryKey, 1)).toEqual(sentPackage(replaceRecoveryKey, 0));
+    expect((replaceRecoveryKey.mock.calls as unknown as [string, object][])[1]?.[1]).not.toHaveProperty(
+      "expectedPhraseFingerprintHex",
+    );
     expect((await store.readSyncSecrets())?.authSessionToken).toBe("sync-2");
   });
 

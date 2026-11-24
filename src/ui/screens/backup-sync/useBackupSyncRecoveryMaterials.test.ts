@@ -459,6 +459,28 @@ describe("useBackupSyncRecoveryMaterials", () => {
       },
     );
 
+    it("closes the card and explains a phrase changed on another device", async () => {
+      const { core, result } = await openRotationCard(false);
+      mockRotateManagedRecoveryPhrase.mockResolvedValue({
+        ok: false,
+        errorCode: "recovery_key_conflict",
+      });
+      mockPrepareRotationCandidate.mockClear();
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+      expect(mockPrepareRotationCandidate).not.toHaveBeenCalled();
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "managed_recovery_key_conflict",
+        scope: "local",
+      });
+    });
+
     it("shows the replacement when a refusal dropped the shown candidate", async () => {
       const { result } = await openRotationCard(false);
       mockRotateManagedRecoveryPhrase.mockResolvedValue({ ok: false, errorCode: "generic" });

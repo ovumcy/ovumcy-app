@@ -494,6 +494,8 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.remoteBackupChanged;
     case "managed_recovery_key_overwrite":
       return viewData.errors.recoveryKeyChangedElsewhere;
+    case "managed_recovery_key_conflict":
+      return viewData.errors.recoveryKeyRotationConflict;
     // Self-hosted only; the managed text speaks of a phrase change.
     case "recovery_key_changed_elsewhere":
       return viewData.errors.recoveryKeyReplacedOnServer;

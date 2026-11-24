@@ -40,6 +40,9 @@ export type ManagedCloudAPIErrorCode =
   | "sync_purge_unavailable"
   | "sync_account_not_found"
   | "invalid_recovery_package"
+  // 409 at recovery-key rotation: the stored package no longer carries the
+  // expected fingerprint (another device rotated). Nothing was replaced.
+  | "recovery_key_conflict"
   | "origin_not_allowed"
   | "totp_not_configured"
   | "totp_not_enabled"
@@ -402,13 +405,17 @@ export type ManagedCloudAPIClient = {
   >;
   // PUT /account/recovery-key: the package wraps the SAME master key under a
   // new phrase. `sync_bridge_unavailable` (502), `network_failed` and
-  // `invalid_response` mean the replacement may already be applied.
+  // `invalid_response` mean the replacement may already be applied. With
+  // `expectedPhraseFingerprintHex` the server replaces only the package that
+  // carries it (`recovery_key_conflict` otherwise); the same package re-sent
+  // is accepted whatever the expectation.
   replaceRecoveryKey(
     sessionToken: string,
     input: {
       currentPassword: string;
       code?: string;
       recoveryKeyPackage: WrappedSyncKeyMetadata;
+      expectedPhraseFingerprintHex?: string;
     },
   ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
   startTOTPEnrollment(
@@ -850,17 +857,14 @@ export function createManagedCloudAPIClient(
         {
           method: "PUT",
           sessionToken,
-          body:
-            input.code === undefined
-              ? {
-                  current_password: input.currentPassword,
-                  recovery_key_package: recoveryKeyPackage,
-                }
-              : {
-                  current_password: input.currentPassword,
-                  code: input.code,
-                  recovery_key_package: recoveryKeyPackage,
-                },
+          body: {
+            current_password: input.currentPassword,
+            ...(input.code === undefined ? {} : { code: input.code }),
+            recovery_key_package: recoveryKeyPackage,
+            ...(input.expectedPhraseFingerprintHex === undefined
+              ? {}
+              : { expected_phrase_fingerprint_hex: input.expectedPhraseFingerprintHex }),
+          },
         },
         isRawManagedCloudStatusPayload,
       ).then((result) => {
@@ -1478,6 +1482,7 @@ async function readErrorCode(
       case "sync_purge_unavailable":
       case "sync_account_not_found":
       case "invalid_recovery_package":
+      case "recovery_key_conflict":
       case "origin_not_allowed":
       case "totp_not_configured":
       case "totp_not_enabled":
