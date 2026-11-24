@@ -397,7 +397,7 @@ const settingsCopyEn = {
       recoveryKeyChangedElsewhere:
         "Your account's recovery phrase was changed, and this device still holds the old one. If you changed it here, finish the change; otherwise disconnect and sign back in with the new phrase.",
       recoveryKeyRotationConflict:
-        "Your recovery phrase was changed on another device, so this change was not saved and the phrase shown here never became active. Use the phrase from that device. To change it from here, disconnect and sign back in with that phrase first.",
+        "Your recovery phrase was already changed elsewhere (on another device, or by an earlier change here that was never confirmed), so this change was not saved and the phrase shown now never became active. Use the phrase from that change. To change it from here, disconnect and sign back in with that phrase first.",
       blobNotFound: "No encrypted backup copy exists on this server yet.",
       recoveryKeyReplacedOnServer:
         "Another device replaced this account's recovery key on your sync server, so the key on this device no longer matches. Disconnect, then sign back in with the account's current recovery phrase.",
@@ -1030,7 +1030,7 @@ const settingsCopyDe: SettingsCopy = {
       recoveryKeyChangedElsewhere:
         "Die Wiederherstellungsphrase Ihres Kontos wurde geändert, dieses Gerät hat noch die alte. Haben Sie sie hier geändert, schließen Sie die Änderung ab; sonst trennen Sie die Verbindung und melden Sie sich mit der neuen Phrase wieder an.",
       recoveryKeyRotationConflict:
-        "Ihre Wiederherstellungsphrase wurde auf einem anderen Gerät geändert, daher wurde diese Änderung nicht gespeichert und die hier angezeigte Phrase wurde nie aktiv. Verwenden Sie die Phrase von jenem Gerät. Um sie hier zu ändern, trennen Sie zuerst die Verbindung und melden Sie sich mit dieser Phrase wieder an.",
+        "Ihre Wiederherstellungsphrase wurde bereits anderswo geändert (auf einem anderen Gerät oder durch eine frühere, nie bestätigte Änderung hier), daher wurde diese Änderung nicht gespeichert und die jetzt angezeigte Phrase wurde nie aktiv. Verwenden Sie die Phrase aus jener Änderung. Um sie hier zu ändern, trennen Sie zuerst die Verbindung und melden Sie sich mit dieser Phrase wieder an.",
       blobNotFound:
         "Auf diesem Server gibt es noch keine verschlüsselte Sicherungskopie.",
       recoveryKeyReplacedOnServer:
@@ -1694,7 +1694,7 @@ const settingsCopyFr: SettingsCopy = {
       recoveryKeyChangedElsewhere:
         "La phrase de récupération de votre compte a été changée et cet appareil conserve l'ancienne. Si vous l'avez changée ici, terminez le changement ; sinon déconnectez-vous et reconnectez-vous avec la nouvelle phrase.",
       recoveryKeyRotationConflict:
-        "Votre phrase de récupération a été changée sur un autre appareil : ce changement n'a donc pas été enregistré et la phrase affichée ici n'est jamais devenue active. Utilisez la phrase de cet appareil. Pour la changer ici, déconnectez-vous puis reconnectez-vous d'abord avec cette phrase.",
+        "Votre phrase de récupération a déjà été changée ailleurs (sur un autre appareil, ou par un changement antérieur ici jamais confirmé) : ce changement n'a donc pas été enregistré et la phrase affichée maintenant n'est jamais devenue active. Utilisez la phrase issue de ce changement. Pour la changer ici, déconnectez-vous puis reconnectez-vous d'abord avec cette phrase.",
       blobNotFound:
         "Aucune copie de sauvegarde chiffrée n'existe encore sur ce serveur.",
       recoveryKeyReplacedOnServer:
@@ -2337,7 +2337,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         recoveryKeyChangedElsewhere:
           "Фраза восстановления аккаунта была изменена, а на этом устройстве осталась старая. Если вы меняли её здесь, завершите смену; иначе отключитесь и войдите снова с новой фразой.",
         recoveryKeyRotationConflict:
-          "Фразу восстановления сменили на другом устройстве, поэтому эта смена не сохранена, а показанная здесь фраза так и не стала активной. Используйте фразу с того устройства. Чтобы сменить её здесь, сначала отключитесь и войдите снова с этой фразой.",
+          "Фразу восстановления уже сменили в другом месте (на другом устройстве или прежней, так и не подтверждённой сменой здесь), поэтому эта смена не сохранена, а показанная сейчас фраза так и не стала активной. Используйте фразу из той смены. Чтобы сменить её здесь, сначала отключитесь и войдите снова с этой фразой.",
         blobNotFound:
           "На этом сервере ещё нет зашифрованной резервной копии.",
         recoveryKeyReplacedOnServer:
@@ -2962,7 +2962,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         recoveryKeyChangedElsewhere:
           "La frase de recuperación de tu cuenta cambió y este dispositivo aún tiene la anterior. Si la cambiaste aquí, termina el cambio; si no, desconéctate y vuelve a entrar con la frase nueva.",
         recoveryKeyRotationConflict:
-          "Tu frase de recuperación se cambió en otro dispositivo, así que este cambio no se guardó y la frase que se mostró aquí nunca llegó a estar activa. Usa la frase de ese dispositivo. Para cambiarla desde aquí, desconéctate primero y vuelve a entrar con esa frase.",
+          "Tu frase de recuperación ya se cambió en otro lugar (en otro dispositivo, o con un cambio anterior aquí que nunca se confirmó), así que este cambio no se guardó y la frase que se muestra ahora nunca llegó a estar activa. Usa la frase de ese cambio. Para cambiarla desde aquí, desconéctate primero y vuelve a entrar con esa frase.",
         blobNotFound:
           "Todavía no existe una copia de respaldo cifrada en este servidor.",
         recoveryKeyReplacedOnServer:
@@ -3591,7 +3591,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         recoveryKeyChangedElsewhere:
           "La frase di recupero del tuo account è stata cambiata e questo dispositivo ha ancora quella vecchia. Se l'hai cambiata qui, completa la modifica; altrimenti disconnettiti e accedi di nuovo con la nuova frase.",
         recoveryKeyRotationConflict:
-          "La frase di recupero è stata cambiata su un altro dispositivo, quindi questa modifica non è stata salvata e la frase mostrata qui non è mai diventata attiva. Usa la frase di quel dispositivo. Per cambiarla da qui, disconnettiti prima e accedi di nuovo con quella frase.",
+          "La frase di recupero è già stata cambiata altrove (su un altro dispositivo, o da una modifica precedente qui mai confermata), quindi questa modifica non è stata salvata e la frase mostrata ora non è mai diventata attiva. Usa la frase di quella modifica. Per cambiarla da qui, disconnettiti prima e accedi di nuovo con quella frase.",
         blobNotFound:
           "Non esiste ancora un backup cifrato su questo server.",
         recoveryKeyReplacedOnServer:
