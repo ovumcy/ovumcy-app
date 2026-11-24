@@ -36,6 +36,7 @@ export type AccountSecurityCopy = {
     currentPasswordLabel: string;
     codeLabel: string;
     submitLabel: string;
+    signedOutMessage: string;
   };
 
   reveal: {
@@ -108,6 +109,8 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     currentPasswordLabel: "Current password",
     codeLabel: "Two-factor code from your authenticator app",
     submitLabel: "Generate new recovery code",
+    signedOutMessage:
+      "Your new recovery code signed you out on all devices. Sign in again to keep using sync.",
   },
 
   reveal: {
@@ -187,6 +190,8 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
     currentPasswordLabel: "Aktuelles Passwort",
     codeLabel: "Zwei-Faktor-Code aus Ihrer Authenticator-App",
     submitLabel: "Neuen Wiederherstellungscode erzeugen",
+    signedOutMessage:
+      "Der neue Wiederherstellungscode hat Sie auf allen Geräten abgemeldet. Melden Sie sich erneut an, um die Synchronisierung weiter zu nutzen.",
   },
 
   reveal: {
@@ -270,6 +275,8 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
     currentPasswordLabel: "Mot de passe actuel",
     codeLabel: "Code de double authentification de votre application",
     submitLabel: "Générer un nouveau code de récupération",
+    signedOutMessage:
+      "Le nouveau code de récupération vous a déconnecté de tous vos appareils. Reconnectez-vous pour continuer à utiliser la synchronisation.",
   },
 
   reveal: {
@@ -353,6 +360,8 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
     currentPasswordLabel: "Текущий пароль",
     codeLabel: "Код двухфакторки из приложения-аутентификатора",
     submitLabel: "Сгенерировать новый код восстановления",
+    signedOutMessage:
+      "Новый код восстановления завершил вход на всех устройствах. Войдите снова, чтобы продолжить пользоваться синхронизацией.",
   },
 
   reveal: {
@@ -436,6 +445,8 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
     currentPasswordLabel: "Contraseña actual",
     codeLabel: "Código de doble factor de tu app de autenticación",
     submitLabel: "Generar nuevo código de recuperación",
+    signedOutMessage:
+      "El nuevo código de recuperación cerró tu sesión en todos los dispositivos. Inicia sesión de nuevo para seguir usando la sincronización.",
   },
 
   reveal: {
@@ -519,6 +530,8 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
     currentPasswordLabel: "Password corrente",
     codeLabel: "Codice a due fattori dalla tua app di autenticazione",
     submitLabel: "Genera nuovo codice di recupero",
+    signedOutMessage:
+      "Il nuovo codice di recupero ti ha disconnesso da tutti i dispositivi. Accedi di nuovo per continuare a usare la sincronizzazione.",
   },
 
   reveal: {

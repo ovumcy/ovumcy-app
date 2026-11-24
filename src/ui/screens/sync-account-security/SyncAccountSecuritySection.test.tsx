@@ -40,6 +40,7 @@ function baseProps() {
     onSubmitResetPassword: noop,
     onCancelForgot: noop,
 
+    regenerateSignedOut: false,
     regeneratePassword: "",
     onRegeneratePasswordChange: noop,
     regenerateCode: "",
@@ -353,6 +354,52 @@ describe("SyncAccountSecuritySection", () => {
 
     expect(
       screen.queryByTestId("account-security-forgot-signed-out-banner"),
+    ).toBeNull();
+  });
+
+  it("shows the regenerate sign-out notice only once the code is acknowledged", async () => {
+    const view = await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          regenerateSignedOut={true}
+          revealedRecoveryCode="freshcode000freshcode000freshcod"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-recovery-code-value"),
+    ).toBeTruthy();
+    expect(
+      screen.queryByTestId("account-security-regenerate-signed-out-banner"),
+    ).toBeNull();
+
+    await view.rerender(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          regenerateSignedOut={true}
+          revealedRecoveryCode=""
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-regenerate-signed-out-banner"),
+    ).toBeTruthy();
+    expect(screen.getByText(copy.regenerate.signedOutMessage)).toBeTruthy();
+  });
+
+  it("hides the regenerate sign-out notice when regenerateSignedOut is false", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection {...baseProps()} regenerateSignedOut={false} />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.queryByTestId("account-security-regenerate-signed-out-banner"),
     ).toBeNull();
   });
 

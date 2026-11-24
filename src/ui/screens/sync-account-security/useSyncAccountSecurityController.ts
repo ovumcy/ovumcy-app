@@ -133,6 +133,11 @@ export function useSyncAccountSecurityController({
   // not_connected.
   const [forgotSignedOut, setForgotSignedOut] = useState(false);
 
+  // Ovumcy Cloud revokes every session on a recovery-code regeneration, this
+  // device's included. Set when the local managed session was cleared, so the
+  // screen asks for a new sign-in once the code is acknowledged.
+  const [regenerateSignedOut, setRegenerateSignedOut] = useState(false);
+
   // Regenerate recovery code
   const [regeneratePassword, setRegeneratePassword] = useState("");
   const [regenerateCode, setRegenerateCode] = useState("");
@@ -334,8 +339,10 @@ export function useSyncAccountSecurityController({
       return;
     }
     setRegenerateErrorCode(null);
+    setRegenerateSignedOut(false);
     setRegenerateStatus("submitting");
     const result = await regenerateSyncAccountRecoveryCode(
+      storage,
       syncSecretStore,
       preferences,
       regenerateCodeVisible
@@ -343,9 +350,13 @@ export function useSyncAccountSecurityController({
         : { currentPassword: regeneratePassword },
     );
     if (result.ok) {
+      // The code is revealed first; the sign-out notice shows once it is
+      // acknowledged.
+      setPreferences(result.preferences);
       setRevealedRecoveryCode(result.recoveryCode);
       setRevealedRecoveryCodeFromTOTP(false);
       setRevealedRecoveryCodeFromPasswordChange(false);
+      setRegenerateSignedOut(result.signedOut);
       setRegenerateStatus("success");
       setRegeneratePassword("");
       setRegenerateCode("");
@@ -562,6 +573,7 @@ export function useSyncAccountSecurityController({
     handleCancelForgot,
 
     // regenerate
+    regenerateSignedOut,
     regeneratePassword,
     setRegeneratePassword: clearRateLimitOnEdit(
       setRegeneratePassword,

@@ -27,6 +27,8 @@ With two-factor on, *Regenerate recovery code* asks for a current 6-digit code n
 
 With or without two-factor, the server replaces the recovery code before it answers a regeneration. If that answer never reaches the app (a network drop or an unreadable reply), the app warns that the old code may no longer work and asks you to regenerate again; a refusal the server did answer, such as a wrong password, keeps its own message.
 
+On Ovumcy Cloud a regeneration also ends every session of the account, on every device, this one included. The app shows the new code first and clears the local session once the server has answered; after you confirm the code is saved it says to sign in again. A self-hosted (community) server keeps its sessions, so nothing is signed out there.
+
 ## Changing The Password On A Self-Hosted Server
 
 A self-hosted (community) server replaces the recovery code whenever the password changes, and the old code stops working at once. The app shows the new code once, in the same *Save this recovery code* window as a regeneration; save it before closing. With two-factor on, *Change password* also asks for a current 6-digit code, because the new recovery code could otherwise reset the password and turn two-factor off. The code field appears whenever the app knows two-factor is on, and also after the server refuses the change for a missing or wrong code. A wrong code and a code already used each keep their own message. If the answer never reaches the app, it warns that the password and the recovery code may already have changed; generate a new recovery code with whichever password works. Ovumcy Cloud does not ask for a code here.

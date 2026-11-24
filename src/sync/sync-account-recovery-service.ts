@@ -10,6 +10,7 @@ import {
   type ManagedSessionCallFailure,
 } from "./managed-session-call";
 import { clearManagedSessionFromSecrets } from "./managed-session-refresh-service";
+import { clearLocalSyncSession } from "./sync-client-service";
 import {
   createSyncAPIClient,
   type SyncAPIClient,
@@ -420,21 +421,33 @@ async function isCommunitySessionRevoked(
  * Rotates the account-level recovery code. Requires an authenticated session
  * and the current password as a re-confirmation step (defense against a
  * hijacked session silently rotating the code and locking the legitimate
- * owner out of the recovery surface). Sessions are left untouched; a
- * community server also deletes pending reset tokens.
+ * owner out of the recovery surface). Ovumcy Cloud revokes every session and
+ * refresh token of the account on a regeneration, this device's included, so
+ * a managed success clears the local managed session and reports `signedOut`;
+ * if that local clear fails the code is still returned, with `signedOut:
+ * false`. A community server keeps its sessions (left untouched) and deletes
+ * pending reset tokens.
  *
  * `code` is the current TOTP code: both servers require it once the account
  * has two-factor on, because a recovery-code reset clears TOTP. It is sent
  * only when given — both servers reject a body field they do not know.
  */
 export async function regenerateSyncAccountRecoveryCode(
+  storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
   input: { currentPassword: string; code?: string },
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
-  | { ok: true; recoveryCode: string }
+  | {
+      ok: true;
+      recoveryCode: string;
+      preferences: SyncPreferencesRecord;
+      // True only when the managed session the server revoked was cleared
+      // from this device.
+      signedOut: boolean;
+    }
   | { ok: false; errorCode: RegenerateSyncRecoveryCodeErrorCode }
 > {
   if (input.currentPassword.length === 0) {
@@ -462,6 +475,7 @@ export async function regenerateSyncAccountRecoveryCode(
     if (!secrets.managedAuthSessionToken) {
       return { ok: false, errorCode: "not_connected" };
     }
+    const wipeEpoch = readSyncWipeEpoch();
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const result = await callWithManagedSession(
       secretStore,
@@ -474,7 +488,36 @@ export async function regenerateSyncAccountRecoveryCode(
         errorCode: mapManagedRegenerateError(result.errorCode),
       };
     }
-    return { ok: true, recoveryCode: result.result.recoveryCode };
+    const recoveryCode = result.result.recoveryCode;
+    if (readSyncWipeEpoch() !== wipeEpoch) {
+      // A Clear local data during the call already dropped the session; the
+      // code is still returned, with the preferences the wipe left.
+      return {
+        ok: true,
+        recoveryCode,
+        preferences:
+          (await storage.readSyncPreferencesRecord().catch(() => null)) ??
+          preferences,
+        signedOut: false,
+      };
+    }
+    try {
+      const signedOutPreferences = await clearLocalSyncSession(
+        storage,
+        secretStore,
+        preferences,
+      );
+      return {
+        ok: true,
+        recoveryCode,
+        preferences: signedOutPreferences,
+        signedOut: true,
+      };
+    } catch {
+      // The code is never lost to a local failure; the revoked session fails
+      // its next call and is cleared there.
+      return { ok: true, recoveryCode, preferences, signedOut: false };
+    }
   }
 
   const normalizedEndpoint = normalizeSyncEndpoint(
@@ -498,7 +541,12 @@ export async function regenerateSyncAccountRecoveryCode(
       errorCode: mapCommunityRegenerateError(result.errorCode),
     };
   }
-  return { ok: true, recoveryCode: result.result.recoveryCode };
+  return {
+    ok: true,
+    recoveryCode: result.result.recoveryCode,
+    preferences,
+    signedOut: false,
+  };
 }
 
 // "unauthorized" means the session ended and its credentials were cleared

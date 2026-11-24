@@ -1252,6 +1252,7 @@ describe("sync-account-recovery-service", () => {
         .mockReturnValue(communityClientMock({ regenerateRecoveryCode }));
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences(),
         { currentPassword: "current password 12345" },
@@ -1262,6 +1263,8 @@ describe("sync-account-recovery-service", () => {
       expect(result).toEqual({
         ok: true,
         recoveryCode: "fresh1234fresh1234fresh1234fresh",
+        preferences: selfHostedPreferences(),
+        signedOut: false,
       });
       expect(regenerateRecoveryCode).toHaveBeenCalledWith(
         "community-session-1",
@@ -1280,6 +1283,7 @@ describe("sync-account-recovery-service", () => {
       );
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         managedPreferences(),
         { currentPassword: "wrong" },
@@ -1299,6 +1303,7 @@ describe("sync-account-recovery-service", () => {
       const managedFactory = jest.fn();
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences(),
         { currentPassword: "current password 12345" },
@@ -1316,6 +1321,7 @@ describe("sync-account-recovery-service", () => {
       const apiFactory = jest.fn();
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences(),
         { currentPassword: "" },
@@ -1335,6 +1341,7 @@ describe("sync-account-recovery-service", () => {
       const managedFactory = jest.fn();
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         managedPreferences(),
         { currentPassword: "current password 12345" },
@@ -1351,6 +1358,7 @@ describe("sync-account-recovery-service", () => {
       const apiFactory = jest.fn();
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences({ endpointInput: "  " }),
         { currentPassword: "current password 12345" },
@@ -1369,6 +1377,7 @@ describe("sync-account-recovery-service", () => {
       });
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences(),
         { currentPassword: "current password 12345" },
@@ -1390,6 +1399,7 @@ describe("sync-account-recovery-service", () => {
         .mockReturnValue(managedClientMock({ regenerateRecoveryCode }));
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         managedPreferences(),
         { currentPassword: "current password 12345" },
@@ -1400,9 +1410,142 @@ describe("sync-account-recovery-service", () => {
       expect(result).toEqual({
         ok: true,
         recoveryCode: "fresh1234fresh1234fresh1234fresh",
+        preferences: expect.objectContaining({ mode: "managed" }),
+        signedOut: true,
       });
       expect(regenerateRecoveryCode).toHaveBeenCalledWith("managed-session-1", {
         currentPassword: "current password 12345",
+      });
+    });
+
+    describe("local session after the server revokes it", () => {
+      const NEW_CODE = "fresh1234fresh1234fresh1234fresh";
+
+      function managedRegenerateFactory() {
+        return jest.fn().mockReturnValue(
+          managedClientMock({
+            regenerateRecoveryCode: jest.fn().mockResolvedValue({
+              ok: true,
+              result: { recoveryCode: NEW_CODE },
+            }),
+          }),
+        );
+      }
+
+      it("clears the managed session and reports signedOut after a managed 200", async () => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const storage = createLocalAppStorageMock();
+
+        const result = await regenerateSyncAccountRecoveryCode(
+          storage,
+          secretStore,
+          managedPreferences(),
+          { currentPassword: "current password 12345" },
+          jest.fn(),
+          managedRegenerateFactory(),
+        );
+
+        expect(result).toEqual({
+          ok: true,
+          recoveryCode: NEW_CODE,
+          preferences: expect.objectContaining({ setupStatus: "local_ready" }),
+          signedOut: true,
+        });
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+          expect.objectContaining({
+            managedAuthSessionToken: null,
+            managedRefreshToken: null,
+            authSessionToken: null,
+          }),
+        );
+        expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+          expect.objectContaining({ setupStatus: "local_ready" }),
+        );
+      });
+
+      it("still returns the code with signedOut false when the local clear throws", async () => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const storage = createLocalAppStorageMock();
+        (storage.writeSyncPreferencesRecord as jest.Mock).mockRejectedValue(
+          new Error("disk full"),
+        );
+
+        const result = await regenerateSyncAccountRecoveryCode(
+          storage,
+          secretStore,
+          managedPreferences(),
+          { currentPassword: "current password 12345" },
+          jest.fn(),
+          managedRegenerateFactory(),
+        );
+
+        expect(result).toEqual({
+          ok: true,
+          recoveryCode: NEW_CODE,
+          preferences: managedPreferences(),
+          signedOut: false,
+        });
+      });
+
+      it("returns the code and writes nothing when a wipe lands during the call", async () => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const storage = createLocalAppStorageMock();
+        const wipedPreferences = createDefaultSyncPreferencesRecord();
+        (storage.readSyncPreferencesRecord as jest.Mock).mockResolvedValue(
+          wipedPreferences,
+        );
+        const factory = jest.fn().mockReturnValue(
+          managedClientMock({
+            regenerateRecoveryCode: jest.fn().mockImplementation(async () => {
+              advanceSyncWipeEpoch();
+              return { ok: true, result: { recoveryCode: NEW_CODE } };
+            }),
+          }),
+        );
+
+        const result = await regenerateSyncAccountRecoveryCode(
+          storage,
+          secretStore,
+          managedPreferences(),
+          { currentPassword: "current password 12345" },
+          jest.fn(),
+          factory,
+        );
+
+        expect(result).toEqual({
+          ok: true,
+          recoveryCode: NEW_CODE,
+          preferences: wipedPreferences,
+          signedOut: false,
+        });
+        expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+      });
+
+      it("leaves the session untouched after a self-hosted 200", async () => {
+        const secrets = connectedSecrets();
+        const secretStore = createSyncSecretStoreMock(secrets);
+        const storage = createLocalAppStorageMock();
+        const apiFactory = jest.fn().mockReturnValue(
+          communityClientMock({
+            regenerateRecoveryCode: jest.fn().mockResolvedValue({
+              ok: true,
+              result: { recoveryCode: NEW_CODE },
+            }),
+          }),
+        );
+
+        const result = await regenerateSyncAccountRecoveryCode(
+          storage,
+          secretStore,
+          selfHostedPreferences(),
+          { currentPassword: "current password 12345" },
+          apiFactory,
+          jest.fn(),
+        );
+
+        expect(result).toMatchObject({ ok: true, signedOut: false });
+        await expect(secretStore.readSyncSecrets()).resolves.toEqual(secrets);
+        expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
       });
     });
 
@@ -1417,6 +1560,7 @@ describe("sync-account-recovery-service", () => {
       );
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences(),
         { currentPassword: "current password 12345" },
@@ -1438,6 +1582,7 @@ describe("sync-account-recovery-service", () => {
         .mockReturnValue(communityClientMock({ regenerateRecoveryCode }));
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences(),
         { currentPassword: "current password 12345", code: " 123456 " },
@@ -1448,6 +1593,8 @@ describe("sync-account-recovery-service", () => {
       expect(result).toEqual({
         ok: true,
         recoveryCode: "fresh1234fresh1234fresh1234fresh",
+        preferences: selfHostedPreferences(),
+        signedOut: false,
       });
       expect(regenerateRecoveryCode).toHaveBeenCalledWith(
         "community-session-1",
@@ -1468,6 +1615,7 @@ describe("sync-account-recovery-service", () => {
         const apiFactory = jest.fn();
 
         const result = await regenerateSyncAccountRecoveryCode(
+          createLocalAppStorageMock(),
           secretStore,
           selfHostedPreferences(),
           { currentPassword: "current password 12345", code },
@@ -1491,6 +1639,7 @@ describe("sync-account-recovery-service", () => {
         .mockReturnValue(managedClientMock({ regenerateRecoveryCode }));
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         managedPreferences(),
         { currentPassword: "current password 12345", code: " 123456 " },
@@ -1501,6 +1650,8 @@ describe("sync-account-recovery-service", () => {
       expect(result).toEqual({
         ok: true,
         recoveryCode: "fresh1234fresh1234fresh1234fresh",
+        preferences: expect.objectContaining({ mode: "managed" }),
+        signedOut: true,
       });
       expect(regenerateRecoveryCode).toHaveBeenCalledWith("managed-session-1", {
         currentPassword: "current password 12345",
@@ -1519,6 +1670,7 @@ describe("sync-account-recovery-service", () => {
         .mockReturnValue(managedClientMock({ regenerateRecoveryCode }));
 
       await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         managedPreferences(),
         { currentPassword: "current password 12345" },
@@ -1541,6 +1693,7 @@ describe("sync-account-recovery-service", () => {
         const managedFactory = jest.fn();
 
         const result = await regenerateSyncAccountRecoveryCode(
+          createLocalAppStorageMock(),
           secretStore,
           managedPreferences(),
           { currentPassword: "current password 12345", code },
@@ -1569,6 +1722,7 @@ describe("sync-account-recovery-service", () => {
       );
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         managedPreferences(),
         { currentPassword: "current password 12345", code: "123456" },
@@ -1595,6 +1749,7 @@ describe("sync-account-recovery-service", () => {
       );
 
       const result = await regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences(),
         { currentPassword: "current password 12345", code: "123456" },
