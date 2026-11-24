@@ -136,6 +136,23 @@ describe("runSyncUpload with PUT /sync/rekey (self-hosted)", () => {
     expect(harness.putBlob).not.toHaveBeenCalled();
   });
 
+  it("expects its own floor on a synced device storing a missing package", async () => {
+    const harness = setup({
+      getRecoveryKey: jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "recovery_package_not_found" }),
+      getBlob: jest.fn().mockResolvedValue({ ok: true, blob: storedBlob(200) }),
+      rekey: jest.fn().mockResolvedValue({ ok: false, errorCode: "stale_generation" }),
+    });
+
+    const result = await harness.upload(selfHosted({ lastRemoteGeneration: 100 }), {
+      stepUp: STEP_UP,
+    });
+
+    expect(harness.rekey.mock.calls[0][1].expectedGeneration).toBe(100);
+    expect(result).toEqual({ ok: false, errorCode: "remote_backup_changed" });
+  });
+
   it("uploads an unchanged package's blob with a plain put", async () => {
     const harness = setup({});
     (harness.api.getRecoveryKey as jest.Mock).mockResolvedValue({
