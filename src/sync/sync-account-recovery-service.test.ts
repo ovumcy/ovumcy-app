@@ -1542,6 +1542,67 @@ describe("sync-account-recovery-service", () => {
         expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
       });
 
+      it("returns the caller's preferences when a wipe lands and the stored record cannot be read", async () => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const storage = createLocalAppStorageMock();
+        (storage.readSyncPreferencesRecord as jest.Mock).mockRejectedValue(
+          new Error("storage unavailable"),
+        );
+        const factory = jest.fn().mockReturnValue(
+          managedClientMock({
+            regenerateRecoveryCode: jest.fn().mockImplementation(async () => {
+              advanceSyncWipeEpoch();
+              return { ok: true, result: { recoveryCode: NEW_CODE } };
+            }),
+          }),
+        );
+
+        const result = await regenerateSyncAccountRecoveryCode(
+          storage,
+          secretStore,
+          managedPreferences(),
+          { currentPassword: "current password 12345" },
+          jest.fn(),
+          factory,
+        );
+
+        expect(result).toEqual({
+          ok: true,
+          recoveryCode: NEW_CODE,
+          preferences: managedPreferences(),
+          signedOut: false,
+        });
+        expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        ["holds no record", () => Promise.resolve(null)],
+        ["cannot be read", () => Promise.reject(new Error("storage unavailable"))],
+      ])(
+        "signs out from the caller's preferences when the stored record %s",
+        async (_label, read) => {
+          const secretStore = createSyncSecretStoreMock(connectedSecrets());
+          const storage = createLocalAppStorageMock();
+          (storage.readSyncPreferencesRecord as jest.Mock).mockImplementation(read);
+
+          const result = await regenerateSyncAccountRecoveryCode(
+            storage,
+            secretStore,
+            { ...managedPreferences(), lastRemoteGeneration: 7 },
+            { currentPassword: "current password 12345" },
+            jest.fn(),
+            managedRegenerateFactory(),
+          );
+
+          expect(result).toEqual(
+            expect.objectContaining({ ok: true, recoveryCode: NEW_CODE, signedOut: true }),
+          );
+          expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+            expect.objectContaining({ lastRemoteGeneration: 7 }),
+          );
+        },
+      );
+
       it("leaves the session untouched after a self-hosted 200", async () => {
         const secrets = connectedSecrets();
         const secretStore = createSyncSecretStoreMock(secrets);
