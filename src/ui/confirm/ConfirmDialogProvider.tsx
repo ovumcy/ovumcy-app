@@ -48,13 +48,22 @@ export function ConfirmDialogProvider({ children }: ConfirmDialogProviderProps) 
         transparent
         visible={request !== null}
       >
+        {/* Neither layer is a screen-reader node: a focusable wrapper would
+            merge the message and buttons into one element. Screen-reader users
+            dismiss with Back (onRequestClose) or the dialog's own buttons. */}
         <Pressable
-          accessibilityLabel="dismiss-confirm-backdrop"
+          accessible={false}
+          importantForAccessibility="no"
           onPress={() => resolveWith("dismiss")}
           style={styles.backdrop}
           testID="confirm-dialog-backdrop"
         >
-          <Pressable onPress={() => undefined} style={styles.dialog}>
+          <Pressable
+            accessible={false}
+            importantForAccessibility="no"
+            onPress={() => undefined}
+            style={styles.dialog}
+          >
             <Text style={styles.message} testID="confirm-dialog-message">
               {request?.message ?? ""}
             </Text>

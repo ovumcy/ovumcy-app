@@ -158,4 +158,28 @@ describe("DashboardCycleHero", () => {
 
     expect(screen.queryByTestId("dashboard-cycle-hero-upcoming-ovulation")).toBeNull();
   });
+
+  it("draws a one-line dash in the ring for an unknown day and keeps the word for screen readers", async () => {
+    await renderHero({
+      state: "unknown",
+      value: "Unknown",
+      detail: "Predictions paused",
+      caption: "",
+      progressPercent: null,
+      currentTone: "neutral",
+      phaseSegments: [],
+      phaseCards: [],
+    });
+
+    const value = screen.getByTestId("dashboard-cycle-hero-value");
+    expect(value.props.children).toBe("—");
+    expect(value.props.numberOfLines).toBe(1);
+    expect(screen.getByLabelText("Day Unknown. Predictions paused")).toBeTruthy();
+  });
+
+  it("keeps a known day number in the ring as is", async () => {
+    await renderHero({ state: "stale", value: "~41" });
+
+    expect(screen.getByTestId("dashboard-cycle-hero-value").props.children).toBe("~41");
+  });
 });

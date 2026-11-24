@@ -378,6 +378,18 @@ describe("PregnancyEndScreen", () => {
     expect(await screen.findByTestId("pregnancy-end-disclaimer")).toBeTruthy();
   });
 
+  it.each(["loss", "other"] as const)(
+    "drops the pregnancy timing disclaimer on the %s step",
+    async (reason) => {
+      await renderEnd(activeStorage());
+
+      await fireEvent.press(await screen.findByTestId(`pregnancy-end-reason-${reason}`));
+
+      expect(await screen.findByTestId(`pregnancy-end-${reason}-card`)).toBeTruthy();
+      expect(screen.queryByTestId("pregnancy-end-disclaimer")).toBeNull();
+    },
+  );
+
   describe("birth option visibility (CHANGE 2, week-20 loss-taxonomy gate)", () => {
     it("hides the birth option at 19+6, keeping loss and other", async () => {
       await renderEnd(activeStorage(), undefined, nowForGaDays(19 * 7 + 6));

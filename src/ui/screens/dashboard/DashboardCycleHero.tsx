@@ -151,10 +151,11 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
           </Text>
           <Text
             maxFontSizeMultiplier={fontScale.dense}
+            numberOfLines={1}
             style={styles.centerValue}
             testID="dashboard-cycle-hero-value"
           >
-            {viewData.value}
+            {resolveDisplayedHeroValue(viewData)}
           </Text>
           {emphasizedPhaseLabel ? (
             <Text
@@ -243,6 +244,15 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
       ) : null}
     </View>
   );
+}
+
+// The ring's centre fits a day number at 42 pt, not a word: "Unknown" and its
+// translations broke mid-word there. A dash stands in visually (the web
+// dashboard's no-data lead day); the card's accessibility label keeps the word.
+const HERO_UNKNOWN_DAY_GLYPH = "—";
+
+function resolveDisplayedHeroValue(viewData: DashboardCycleHeroViewData): string {
+  return viewData.state === "unknown" ? HERO_UNKNOWN_DAY_GLYPH : viewData.value;
 }
 
 function buildDashboardCycleHeroAccessibilityLabel(

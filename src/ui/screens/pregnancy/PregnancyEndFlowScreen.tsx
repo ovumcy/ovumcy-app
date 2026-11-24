@@ -644,10 +644,14 @@ export function PregnancyEndFlowScreen({
       title={copy.title}
     >
       {content}
-      <PregnancyDisclaimer
-        testID="pregnancy-end-disclaimer"
-        text={disclaimer}
-      />
+      {/* The pregnancy footer speaks of timing and checkpoints; after a loss
+          or another ending it would read as if the pregnancy continued. */}
+      {reason === "loss" || reason === "other" ? null : (
+        <PregnancyDisclaimer
+          testID="pregnancy-end-disclaimer"
+          text={disclaimer}
+        />
+      )}
     </ScreenScaffold>
   );
 }

@@ -104,4 +104,32 @@ describe("clear-all-data reminder rebuild", () => {
       expect(context.router.replace).not.toHaveBeenCalled();
     },
   );
+
+  it.each(["", "clea", "CLEAR ALL", "delete"])(
+    "asks for no device challenge and wipes nothing until the typed confirmation is CLEAR (%p)",
+    async (typed) => {
+      const { context, reminderScheduler, storage } = createContext();
+      context.clearDataConfirmationValue = typed;
+
+      await runClearAllDataAction(context);
+
+      expect(mockChallenge).not.toHaveBeenCalled();
+      expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+      expect(reminderScheduler.sync).not.toHaveBeenCalled();
+      expect(context.setClearDataErrorMessage).toHaveBeenLastCalledWith(
+        viewData.danger.status.invalidConfirmation,
+      );
+    },
+  );
+
+  it("wipes only after the typed confirmation and then a passed device challenge", async () => {
+    const { context, storage } = createContext();
+
+    await runClearAllDataAction(context);
+
+    expect(mockChallenge).toHaveBeenCalledTimes(1);
+    expect(mockChallenge.mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(storage.clearAllLocalData).mock.invocationCallOrder[0]!,
+    );
+  });
 });
