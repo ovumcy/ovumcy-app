@@ -93,6 +93,7 @@ export function SyncAccountSecurityScreen({
         onRequestReset={controller.handleRequestReset}
         onSubmitResetPassword={controller.handleSubmitResetPassword}
         onCancelForgot={controller.handleCancelForgot}
+        regenerateSignedOut={controller.regenerateSignedOut}
         regeneratePassword={controller.regeneratePassword}
         onRegeneratePasswordChange={controller.setRegeneratePassword}
         regenerateCode={controller.regenerateCode}

@@ -85,6 +85,7 @@ export type SyncAccountSecuritySectionProps = {
   onSubmitResetPassword: () => void | Promise<void>;
   onCancelForgot: () => void;
 
+  regenerateSignedOut: boolean;
   regeneratePassword: string;
   onRegeneratePasswordChange: (value: string) => void;
   regenerateCode: string;
@@ -167,6 +168,7 @@ export function SyncAccountSecuritySection({
   onRequestReset,
   onSubmitResetPassword,
   onCancelForgot,
+  regenerateSignedOut,
   regeneratePassword,
   onRegeneratePasswordChange,
   regenerateCode,
@@ -431,6 +433,13 @@ export function SyncAccountSecuritySection({
           onPress={onRegenerate}
           testID="account-security-regenerate-submit"
         />
+        {regenerateSignedOut && !isRevealVisible ? (
+          <StatusBanner
+            message={copy.regenerate.signedOutMessage}
+            testID="account-security-regenerate-signed-out-banner"
+            tone="info"
+          />
+        ) : null}
       </FeatureCard>
 
       <FeatureCard title={totpCopy.section.title}>

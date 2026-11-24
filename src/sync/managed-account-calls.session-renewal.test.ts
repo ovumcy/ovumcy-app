@@ -1,5 +1,6 @@
 import { createSyncSecretsRecord } from "../security/sync-crypto";
 import type { SyncSecretStore } from "../security/sync-secret-store";
+import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import type {
   ManagedCloudAPIClient,
@@ -175,6 +176,7 @@ const callSites: {
     site: "regenerateRecoveryCode",
     invoke: (secretStore, cloud) =>
       regenerateSyncAccountRecoveryCode(
+        createLocalAppStorageMock(),
         secretStore,
         managedPreferences,
         { currentPassword: "correct horse battery staple" },
@@ -203,11 +205,17 @@ describe("managed account calls session renewal", () => {
         "access-1",
         "access-2",
       ]);
+      // The server ends every session on a recovery-code regeneration, so the
+      // renewed pair is cleared right after the retry succeeds.
       await expect(secretStore.readSyncSecrets()).resolves.toEqual(
-        expect.objectContaining({
-          managedAuthSessionToken: "access-2",
-          managedRefreshToken: "refresh-2",
-        }),
+        expect.objectContaining(
+          site === "regenerateRecoveryCode"
+            ? { managedAuthSessionToken: null, managedRefreshToken: null }
+            : {
+                managedAuthSessionToken: "access-2",
+                managedRefreshToken: "refresh-2",
+              },
+        ),
       );
     },
   );

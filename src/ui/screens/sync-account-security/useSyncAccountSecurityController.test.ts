@@ -864,6 +864,8 @@ describe("useSyncAccountSecurityController", () => {
         .mockResolvedValue({
           ok: true,
           recoveryCode: "freshcode000freshcode000freshcod",
+          preferences: managedPreferences(),
+          signedOut: false,
         });
 
       const { result } = await renderHook(() =>
@@ -885,6 +887,67 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.regenerateStatus).toBe("success");
       expect(result.current.regeneratePassword).toBe("");
       expect(result.current.regenerateErrorCode).toBeNull();
+      expect(result.current.regenerateSignedOut).toBe(false);
+    });
+
+    it("reveals the code, then flags the managed sign-out and adopts the cleared preferences", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+        .mockResolvedValue({
+          ok: true,
+          recoveryCode: "signedoutcode00signedoutcode00sign",
+          preferences: { ...managedPreferences(), setupStatus: "local_ready" },
+          signedOut: true,
+        });
+      const consoleSpies = (
+        ["log", "warn", "error", "info", "debug"] as const
+      ).map((method) =>
+        jest.spyOn(console, method).mockImplementation(() => {}),
+      );
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(() => {
+        result.current.setRegeneratePassword("hunter2-hunter2");
+      });
+      await act(async () => {
+        await result.current.handleRegenerate();
+      });
+
+      expect(result.current.revealedRecoveryCode).toBe(
+        "signedoutcode00signedoutcode00sign",
+      );
+      expect(result.current.regenerateSignedOut).toBe(true);
+      expect(result.current.preferences?.setupStatus).toBe("local_ready");
+
+      await act(() => {
+        result.current.handleAcknowledgeRecoveryCode();
+      });
+      expect(result.current.revealedRecoveryCode).toBe("");
+      expect(result.current.regenerateSignedOut).toBe(true);
+
+      for (const spy of consoleSpies) {
+        expect(spy).not.toHaveBeenCalled();
+      }
+      for (const fn of [
+        ...Object.values(storage),
+        ...Object.values(syncSecretStore),
+      ]) {
+        if (jest.isMockFunction(fn)) {
+          expect(JSON.stringify(fn.mock.calls)).not.toContain(
+            "signedoutcode00signedoutcode00sign",
+          );
+        }
+      }
     });
 
     it("surfaces the error code and stays idle on failure", async () => {
@@ -946,6 +1009,8 @@ describe("useSyncAccountSecurityController", () => {
         .mockResolvedValue({
           ok: true,
           recoveryCode: "freshcode000freshcode000freshcod",
+          preferences: managedPreferences(),
+          signedOut: false,
         });
       const result = await renderRegenerate(preferences, true);
 
@@ -955,6 +1020,7 @@ describe("useSyncAccountSecurityController", () => {
       });
 
       expect(regenerate).toHaveBeenCalledWith(
+        expect.anything(),
         expect.anything(),
         expect.anything(),
         { currentPassword: "hunter2-hunter2", code: "123456" },
@@ -981,6 +1047,7 @@ describe("useSyncAccountSecurityController", () => {
         });
 
         expect(regenerate).toHaveBeenCalledWith(
+          expect.anything(),
           expect.anything(),
           expect.anything(),
           { currentPassword: "hunter2-hunter2" },
@@ -1011,6 +1078,7 @@ describe("useSyncAccountSecurityController", () => {
           await result.current.handleRegenerate();
         });
         expect(regenerate).toHaveBeenLastCalledWith(
+          expect.anything(),
           expect.anything(),
           expect.anything(),
           { currentPassword: "hunter2-hunter2", code: "123456" },
@@ -1700,6 +1768,8 @@ describe("useSyncAccountSecurityController", () => {
         .mockResolvedValue({
           ok: true,
           recoveryCode: "freshcode000freshcode000freshcod",
+          preferences: managedPreferences(),
+          signedOut: false,
         });
 
       const { result } = await renderHook(() =>
@@ -1788,6 +1858,8 @@ describe("useSyncAccountSecurityController", () => {
         .mockResolvedValue({
           ok: true,
           recoveryCode: "supersecretrecoverycode000000000",
+          preferences: managedPreferences(),
+          signedOut: false,
         });
 
       const consoleSpies = [
