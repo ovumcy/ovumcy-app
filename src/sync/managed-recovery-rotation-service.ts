@@ -37,8 +37,9 @@ export type ManagedRecoveryRotationErrorCode =
   // answer, or a local write that failed after a 200). The old phrase stays
   // active here; a retry resends the same package with a fresh code.
   | "rotation_unconfirmed"
-  // 409: the account's phrase was changed on another device since this device
-  // last fetched or adopted its package. Nothing was replaced and the shown
+  // 409: the stored package is no longer the one this device holds (another
+  // device rotated, or an earlier rotation here landed but its confirmation
+  // was lost with the process). Nothing was replaced and the shown
   // candidate is dropped; this device still holds the old package.
   | "recovery_key_conflict"
   | "generic";
