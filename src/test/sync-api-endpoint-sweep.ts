@@ -33,6 +33,20 @@ export const SYNC_ENDPOINTS: Record<
       phraseFingerprintHex: "00",
       updatedAt: "2026-01-01T00:00:00Z",
     } as never),
+  rekey: (c) =>
+    c.rekey("s", {
+      recoveryKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "00",
+        wrappedMasterKeyHex: "00",
+        phraseFingerprintHex: "00",
+        updatedAt: "2026-01-01T00:00:00Z",
+      } as never,
+      blob: { schemaVersion: 3, generation: 1, checksumSHA256: "00", ciphertextBase64: "AA==" },
+      expectedGeneration: 0,
+    }),
   register: (c) => c.register({ login: "a", password: "p" }),
   changePassword: (c) => c.changePassword("s", { currentPassword: "p", newPassword: "q" }),
   forgotPassword: (c) => c.forgotPassword({ login: "a", recoveryCode: "r" }),

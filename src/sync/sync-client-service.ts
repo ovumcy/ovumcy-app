@@ -1818,22 +1818,42 @@ export async function runSyncUpload(
     };
   }
 
-  const putBlobResult = await putBlobComparingGeneration(
-    client,
-    prepared.secrets.authSessionToken,
-    {
-      schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
-      generation,
-      checksumSHA256,
-      ciphertextBase64: fromByteArray(ciphertextBytes),
-    },
-    remoteBlob === undefined
-      ? (readRollbackFloor(preferences) ?? undefined)
-      : (remoteBlob?.generation ?? undefined),
-    preferences.lastSyncedAt,
-  );
+  const blobInput: BlobPutInput = {
+    schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+    generation,
+    checksumSHA256,
+    ciphertextBase64: fromByteArray(ciphertextBytes),
+  };
+  const rekeyExpectedGeneration =
+    "rekeyExpectedGeneration" in syncedRecoveryKey &&
+    typeof syncedRecoveryKey.rekeyExpectedGeneration === "number"
+      ? syncedRecoveryKey.rekeyExpectedGeneration
+      : undefined;
+  const putBlobResult =
+    rekeyExpectedGeneration !== undefined
+      ? await rekeyComparingGeneration(
+          client,
+          prepared.secrets.authSessionToken,
+          prepared.secrets.wrappedKey,
+          blobInput,
+          rekeyExpectedGeneration,
+          recoveryKeyStepUp,
+        )
+      : await putBlobComparingGeneration(
+          client,
+          prepared.secrets.authSessionToken,
+          blobInput,
+          remoteBlob === undefined
+            ? (readRollbackFloor(preferences) ?? undefined)
+            : (remoteBlob?.generation ?? undefined),
+          preferences.lastSyncedAt,
+        );
   if (!putBlobResult.ok) {
-    if (syncedRecoveryKey.replacedPackage && isDefinitiveBlobRefusal(putBlobResult.errorCode)) {
+    const blobErrorCode = putBlobResult.errorCode;
+    if (blobErrorCode !== "remote_backup_changed" && isRecoveryKeyStepUpCode(blobErrorCode)) {
+      return { ok: false, errorCode: blobErrorCode };
+    }
+    if (syncedRecoveryKey.replacedPackage && isDefinitiveBlobRefusal(blobErrorCode)) {
       await putBackReplacedRecoveryKey(
         client,
         prepared.secrets.authSessionToken,
@@ -1841,11 +1861,11 @@ export async function runSyncUpload(
         recoveryKeyStepUp,
       );
     }
-    if (putBlobResult.errorCode === "remote_backup_changed") {
+    if (blobErrorCode === "remote_backup_changed") {
       return { ok: false, errorCode: "remote_backup_changed" };
     }
     return withRetryAfter(
-      { ok: false, errorCode: mapRunAPIError(putBlobResult.errorCode) },
+      { ok: false, errorCode: mapRunAPIError(blobErrorCode) },
       putBlobResult,
     );
   }
@@ -2635,6 +2655,46 @@ async function putBlobComparingGeneration(
   );
 }
 
+/**
+ * PUT /sync/rekey stores the package and the blob in one transaction, so a
+ * refused write leaves the stored pair as it was and nothing is put back.
+ * A 409 means the stored blob moved since it was read: another device wrote.
+ * A lost reply is reconciled like a plain put: a stored blob with this
+ * attempt's generation and checksum landed, and its package with it.
+ */
+async function rekeyComparingGeneration(
+  client: SyncAPIClient,
+  sessionToken: string,
+  wrappedKey: SyncSecretsRecord["wrappedKey"],
+  input: BlobPutInput,
+  expectedGeneration: number,
+  stepUp: SyncRecoveryKeyStepUp | undefined,
+): Promise<
+  | { ok: true; blob: SyncBlobRecord }
+  | SyncAPIFailure
+  | { ok: false; errorCode: RecoveryKeyStepUpErrorCode | "remote_backup_changed" }
+> {
+  const result = await client.rekey(
+    sessionToken,
+    { recoveryKey: wrappedKey, blob: input, expectedGeneration },
+    stepUp,
+  );
+  if (result.ok) {
+    return result;
+  }
+  if (result.errorCode === "stale_generation") {
+    return { ok: false, errorCode: "remote_backup_changed" };
+  }
+  if (result.errorCode === "network_failed" || result.errorCode === "server_busy") {
+    return reconcileAmbiguousPut(client, sessionToken, input, result);
+  }
+  const errorCode = mapRecoveryKeyWriteError(result.errorCode, stepUp);
+  if (errorCode !== result.errorCode && isRecoveryKeyStepUpCode(errorCode)) {
+    return { ok: false, errorCode };
+  }
+  return result;
+}
+
 async function reconcileStalePut(
   client: SyncAPIClient,
   sessionToken: string,
@@ -2876,41 +2936,42 @@ async function syncRecoveryKeyIfSupported(
   if (recoveryKeyResult.ok) {
     return { ok: true };
   }
+  return {
+    ok: false,
+    errorCode: mapRecoveryKeyWriteError(recoveryKeyResult.errorCode, stepUp),
+  };
+}
 
-  const errorCode = recoveryKeyResult.errorCode;
+function mapRecoveryKeyWriteError(
+  errorCode: SyncAPIErrorCode,
+  stepUp: SyncRecoveryKeyStepUp | undefined,
+): SyncAPIErrorCode | RecoveryKeyStepUpErrorCode {
   const codeSent = (stepUp?.code?.trim() ?? "").length > 0;
   switch (errorCode) {
     case "invalid_current_password":
-      return {
-        ok: false,
-        errorCode: stepUp ? errorCode : "recovery_key_step_up_required",
-      };
+      return stepUp ? errorCode : "recovery_key_step_up_required";
     case "totp_invalid_code":
     case "totp_replayed":
-      return {
-        ok: false,
-        errorCode: !stepUp
-          ? "recovery_key_step_up_required"
-          : codeSent
-            ? errorCode
-            : "recovery_key_code_required",
-      };
+      return !stepUp
+        ? "recovery_key_step_up_required"
+        : codeSent
+          ? errorCode
+          : "recovery_key_code_required";
     // The step-up bucket answers 429 after repeated wrong passwords.
     case "rate_limited":
-      return {
-        ok: false,
-        errorCode: stepUp ? "recovery_key_step_up_rate_limited" : errorCode,
-      };
+      return stepUp ? "recovery_key_step_up_rate_limited" : errorCode;
     default:
-      return { ok: false, errorCode };
+      return errorCode;
   }
 }
 
 /**
- * Interim guard until the server writes the package and the blob atomically:
- * a package write lands only when the blob after it can still be accepted, so
- * a failed upload never leaves the old backup under a package that wraps a new
- * key. An unchanged package is not rewritten. A different stored package is
+ * Keeps the recovery-key package in step with the blob. A server that offers
+ * PUT /sync/rekey gets no package write here: the caller sends the package
+ * with the blob in one transaction. On an older server the package write
+ * lands only when the blob after it can still be accepted, so a failed upload
+ * never leaves the old backup under a package that wraps a new key. An
+ * unchanged package is not rewritten. A different stored package is
  * replaced only by a device that has not uploaded under its key yet (the
  * fresh-install overwrite confirm and the step-up still gate it); a device
  * that has uploaded holds the key it published, so a different package there
@@ -2931,6 +2992,8 @@ async function syncRecoveryKeyBeforeBlob(
 ): Promise<
   // replacedPackage: the different package this call overwrote, if any.
   | { ok: true; replacedPackage: SyncSecretsRecord["wrappedKey"] | null }
+  // The package is still to be written, with the blob, via PUT /sync/rekey.
+  | { ok: true; replacedPackage: null; rekeyExpectedGeneration: number }
   | {
       ok: false;
       errorCode:
@@ -2966,6 +3029,13 @@ async function syncRecoveryKeyBeforeBlob(
   // The server accepts only a strictly higher generation.
   if (remoteBlob !== null && upload.generation <= remoteBlob.generation) {
     return { ok: false, errorCode: "stale_generation" };
+  }
+  if (capabilities.atomicRekey === true) {
+    return {
+      ok: true,
+      replacedPackage: null,
+      rekeyExpectedGeneration: remoteBlob?.generation ?? 0,
+    };
   }
 
   const written = await syncRecoveryKeyIfSupported(

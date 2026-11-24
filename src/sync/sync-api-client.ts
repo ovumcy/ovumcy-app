@@ -151,6 +151,23 @@ export type SyncAPIClient = {
       expectedGeneration?: number;
     },
   ): Promise<{ ok: true; blob: SyncBlobRecord } | SyncAPIFailure>;
+  // PUT /sync/rekey: the package and the blob sealed under it land in one
+  // transaction or not at all. `expectedGeneration` is required; 0 means no
+  // blob is stored yet. A differing package needs the step-up.
+  rekey(
+    sessionToken: string,
+    input: {
+      recoveryKey: WrappedSyncKeyMetadata;
+      blob: {
+        schemaVersion: number;
+        generation: number;
+        checksumSHA256: string;
+        ciphertextBase64: string;
+      };
+      expectedGeneration: number;
+    },
+    stepUp?: SyncRecoveryKeyStepUp,
+  ): Promise<{ ok: true; blob: SyncBlobRecord } | SyncAPIFailure>;
   // A package that differs from the stored one needs the step-up on a
   // community server; the same package is a no-op that needs none.
   putRecoveryKey(
@@ -281,6 +298,12 @@ type RawSyncCapabilityDocument = {
   advanced_cloud_insights: boolean;
   max_devices: number;
   max_blob_bytes: number;
+  atomic_rekey?: boolean;
+};
+
+type RawRekeyResult = {
+  recovery_key: RawRecoveryKeyPackage;
+  blob: RawSyncBlobRecord;
 };
 
 type RawSyncDeviceRecord = {
@@ -723,6 +746,43 @@ export function createSyncAPIClient(
       );
     },
 
+    async rekey(sessionToken, input, stepUp) {
+      const code = stepUp?.code?.trim();
+      return requestJSON<RawRekeyResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/sync/rekey",
+        {
+          method: "PUT",
+          sessionToken,
+          body: {
+            recovery_key: {
+              algorithm: input.recoveryKey.algorithm,
+              kdf: input.recoveryKey.kdf,
+              mnemonic_word_count: input.recoveryKey.mnemonicWordCount,
+              wrap_nonce_hex: input.recoveryKey.wrapNonceHex,
+              wrapped_master_key_hex: input.recoveryKey.wrappedMasterKeyHex,
+              phrase_fingerprint_hex: input.recoveryKey.phraseFingerprintHex,
+            },
+            blob: {
+              schema_version: input.blob.schemaVersion,
+              generation: input.blob.generation,
+              checksum_sha256: input.blob.checksumSHA256,
+              ciphertext_base64: input.blob.ciphertextBase64,
+            },
+            expected_generation: input.expectedGeneration,
+            ...(stepUp ? { current_password: stepUp.currentPassword } : {}),
+            ...(code ? { code } : {}),
+          },
+          timeoutMs: SYNC_BLOB_TRANSFER_TIMEOUT_MS,
+        },
+        isRawRekeyResult,
+        "invalid_response",
+      ).then((result) =>
+        result.ok ? { ok: true, blob: mapSyncBlobRecord(result.payload.blob) } : result,
+      );
+    },
+
     async getBlob(sessionToken) {
       return requestJSON<RawSyncBlobRecord>(
         fetchImpl,
@@ -1094,7 +1154,8 @@ function isRawSyncCapabilities(value: unknown): value is RawSyncCapabilityDocume
     typeof value.portal_supported === "boolean" &&
     typeof value.advanced_cloud_insights === "boolean" &&
     typeof value.max_devices === "number" &&
-    typeof value.max_blob_bytes === "number"
+    typeof value.max_blob_bytes === "number" &&
+    (value.atomic_rekey === undefined || typeof value.atomic_rekey === "boolean")
   );
 }
 
@@ -1127,6 +1188,14 @@ function isRawSyncBlobRecord(value: unknown): value is RawSyncBlobRecord {
     typeof value.ciphertext_base64 === "string" &&
     typeof value.ciphertext_size === "number" &&
     typeof value.updated_at === "string"
+  );
+}
+
+function isRawRekeyResult(value: unknown): value is RawRekeyResult {
+  return (
+    isObject(value) &&
+    isRawRecoveryKeyPackage(value.recovery_key) &&
+    isRawSyncBlobRecord(value.blob)
   );
 }
 
@@ -1173,6 +1242,7 @@ function mapSyncCapabilities(
     advancedCloudInsights: raw.advanced_cloud_insights,
     maxDevices: raw.max_devices,
     maxBlobBytes: raw.max_blob_bytes,
+    ...(raw.atomic_rekey === true ? { atomicRekey: true } : {}),
   };
 }
 
