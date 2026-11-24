@@ -341,7 +341,9 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
       return;
     }
     const confirmed = await openConfirmation(
-      viewData.account.disconnectPrompt,
+      currentState.syncPreferences.mode === "managed"
+        ? viewData.account.disconnectPromptManaged
+        : viewData.account.disconnectPrompt,
       viewData.account.disconnectLabel,
       viewData.common.cancelAction,
     );

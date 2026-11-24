@@ -316,6 +316,8 @@ const settingsCopyEn = {
     offerAnnouncementEyebrow: "News",
     disconnectPrompt:
       "Disconnect this device from the sync server session? Local encrypted keys will stay on this device.",
+    disconnectPromptManaged:
+      "Disconnect this device from the sync server session? Local encrypted keys will stay on this device, but partner-access keys are removed: partner sharing on this device, including access accepted as a guest, needs a new invite to resume.",
     disconnectDeviceAuthPrompt:
       "Confirm with device security to disconnect this device from the sync server.",
     deleteAccountLabel: "Delete account",
@@ -935,6 +937,8 @@ const settingsCopyDe: SettingsCopy = {
     offerAnnouncementEyebrow: "Neuigkeiten",
     disconnectPrompt:
       "Dieses Gerät von der Sync-Server-Sitzung trennen? Die lokalen verschlüsselten Schlüssel bleiben auf diesem Gerät.",
+    disconnectPromptManaged:
+      "Dieses Gerät von der Sync-Server-Sitzung trennen? Die lokalen verschlüsselten Schlüssel bleiben auf diesem Gerät, aber die Schlüssel für den Partnerzugriff werden entfernt: Partnerfreigaben auf diesem Gerät, auch als Gast angenommener Zugriff, brauchen danach eine neue Einladung.",
     disconnectDeviceAuthPrompt:
       "Bestätigen Sie mit Geräteschutz, um dieses Gerät vom Sync-Server zu trennen.",
     deleteAccountLabel: "Konto löschen",
@@ -1592,6 +1596,8 @@ const settingsCopyFr: SettingsCopy = {
     offerAnnouncementEyebrow: "Actualité",
     disconnectPrompt:
       "Déconnecter cet appareil de la session du serveur de sync ? Les clés chiffrées locales resteront sur cet appareil.",
+    disconnectPromptManaged:
+      "Déconnecter cet appareil de la session du serveur de sync ? Les clés chiffrées locales resteront sur cet appareil, mais les clés de l'accès partenaire seront supprimées : le partage partenaire sur cet appareil, y compris un accès accepté en tant qu'invité, nécessitera une nouvelle invitation.",
     disconnectDeviceAuthPrompt:
       "Confirmez avec la sécurité de l'appareil pour déconnecter cet appareil du serveur de sync.",
     deleteAccountLabel: "Supprimer le compte",
@@ -2241,6 +2247,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       offerAnnouncementEyebrow: "Новости",
       disconnectPrompt:
         "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
+      disconnectPromptManaged:
+        "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве, но ключи доступа партнёра будут удалены: для доступа партнёра на этом устройстве, в том числе принятого как гость, понадобится новое приглашение.",
       disconnectDeviceAuthPrompt:
         "Подтвердите защитой устройства отключение этого устройства от sync-сервера.",
       deleteAccountLabel: "Удалить аккаунт",
@@ -2856,6 +2864,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       offerAnnouncementEyebrow: "Novedades",
       disconnectPrompt:
         "¿Desconectar este dispositivo de la sesión del servidor de sync? Las claves cifradas locales permanecerán en este dispositivo.",
+      disconnectPromptManaged:
+        "¿Desconectar este dispositivo de la sesión del servidor de sync? Las claves cifradas locales permanecerán en este dispositivo, pero se eliminarán las claves del acceso de pareja: el acceso de pareja en este dispositivo, incluido el aceptado como invitado, necesitará una nueva invitación.",
       disconnectDeviceAuthPrompt:
         "Confirma con la seguridad del dispositivo para desconectar este dispositivo del servidor de sync.",
       deleteAccountLabel: "Eliminar cuenta",
@@ -3481,6 +3491,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       offerAnnouncementEyebrow: "Novità",
       disconnectPrompt:
         "Disconnettere questo dispositivo dalla sessione del server di sync? Le chiavi cifrate locali resteranno su questo dispositivo.",
+      disconnectPromptManaged:
+        "Disconnettere questo dispositivo dalla sessione del server di sync? Le chiavi cifrate locali resteranno su questo dispositivo, ma le chiavi dell'accesso partner verranno rimosse: l'accesso partner su questo dispositivo, compreso quello accettato come ospite, richiederà un nuovo invito.",
       disconnectDeviceAuthPrompt:
         "Conferma con la sicurezza del dispositivo per disconnettere questo dispositivo dal server di sync.",
       deleteAccountLabel: "Elimina account",

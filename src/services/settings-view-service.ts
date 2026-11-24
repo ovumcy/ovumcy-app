@@ -295,6 +295,8 @@ export type SettingsViewData = {
     offerPromoEyebrow: string;
     offerAnnouncementEyebrow: string;
     disconnectPrompt: string;
+    // Managed disconnect also clears the partner-share keys.
+    disconnectPromptManaged: string;
     disconnectDeviceAuthPrompt: string;
     deleteAccountLabel: string;
     deleteAccountPrompt: string;
@@ -871,6 +873,7 @@ export function buildSettingsViewData(
       offerPromoEyebrow: settingsCopy.account.offerPromoEyebrow,
       offerAnnouncementEyebrow: settingsCopy.account.offerAnnouncementEyebrow,
       disconnectPrompt: settingsCopy.account.disconnectPrompt,
+      disconnectPromptManaged: settingsCopy.account.disconnectPromptManaged,
       disconnectDeviceAuthPrompt: settingsCopy.account.disconnectDeviceAuthPrompt,
       deleteAccountLabel: settingsCopy.account.deleteAccountLabel,
       deleteAccountPrompt: settingsCopy.account.deleteAccountPrompt,

@@ -731,27 +731,44 @@ describe("useBackupSyncAccountConnection", () => {
       expect(mockDisconnectBackupSyncAccount).not.toHaveBeenCalled();
     });
 
-    it("requests device auth and confirmation with the expected copy", async () => {
-      const core = createBackupSyncSessionCoreMock();
-      mockDisconnectBackupSyncAccount.mockResolvedValue({
-        ok: true,
-        state: core.state!,
-        remoteSignOut: "confirmed",
-      });
-      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+    it.each([
+      ["managed", "disconnectPromptManaged"],
+      ["self_hosted", "disconnectPrompt"],
+    ] as const)(
+      "requests device auth, then confirms a %s disconnect with its own copy",
+      async (mode, promptKey) => {
+        const loaded = createLoadedSettingsStateFixture();
+        const core = createBackupSyncSessionCoreMock({
+          state: { ...loaded, syncPreferences: { ...loaded.syncPreferences, mode } },
+        });
+        mockDisconnectBackupSyncAccount.mockResolvedValue({
+          ok: true,
+          state: core.state!,
+          remoteSignOut: "confirmed",
+        });
+        const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
-      await act(async () => {
-        await result.current.handleDisconnectSync();
-      });
+        await act(async () => {
+          await result.current.handleDisconnectSync();
+        });
 
-      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(
-        core.viewData.account.disconnectDeviceAuthPrompt,
-      );
-      expect(mockOpenConfirmation).toHaveBeenCalledWith(
-        core.viewData.account.disconnectPrompt,
-        core.viewData.account.disconnectLabel,
-        core.viewData.common.cancelAction,
-      );
+        expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(
+          core.viewData.account.disconnectDeviceAuthPrompt,
+        );
+        expect(mockOpenConfirmation).toHaveBeenCalledWith(
+          core.viewData.account[promptKey],
+          core.viewData.account.disconnectLabel,
+          core.viewData.common.cancelAction,
+        );
+      },
+    );
+
+    it("tells a managed disconnect that partner access, guest access included, needs a new invite", () => {
+      const { account } = createBackupSyncSessionCoreMock().viewData;
+
+      expect(account.disconnectPromptManaged).not.toBe(account.disconnectPrompt);
+      expect(account.disconnectPromptManaged).toContain("guest");
+      expect(account.disconnectPromptManaged).toContain("new invite");
     });
 
     it("does not disconnect when the owner declines the confirm", async () => {
