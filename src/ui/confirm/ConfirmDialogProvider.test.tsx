@@ -108,6 +108,23 @@ describe("ConfirmDialogProvider", () => {
     expect(isModalVisible()).toBe(false);
   });
 
+  it("keeps the dialog open when its body, not the backdrop, is pressed", async () => {
+    await renderProvider();
+    let settled = false;
+    await act(() => {
+      void requestConfirmation("ok?", "Yes", "No").then(() => {
+        settled = true;
+      });
+    });
+
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-message"));
+    });
+
+    expect(settled).toBe(false);
+    expect(isModalVisible()).toBe(true);
+  });
+
   it("keeps the backdrop and dialog wrapper out of the screen-reader tree", async () => {
     await renderProvider();
     await act(() => {
