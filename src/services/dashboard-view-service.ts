@@ -440,8 +440,11 @@ export function buildDashboardViewData(
   const pausedTestConcluded =
     !hasActivePregnancy &&
     projectedCycle.isPregnancyPaused &&
-    (activePostpartumRecord !== null ||
-      isPausedTestConcluded(projectedCycle, options.endedPregnancyRecords ?? []));
+    isPausedTestConcluded(projectedCycle, [
+      ...(options.endedPregnancyRecords ?? []),
+      // A postpartum record's startedAt is the birth date.
+      ...(activePostpartumRecord ? [{ endedAt: activePostpartumRecord.startedAt }] : []),
+    ]);
   const advancedFertilitySummary =
     options.showAdvancedFertilitySummary === true
       ? buildCurrentCycleAdvancedFertilitySummary(
@@ -519,7 +522,7 @@ export function buildDashboardViewData(
 // test dated after the latest ended pregnancy is a new event.
 function isPausedTestConcluded(
   projection: ReturnType<typeof buildCurrentCycleProjection>,
-  endedPregnancyRecords: readonly PregnancyRecord[],
+  endedPregnancyRecords: readonly Pick<PregnancyRecord, "endedAt">[],
 ): boolean {
   const pregnancyTestDate = projection.pregnancyTestDate;
   return (

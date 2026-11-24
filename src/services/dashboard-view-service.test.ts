@@ -1223,6 +1223,26 @@ describe("dashboard-view-service pregnancy mode", () => {
     expect(viewData.daySaveMessage).toBe(copy.saveMessagePregnancyConcluded);
   });
 
+  it("keeps the positive-test wording for a positive test logged after the postpartum birth date", () => {
+    const copy = getDashboardCopy("en");
+    const newPositive = positivePregnancyTestRecords("2026-07-01");
+    const now = new Date(2026, 6, 2);
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      newPositive,
+      buildCycleHistorySummary(pausedProfile, newPositive, now),
+      now,
+      "en",
+      {
+        activePregnancy: null,
+        activePostpartum: createPostpartumRecord({ startedAt: "2026-06-05" }),
+      },
+    );
+
+    expect(viewData.predictionExplanation).toBe(copy.pregnancyPausedHint);
+    expect(viewData.daySaveMessage).toBe(copy.saveMessagePregnancyPaused);
+  });
+
   it("keeps the positive-test wording when no ended pregnancy covers the paused test", () => {
     const copy = getDashboardCopy("en");
     const newPositive = positivePregnancyTestRecords("2026-07-01");
