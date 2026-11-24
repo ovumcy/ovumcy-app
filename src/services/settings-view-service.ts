@@ -357,6 +357,7 @@ export type SettingsViewData = {
       restoreIncomplete: string;
       notConnected: string;
       recoveryKeyChangedElsewhere: string;
+      recoveryKeyRotationConflict: string;
       blobNotFound: string;
       recoveryKeyReplacedOnServer: string;
       remoteBackupChanged: string;
@@ -946,6 +947,8 @@ export function buildSettingsViewData(
         notConnected: settingsCopy.account.errors.notConnected,
         recoveryKeyChangedElsewhere:
           settingsCopy.account.errors.recoveryKeyChangedElsewhere,
+        recoveryKeyRotationConflict:
+          settingsCopy.account.errors.recoveryKeyRotationConflict,
         blobNotFound: settingsCopy.account.errors.blobNotFound,
         recoveryKeyReplacedOnServer:
           settingsCopy.account.errors.recoveryKeyReplacedOnServer,

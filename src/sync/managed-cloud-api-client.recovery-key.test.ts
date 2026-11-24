@@ -73,6 +73,31 @@ describe("managed-cloud-api-client replaceRecoveryKey", () => {
     });
   });
 
+  it("sends the expected fingerprint top-level only when given", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { status: "recovery_key_replaced" }));
+
+    await expect(
+      createClient(fetch).replaceRecoveryKey("managed-session-1", {
+        currentPassword: "pw",
+        code: "123456",
+        recoveryKeyPackage: PACKAGE,
+        expectedPhraseFingerprintHex: "0123456789abcdef",
+      }),
+    ).resolves.toEqual({ ok: true });
+
+    const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(Object.keys(body).sort()).toEqual([
+      "code",
+      "current_password",
+      "expected_phrase_fingerprint_hex",
+      "recovery_key_package",
+    ]);
+    expect(body.expected_phrase_fingerprint_hex).toBe("0123456789abcdef");
+    expect(body.recovery_key_package).not.toHaveProperty("expected_phrase_fingerprint_hex");
+  });
+
   it("treats a 200 with another status as an unreadable answer", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(jsonResponse(200, { status: "ok" }));
 
@@ -92,6 +117,7 @@ describe("managed-cloud-api-client replaceRecoveryKey", () => {
     [401, "totp_replayed", "totp_replayed"],
     [401, "unauthorized", "unauthorized"],
     [404, "sync_account_not_found", "sync_account_not_found"],
+    [409, "recovery_key_conflict", "recovery_key_conflict"],
     [429, "rate_limited", "rate_limited"],
     [502, "sync_bridge_unavailable", "sync_bridge_unavailable"],
     [503, "totp_not_configured", "totp_not_configured"],

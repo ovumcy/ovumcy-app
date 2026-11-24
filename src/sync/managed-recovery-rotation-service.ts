@@ -37,12 +37,19 @@ export type ManagedRecoveryRotationErrorCode =
   // answer, or a local write that failed after a 200). The old phrase stays
   // active here; a retry resends the same package with a fresh code.
   | "rotation_unconfirmed"
+  // 409: the account's phrase was changed on another device since this device
+  // last fetched or adopted its package. Nothing was replaced and the shown
+  // candidate is dropped; this device still holds the old package.
+  | "recovery_key_conflict"
   | "generic";
 
 type PendingRotation = {
   recoveryPhrase: string;
   recoveryKeyPackage: WrappedSyncKeyMetadata;
   masterKeyTag: string;
+  // Set once a 404 made this device provision the sync account: that account
+  // holds no package yet, and an expectation would be refused as a conflict.
+  serverHoldsNoPackage?: true;
 };
 
 // Process memory only, never persisted: it outlives a cancelled card or a left
@@ -125,18 +132,25 @@ export async function rotateManagedRecoveryPhrase(
 
   const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
   const code = stepUp.code?.trim();
-  const input = {
+  // The package this device holds is the one it last fetched or adopted; the
+  // server replaces only that one, so a rotation made elsewhere since is
+  // refused instead of silently overwritten.
+  const buildInput = () => ({
     currentPassword: stepUp.currentPassword,
     ...(code ? { code } : {}),
     recoveryKeyPackage: pending.recoveryKeyPackage,
-  };
+    ...(pending.serverHoldsNoPackage
+      ? {}
+      : { expectedPhraseFingerprintHex: secrets.wrappedKey.phraseFingerprintHex }),
+  });
 
-  let result = await client.replaceRecoveryKey(session.sessionToken, input);
+  let result = await client.replaceRecoveryKey(session.sessionToken, buildInput());
   if (!result.ok && result.errorCode === "sync_account_not_found") {
     const provisioned = await client.createSyncSession(session.sessionToken);
     if (!provisioned.ok) {
       return { ok: false, errorCode: mapRotationError(provisioned.errorCode) };
     }
+    pending.serverHoldsNoPackage = true;
     const current = await secretStore.readSyncSecrets();
     if (current) {
       await secretStore.writeSyncSecrets({
@@ -149,12 +163,17 @@ export async function rotateManagedRecoveryPhrase(
     if (code) {
       return { ok: false, errorCode: "totp_fresh_code_required" };
     }
-    result = await client.replaceRecoveryKey(session.sessionToken, input);
+    result = await client.replaceRecoveryKey(session.sessionToken, buildInput());
   }
   if (!result.ok) {
     // The server refused this package's format, so it was not applied and a
-    // resend could only be refused again.
-    if (result.errorCode === "invalid_recovery_package") {
+    // resend could only be refused again. A conflict means the account's
+    // phrase changed elsewhere: replacing it from here would void the phrase
+    // the user wrote down there, so the candidate is dropped, not resent.
+    if (
+      result.errorCode === "invalid_recovery_package" ||
+      result.errorCode === "recovery_key_conflict"
+    ) {
       pendingRotation = null;
     }
     return { ok: false, errorCode: mapRotationError(result.errorCode) };
@@ -208,6 +227,7 @@ function mapRotationError(
     case "totp_not_configured":
     case "unauthorized":
     case "sync_not_configured":
+    case "recovery_key_conflict":
       return errorCode;
     case "sync_bridge_unavailable":
     case "network_failed":

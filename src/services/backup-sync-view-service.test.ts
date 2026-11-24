@@ -359,6 +359,16 @@ describe("backup sync view service", () => {
     ).toBe(viewData.account.errors.recoveryKeyChangedElsewhere);
   });
 
+  it("explains a managed rotation refused because the phrase changed elsewhere", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const message = resolveBackupSyncErrorMessage(
+      "managed_recovery_key_conflict",
+      viewData.account,
+    );
+    expect(message).toBe(viewData.account.errors.recoveryKeyRotationConflict);
+    expect(message).not.toBe(viewData.account.errors.recoveryKeyChangedElsewhere);
+  });
+
   it("explains a self-hosted package another device replaced", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
     expect(

@@ -239,6 +239,13 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
         setErrorState({ code: result.errorCode, scope: "local" });
         return;
       }
+      // The phrase was changed on another device: a new candidate here would
+      // only replace that phrase, so the card closes and explains instead.
+      if (result.errorCode === "recovery_key_conflict") {
+        setPendingRotationStepUp(null);
+        setErrorState({ code: "managed_recovery_key_conflict", scope: "local" });
+        return;
+      }
       // Usually the same phrase again; a refused or dropped candidate is
       // replaced, and the card asks for a new acknowledgement.
       const candidatePhrase = await readRotationCandidate();
