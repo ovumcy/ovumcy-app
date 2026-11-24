@@ -108,6 +108,19 @@ describe("ConfirmDialogProvider", () => {
     expect(isModalVisible()).toBe(false);
   });
 
+  it("keeps the backdrop and dialog wrapper out of the screen-reader tree", async () => {
+    await renderProvider();
+    await act(() => {
+      void requestConfirmation("ok?", "Yes", "No");
+    });
+
+    const backdrop = screen.getByTestId("confirm-dialog-backdrop");
+    expect(backdrop.props.accessible).toBe(false);
+    expect(backdrop.props.accessibilityLabel).toBeUndefined();
+    expect(backdrop.props.importantForAccessibility).toBe("no");
+    expect(screen.getByTestId("confirm-dialog-accept").props.accessible).not.toBe(false);
+  });
+
   it("resolves false when the system dismisses the modal via onRequestClose", async () => {
     await renderProvider();
     let promise!: Promise<boolean>;

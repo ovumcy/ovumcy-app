@@ -25,6 +25,8 @@ const dashboardCopyEn = {
     "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
   pregnancyPausedHint:
     "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
+  pregnancyConcludedPausedHint:
+    "Cycle predictions stay paused until your next period. Log it when it starts to resume them.",
   predictionDisclaimer:
     "These are estimates, not medical advice or a method of contraception.",
   cycleHeroDayLabel: "Day",
@@ -32,6 +34,7 @@ const dashboardCopyEn = {
   cycleHeroApproximate: "Approximate cycle",
   cycleHeroFactsOnly: "Predictions off",
   cycleHeroWaiting: "Add a cycle start",
+  cycleHeroPaused: "Predictions paused",
   cycleHeroStale: "Cycle data may be outdated. Log your period when it starts.",
   cycleHeroPhaseCards: {
     period: "Period",
@@ -68,6 +71,8 @@ const dashboardCopyEn = {
   saveMessageNeutral: "Saved.",
   saveMessagePregnancyPaused:
     "Saved. Cycle predictions are paused after a positive pregnancy test. If you experience bleeding, pain, or dizziness, seek medical care promptly.",
+  saveMessagePregnancyConcluded:
+    "Saved. Cycle predictions stay paused until your next period. If you have heavy bleeding, severe pain, or dizziness, seek medical care promptly.",
   saveMessagePregnancyActive:
     "Saved. Cycle predictions are paused while a pregnancy is tracked. If you experience bleeding, pain, or dizziness, seek medical care promptly.",
   manualCycleStartFailed: "Unable to mark a new cycle start. Please try again.",
@@ -118,6 +123,8 @@ const dashboardCopyDe: DashboardCopy = {
     "Im unvorhersagbaren Zyklusmodus zeigt Ovumcy nur erfasste Fakten an.",
   pregnancyPausedHint:
     "Nach einem positiven Schwangerschaftstest pausieren die Zyklusvorhersagen. Erfassen Sie eine neue Periode, um sie fortzusetzen.",
+  pregnancyConcludedPausedHint:
+    "Die Zyklusvorhersagen bleiben bis zu Ihrer nächsten Periode pausiert. Erfassen Sie sie, sobald sie beginnt, um sie fortzusetzen.",
   predictionDisclaimer:
     "Dies sind Schätzungen, keine medizinische Beratung und keine Verhütungsmethode.",
   cycleHeroDayLabel: "Tag",
@@ -125,6 +132,7 @@ const dashboardCopyDe: DashboardCopy = {
   cycleHeroApproximate: "Ungefährer Zyklus",
   cycleHeroFactsOnly: "Vorhersagen aus",
   cycleHeroWaiting: "Zyklusbeginn ergänzen",
+  cycleHeroPaused: "Vorhersagen pausiert",
   cycleHeroStale:
     "Zyklusdaten könnten veraltet sein. Erfassen Sie Ihre Periode, sobald sie beginnt.",
   cycleHeroPhaseCards: {
@@ -162,6 +170,8 @@ const dashboardCopyDe: DashboardCopy = {
   saveMessageNeutral: "Gespeichert.",
   saveMessagePregnancyPaused:
     "Gespeichert. Nach einem positiven Schwangerschaftstest sind die Zyklusvorhersagen pausiert. Bei Blutungen, Schmerzen oder Schwindel suchen Sie umgehend ärztliche Hilfe.",
+  saveMessagePregnancyConcluded:
+    "Gespeichert. Die Zyklusvorhersagen bleiben bis zu Ihrer nächsten Periode pausiert. Bei starken Blutungen, starken Schmerzen oder Schwindel suchen Sie umgehend ärztliche Hilfe.",
   saveMessagePregnancyActive:
     "Gespeichert. Solange eine Schwangerschaft verfolgt wird, sind die Zyklusvorhersagen pausiert. Bei Blutungen, Schmerzen oder Schwindel suchen Sie umgehend ärztliche Hilfe.",
   manualCycleStartFailed:
@@ -212,6 +222,8 @@ const dashboardCopyFr: DashboardCopy = {
     "En mode cycle imprévisible, Ovumcy affiche seulement les faits enregistrés.",
   pregnancyPausedHint:
     "Les prédictions de cycle sont en pause après un test de grossesse positif. Enregistrez de nouvelles règles pour les reprendre.",
+  pregnancyConcludedPausedHint:
+    "Les prédictions de cycle restent en pause jusqu'à vos prochaines règles. Enregistrez-les dès qu'elles commencent pour les reprendre.",
   predictionDisclaimer:
     "Ce sont des estimations, pas un avis médical ni une méthode de contraception.",
   cycleHeroDayLabel: "Jour",
@@ -219,6 +231,7 @@ const dashboardCopyFr: DashboardCopy = {
   cycleHeroApproximate: "Cycle approximatif",
   cycleHeroFactsOnly: "Prédictions désactivées",
   cycleHeroWaiting: "Ajoutez un début de cycle",
+  cycleHeroPaused: "Prédictions en pause",
   cycleHeroStale:
     "Les données du cycle peuvent être obsolètes. Enregistrez vos règles dès qu'elles commencent.",
   cycleHeroPhaseCards: {
@@ -256,6 +269,8 @@ const dashboardCopyFr: DashboardCopy = {
   saveMessageNeutral: "Enregistré.",
   saveMessagePregnancyPaused:
     "Enregistré. Après un test de grossesse positif, les prédictions de cycle sont en pause. En cas de saignement, de douleur ou de vertiges, consultez rapidement un médecin.",
+  saveMessagePregnancyConcluded:
+    "Enregistré. Les prédictions de cycle restent en pause jusqu'à vos prochaines règles. En cas de saignement abondant, de douleur intense ou de vertiges, consultez rapidement un médecin.",
   saveMessagePregnancyActive:
     "Enregistré. Pendant le suivi d'une grossesse, les prédictions de cycle sont en pause. En cas de saignement, de douleur ou de vertiges, consultez rapidement un médecin.",
   manualCycleStartFailed:
@@ -307,6 +322,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "В непредсказуемом режиме Ovumcy показывает только записанные факты.",
     pregnancyPausedHint:
       "Прогнозы цикла приостановлены после положительного теста на беременность. Отметьте начало новых месячных, чтобы возобновить их.",
+    pregnancyConcludedPausedHint:
+      "Прогнозы цикла остаются на паузе до следующих месячных. Отметьте их начало, чтобы возобновить прогнозы.",
     predictionDisclaimer:
       "Это оценки, а не медицинский совет и не метод контрацепции.",
     cycleHeroDayLabel: "День",
@@ -314,6 +331,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleHeroApproximate: "Примерный цикл",
     cycleHeroFactsOnly: "Прогнозы выключены",
     cycleHeroWaiting: "Добавьте начало цикла",
+    cycleHeroPaused: "Прогнозы на паузе",
     cycleHeroStale:
       "Данные цикла могут быть устаревшими. Отметьте начало новых месячных, когда они начнутся.",
     cycleHeroPhaseCards: {
@@ -351,6 +369,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     saveMessageNeutral: "Сохранено.",
     saveMessagePregnancyPaused:
       "Сохранено. После положительного теста на беременность прогнозы цикла приостановлены. При кровотечении, боли или головокружении обратитесь к врачу без промедления.",
+    saveMessagePregnancyConcluded:
+      "Сохранено. Прогнозы цикла остаются на паузе до следующих месячных. При сильном кровотечении, сильной боли или головокружении срочно обратитесь за медицинской помощью.",
     saveMessagePregnancyActive:
       "Сохранено. Пока отслеживается беременность, прогнозы цикла приостановлены. При кровотечении, боли или головокружении обратитесь к врачу без промедления.",
     manualCycleStartFailed:
@@ -399,6 +419,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "En el modo de ciclo impredecible, Ovumcy muestra solo hechos registrados.",
     pregnancyPausedHint:
       "Las predicciones del ciclo están en pausa tras un test de embarazo positivo. Registra una nueva regla para reanudarlas.",
+    pregnancyConcludedPausedHint:
+      "Las predicciones del ciclo siguen en pausa hasta tu próxima regla. Regístrala cuando empiece para reanudarlas.",
     predictionDisclaimer:
       "Son estimaciones, no consejo médico ni un método anticonceptivo.",
     cycleHeroDayLabel: "Día",
@@ -406,6 +428,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleHeroApproximate: "Ciclo aproximado",
     cycleHeroFactsOnly: "Predicciones desactivadas",
     cycleHeroWaiting: "Añade un inicio de ciclo",
+    cycleHeroPaused: "Predicciones en pausa",
     cycleHeroStale:
       "Los datos del ciclo pueden estar desactualizados. Registra tu período cuando empiece.",
     cycleHeroPhaseCards: {
@@ -443,6 +466,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     saveMessageNeutral: "Guardado.",
     saveMessagePregnancyPaused:
       "Guardado. Tras una prueba de embarazo positiva, las predicciones del ciclo quedan en pausa. Si tienes sangrado, dolor o mareo, busca atención médica cuanto antes.",
+    saveMessagePregnancyConcluded:
+      "Guardado. Las predicciones del ciclo siguen en pausa hasta tu próxima regla. Si tienes un sangrado abundante, dolor intenso o mareo, busca atención médica cuanto antes.",
     saveMessagePregnancyActive:
       "Guardado. Mientras se hace seguimiento de un embarazo, las predicciones del ciclo quedan en pausa. Si tienes sangrado, dolor o mareo, busca atención médica cuanto antes.",
     manualCycleStartFailed:
@@ -492,6 +517,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "In modalità ciclo imprevedibile le previsioni sono disattivate. Ovumcy mostra solo i fatti registrati.",
     pregnancyPausedHint:
       "Le previsioni del ciclo sono sospese dopo un test di gravidanza positivo. Registra un nuovo ciclo per riattivarle.",
+    pregnancyConcludedPausedHint:
+      "Le previsioni del ciclo restano in pausa fino al prossimo ciclo. Registralo quando inizia per riattivarle.",
     predictionDisclaimer:
       "Queste sono stime, non consigli medici né un metodo contraccettivo.",
     cycleHeroDayLabel: "Giorno",
@@ -499,6 +526,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleHeroApproximate: "Ciclo approssimativo",
     cycleHeroFactsOnly: "Previsioni disattivate",
     cycleHeroWaiting: "Aggiungi un inizio del ciclo",
+    cycleHeroPaused: "Previsioni in pausa",
     cycleHeroStale:
       "I dati del ciclo potrebbero essere obsoleti. Registra il ciclo quando inizia.",
     cycleHeroPhaseCards: {
@@ -536,6 +564,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     saveMessageNeutral: "Salvato.",
     saveMessagePregnancyPaused:
       "Salvato. Dopo un test di gravidanza positivo, le previsioni del ciclo sono in pausa. In caso di sanguinamento, dolore o vertigini, rivolgiti subito a un medico.",
+    saveMessagePregnancyConcluded:
+      "Salvato. Le previsioni del ciclo restano in pausa fino al prossimo ciclo. In caso di sanguinamento abbondante, dolore forte o vertigini, rivolgiti subito a un medico.",
     saveMessagePregnancyActive:
       "Salvato. Mentre è in corso il monitoraggio di una gravidanza, le previsioni del ciclo sono in pausa. In caso di sanguinamento, dolore o vertigini, rivolgiti subito a un medico.",
     manualCycleStartFailed:

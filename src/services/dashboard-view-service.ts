@@ -143,6 +143,7 @@ export type DashboardViewData = {
 export type DaySaveMessageKey =
   | "pregnancy_active"
   | "pregnancy_paused"
+  | "pregnancy_concluded"
   | "self_care"
   | "fertile"
   | "neutral";
@@ -157,7 +158,9 @@ const DAY_SAVE_SELF_CARE_MAX_CYCLE_DAY = 3;
 // offer a self-care nudge, then the fertile window, else neutral. The two
 // pregnancy signals stay separate keys because their copy differs in cause
 // ("while a pregnancy is tracked" vs "after a positive pregnancy test") — the
-// same split buildDashboardViewData applies to predictionExplanation. The
+// same split buildDashboardViewData applies to predictionExplanation. A pause
+// whose positive test belongs to an ended pregnancy (loss, birth, other) is
+// its own key: naming the test right after a loss is the wrong framing. The
 // pause is resolved once in buildCurrentCycleProjection and only READ here —
 // never re-derived in the screen (SECURITY.md medical safety: every
 // prediction surface honors suppression through the projection + record).
@@ -170,12 +173,13 @@ export function resolveDaySaveMessageKey(
   // LMP/ultrasound-dated pregnancy never sets it, so without this leg a save
   // during a tracked pregnancy could claim "you are in your fertile window".
   hasActivePregnancy = false,
+  pausedTestConcluded = false,
 ): DaySaveMessageKey {
   if (hasActivePregnancy) {
     return "pregnancy_active";
   }
   if (projection.isPregnancyPaused) {
-    return "pregnancy_paused";
+    return pausedTestConcluded ? "pregnancy_concluded" : "pregnancy_paused";
   }
   if (profile.unpredictableCycle) {
     return "neutral";
@@ -208,15 +212,24 @@ export function resolveDaySaveMessage(
   projection: ReturnType<typeof buildCurrentCycleProjection>,
   locale = "en",
   hasActivePregnancy = false,
+  pausedTestConcluded = false,
 ): string {
   const dashboardCopy = getDashboardCopy(locale);
   switch (
-    resolveDaySaveMessageKey(day, profile, projection, hasActivePregnancy)
+    resolveDaySaveMessageKey(
+      day,
+      profile,
+      projection,
+      hasActivePregnancy,
+      pausedTestConcluded,
+    )
   ) {
     case "pregnancy_active":
       return dashboardCopy.saveMessagePregnancyActive;
     case "pregnancy_paused":
       return dashboardCopy.saveMessagePregnancyPaused;
+    case "pregnancy_concluded":
+      return dashboardCopy.saveMessagePregnancyConcluded;
     case "self_care":
       return dashboardCopy.saveMessageSelfCare;
     case "fertile":
@@ -420,6 +433,15 @@ export function buildDashboardViewData(
   const hasActivePregnancy = options.activePregnancy?.status === "active";
   const suppressPredictions =
     hasActivePregnancy || projectedCycle.isPregnancyPaused;
+  // The pause's positive test belongs to a pregnancy that has ended: an
+  // active postpartum record means a birth, and an ended record dated on/after
+  // the test covers a loss or other ending. The pause itself is unchanged;
+  // only its wording drops the positive test.
+  const pausedTestConcluded =
+    !hasActivePregnancy &&
+    projectedCycle.isPregnancyPaused &&
+    (activePostpartumRecord !== null ||
+      isPausedTestConcluded(projectedCycle, options.endedPregnancyRecords ?? []));
   const advancedFertilitySummary =
     options.showAdvancedFertilitySummary === true
       ? buildCurrentCycleAdvancedFertilitySummary(
@@ -462,7 +484,9 @@ export function buildDashboardViewData(
     // as stats-view-service).
     predictionExplanation: hasActivePregnancy
       ? ""
-      : buildPredictionExplanation(profile, projectedCycle, locale),
+      : pausedTestConcluded
+        ? dashboardCopy.pregnancyConcludedPausedHint
+        : buildPredictionExplanation(profile, projectedCycle, locale),
     predictionDisclaimer: dashboardCopy.predictionDisclaimer,
     ...(advancedFertilitySummary ? { advancedFertilitySummary } : {}),
     quickActionsTitle: dashboardCopy.quickActionsTitle,
@@ -485,8 +509,25 @@ export function buildDashboardViewData(
       projectedCycle,
       locale,
       hasActivePregnancy,
+      pausedTestConcluded,
     ),
   };
+}
+
+// True when the paused projection's positive test belongs to an ended
+// pregnancy: an ended record's endedAt on/after that test date. A positive
+// test dated after the latest ended pregnancy is a new event.
+function isPausedTestConcluded(
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  endedPregnancyRecords: readonly PregnancyRecord[],
+): boolean {
+  const pregnancyTestDate = projection.pregnancyTestDate;
+  return (
+    pregnancyTestDate !== null &&
+    endedPregnancyRecords.some(
+      (record) => record.endedAt !== null && record.endedAt >= pregnancyTestDate,
+    )
+  );
 }
 
 // The single pregnancy/postpartum-mode branching point (architecture
@@ -579,14 +620,7 @@ function buildPregnancySection(
     // positive test dated AFTER the latest concluded pregnancy is a genuinely
     // new event and still shows the card. (Prediction-pause behaviour itself is
     // untouched — cycle-history-service is the sole owner of the pause.)
-    const pregnancyTestDate = projection.pregnancyTestDate;
-    const concludedForThisTest =
-      pregnancyTestDate !== null &&
-      endedPregnancyRecords.some(
-        (record) =>
-          record.endedAt !== null && record.endedAt >= pregnancyTestDate,
-      );
-    if (concludedForThisTest) {
+    if (isPausedTestConcluded(projection, endedPregnancyRecords)) {
       return { mode: "cycle" };
     }
 
@@ -642,12 +676,14 @@ function buildDashboardCycleHero(
     // shape the day-log pause already lands on (a paused projection carries
     // currentCycleDay === null), with the upcoming-ovulation line dropped
     // explicitly -- an active pregnancy's projection may still carry one.
+    // Suppression is not a missing cycle start, so the no-start prompt ("Add a
+    // cycle start") would misread it; predictionExplanation carries the reason.
     return {
       state: "unknown",
       title: heroTitle,
       value: statsCopy.phaseLabels.unknown,
-      detail: dashboardCopy.cycleHeroWaiting,
-      caption: dashboardCopy.nextPeriodPrompt,
+      detail: dashboardCopy.cycleHeroPaused,
+      caption: "",
       upcomingOvulationLabel: null,
       progressPercent: null,
       currentTone: "neutral",

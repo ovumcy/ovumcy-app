@@ -1176,6 +1176,74 @@ describe("dashboard-view-service pregnancy mode", () => {
     expect(viewData.pregnancyDashboard).toBeUndefined();
   });
 
+  it("words the still-held pause without the positive test once its pregnancy ended", () => {
+    const copy = getDashboardCopy("en");
+    for (const endReason of ["loss", "birth"] as const) {
+      const viewData = buildDashboardViewData(
+        pausedProfile,
+        pausedRecords,
+        buildCycleHistorySummary(pausedProfile, pausedRecords, pausedNow),
+        pausedNow,
+        "en",
+        {
+          activePregnancy: null,
+          endedPregnancyRecords: [endedPregnancyRecord("2026-06-01", endReason)],
+        },
+      );
+
+      expect(viewData.predictionExplanation).toBe(copy.pregnancyConcludedPausedHint);
+      expect(viewData.daySaveMessage).toBe(copy.saveMessagePregnancyConcluded);
+      expect(viewData.cycleHero).toEqual(
+        expect.objectContaining({
+          state: "unknown",
+          detail: copy.cycleHeroPaused,
+          caption: "",
+          progressPercent: null,
+          phaseSegments: [],
+        }),
+      );
+    }
+  });
+
+  it("words the pause without the positive test while postpartum tracking is active", () => {
+    const copy = getDashboardCopy("en");
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      pausedRecords,
+      buildCycleHistorySummary(pausedProfile, pausedRecords, pausedNow),
+      pausedNow,
+      "en",
+      {
+        activePregnancy: null,
+        activePostpartum: createPostpartumRecord({ startedAt: "2026-06-05" }),
+      },
+    );
+
+    expect(viewData.predictionExplanation).toBe(copy.pregnancyConcludedPausedHint);
+    expect(viewData.daySaveMessage).toBe(copy.saveMessagePregnancyConcluded);
+  });
+
+  it("keeps the positive-test wording when no ended pregnancy covers the paused test", () => {
+    const copy = getDashboardCopy("en");
+    const newPositive = positivePregnancyTestRecords("2026-07-01");
+    const now = new Date(2026, 6, 2);
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      newPositive,
+      buildCycleHistorySummary(pausedProfile, newPositive, now),
+      now,
+      "en",
+      {
+        activePregnancy: null,
+        endedPregnancyRecords: [endedPregnancyRecord("2026-06-05", "loss")],
+      },
+    );
+
+    expect(viewData.predictionExplanation).toBe(copy.pregnancyPausedHint);
+    expect(viewData.daySaveMessage).toBe(copy.saveMessagePregnancyPaused);
+    expect(viewData.cycleHero.detail).toBe(copy.cycleHeroPaused);
+  });
+
   it("re-shows the entry card for a new positive test dated after the latest end", () => {
     const newPositive = positivePregnancyTestRecords("2026-07-01");
     const now = new Date(2026, 6, 2);
@@ -1378,7 +1446,8 @@ describe("dashboard-view-service pregnancy mode", () => {
     expect(viewData.cycleHero).toEqual(
       expect.objectContaining({
         state: "unknown",
-        caption: getDashboardCopy("en").nextPeriodPrompt,
+        detail: getDashboardCopy("en").cycleHeroPaused,
+        caption: "",
         upcomingOvulationLabel: null,
         progressPercent: null,
         phaseSegments: [],
@@ -1415,9 +1484,8 @@ describe("dashboard-view-service pregnancy mode", () => {
 
     expect(viewData.mode).toBe("cycle");
     expect(viewData.cycleHero.state).toBe("unknown");
-    expect(viewData.cycleHero.caption).toBe(
-      getDashboardCopy("en").nextPeriodPrompt,
-    );
+    expect(viewData.cycleHero.detail).toBe(getDashboardCopy("en").cycleHeroPaused);
+    expect(viewData.cycleHero.caption).toBe("");
     expect(viewData.cycleHero.upcomingOvulationLabel).toBeNull();
   });
 
