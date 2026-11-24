@@ -502,10 +502,15 @@ export async function regenerateSyncAccountRecoveryCode(
       };
     }
     try {
+      // The caller's copy dates from the screen load; a sync write since then
+      // (a raised rollback floor) must survive the sign-out.
+      const storedPreferences =
+        (await storage.readSyncPreferencesRecord().catch(() => null)) ??
+        preferences;
       const signedOutPreferences = await clearLocalSyncSession(
         storage,
         secretStore,
-        preferences,
+        storedPreferences,
       );
       return {
         ok: true,

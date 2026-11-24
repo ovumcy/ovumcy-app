@@ -1463,6 +1463,27 @@ describe("sync-account-recovery-service", () => {
         );
       });
 
+      it("signs out from the stored preferences, not the caller's older copy", async () => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const storage = createLocalAppStorageMock();
+        (storage.readSyncPreferencesRecord as jest.Mock).mockResolvedValue(
+          { ...managedPreferences(), lastRemoteGeneration: 42 },
+        );
+
+        await regenerateSyncAccountRecoveryCode(
+          storage,
+          secretStore,
+          { ...managedPreferences(), lastRemoteGeneration: 7 },
+          { currentPassword: "current password 12345" },
+          jest.fn(),
+          managedRegenerateFactory(),
+        );
+
+        expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+          expect.objectContaining({ lastRemoteGeneration: 42 }),
+        );
+      });
+
       it("still returns the code with signedOut false when the local clear throws", async () => {
         const secretStore = createSyncSecretStoreMock(connectedSecrets());
         const storage = createLocalAppStorageMock();
