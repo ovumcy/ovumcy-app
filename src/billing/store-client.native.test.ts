@@ -61,6 +61,7 @@ describe("store client (native adapter)", () => {
         isAcknowledgedAndroid: true,
       }),
       rawPurchase({ purchaseState: "unknown", ids: null }),
+      rawPurchase({ ids: [], isAcknowledgedAndroid: null }),
     ]);
 
     const purchases = await androidClient().listPurchases();
@@ -69,6 +70,7 @@ describe("store client (native adapter)", () => {
       { productId: "pregnancy_module", state: "purchased", acknowledged: false },
       { productId: "ovumcy_cloud", state: "pending", acknowledged: true },
       { productId: "pregnancy_module", state: "unknown", acknowledged: false },
+      { productId: "pregnancy_module", state: "purchased", acknowledged: false },
     ]);
     expect(JSON.stringify(purchases)).not.toContain(TOKEN);
   });
@@ -127,6 +129,27 @@ describe("store client (native adapter)", () => {
       /^store_unavailable$/,
     );
     expect(mockRequestPurchase).toHaveBeenCalledTimes(1);
+
+    // An error with no readable code is a failure, never a cancel.
+    for (const thrown of ["boom", null]) {
+      mockRequestPurchase.mockRejectedValue(thrown);
+      await expect(androidClient().purchase("pregnancy_module")).rejects.toThrow(
+        /^store_unavailable$/,
+      );
+    }
+  });
+
+  it("connects again after a purchase that failed to connect", async () => {
+    mockInit.mockResolvedValueOnce(false).mockResolvedValue(true);
+    const client = androidClient();
+
+    await expect(client.purchase("pregnancy_module")).rejects.toThrow(
+      /^store_unavailable$/,
+    );
+    expect(mockRequestPurchase).not.toHaveBeenCalled();
+
+    await expect(client.purchase("pregnancy_module")).resolves.toBe("completed");
+    expect(mockInit).toHaveBeenCalledTimes(2);
   });
 
   it("returns the store's formatted price for a product it sells", async () => {
@@ -188,6 +211,24 @@ describe("store client (native adapter)", () => {
     );
     // A timeout is not retried.
     expect(mockGetPurchases).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the product lookup longer than the cached purchase read", async () => {
+    const afterTwoReadTimeouts = <T,>(value: T) =>
+      new Promise<T>((resolve) => setTimeout(() => resolve(value), 40));
+    mockFetchProducts.mockImplementation(() =>
+      afterTwoReadTimeouts([
+        { id: "pregnancy_module", displayPrice: "€4.99" },
+      ] as unknown as Awaited<ReturnType<typeof fetchProducts>>),
+    );
+    mockGetPurchases.mockImplementation(() => afterTwoReadTimeouts([]));
+    const client = androidClient(20);
+
+    await expect(client.loadProduct("pregnancy_module")).resolves.toEqual({
+      productId: "pregnancy_module",
+      displayPrice: "€4.99",
+    });
+    await expect(client.listPurchases()).rejects.toThrow(/^store_unavailable$/);
   });
 
   it("rejects every call off Google Play without touching the store library", async () => {

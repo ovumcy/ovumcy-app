@@ -27,8 +27,11 @@ import type {
 } from "./store-contract";
 
 // A store that does not answer must not hold a screen: the dashboard awaits
-// the ownership read.
+// the ownership read, which the store serves from its on-device cache. The
+// product lookup and the acknowledgment go to the network through the store,
+// so they get three times as long.
 export const STORE_CALL_TIMEOUT_MS = 5_000;
+const NETWORK_CALL_TIMEOUT_FACTOR = 3;
 
 const USER_CANCELLED: `${ErrorCode.UserCancelled}` = "user-cancelled";
 
@@ -71,9 +74,15 @@ function productIdsOf(purchase: Purchase): string[] {
 
 function isAcknowledged(purchase: Purchase): boolean {
   return (
-    "isAcknowledgedAndroid" in purchase &&
-    purchase.isAcknowledgedAndroid === true
+    (purchase as { isAcknowledgedAndroid?: boolean | null })
+      .isAcknowledgedAndroid === true
   );
+}
+
+function errorCodeOf(error: unknown): unknown {
+  return typeof error === "object" && error !== null
+    ? (error as { code?: unknown }).code
+    : undefined;
 }
 
 export function createStoreClient(
@@ -89,32 +98,32 @@ export function createStoreClient(
     if (!supported) {
       return Promise.reject(storeUnavailable());
     }
-    if (!connection) {
-      const attempt = withTimeout(initConnection(), timeoutMs).then((ready) => {
-        if (ready !== true) {
-          throw storeUnavailable();
-        }
-      });
-      connection = attempt;
-      attempt.catch(() => {
-        if (connection === attempt) {
-          connection = null;
-        }
-      });
-    }
+    // A rejected connection is dropped by the caller that sees it reject, so
+    // the next call connects again.
+    connection ??= withTimeout(initConnection(), timeoutMs).then((ready) => {
+      if (ready !== true) {
+        throw storeUnavailable();
+      }
+    });
     return connection;
   }
 
-  async function attempt<T>(operation: () => Promise<T>): Promise<T> {
+  async function attempt<T>(
+    operation: () => Promise<T>,
+    limitMs: number,
+  ): Promise<T> {
     await connect();
-    return withTimeout(operation(), timeoutMs);
+    return withTimeout(operation(), limitMs);
   }
 
   // The billing service can drop a connection it reported as ready, so a
   // failed call is retried once on a fresh one. A timeout is not retried.
-  async function call<T>(operation: () => Promise<T>): Promise<T> {
+  async function call<T>(
+    operation: () => Promise<T>,
+    limitMs: number = timeoutMs,
+  ): Promise<T> {
     try {
-      return await attempt(operation);
+      return await attempt(operation, limitMs);
     } catch (error) {
       connection = null;
       if (!supported || error === TIMED_OUT) {
@@ -122,17 +131,20 @@ export function createStoreClient(
       }
     }
     try {
-      return await attempt(operation);
+      return await attempt(operation, limitMs);
     } catch {
       connection = null;
       throw storeUnavailable();
     }
   }
 
+  const networkTimeoutMs = timeoutMs * NETWORK_CALL_TIMEOUT_FACTOR;
+
   return {
     async loadProduct(productId: string): Promise<StoreProduct | null> {
-      const products = await call(() =>
-        fetchProducts({ skus: [productId], type: "in-app" }),
+      const products = await call(
+        () => fetchProducts({ skus: [productId], type: "in-app" }),
+        networkTimeoutMs,
       );
       const product = (products ?? []).find((item) => item.id === productId);
       return product
@@ -162,11 +174,7 @@ export function createStoreClient(
         });
         return "completed";
       } catch (error) {
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          (error as { code?: unknown }).code === USER_CANCELLED
-        ) {
+        if (errorCodeOf(error) === USER_CANCELLED) {
           return "cancelled";
         }
         connection = null;
@@ -187,7 +195,10 @@ export function createStoreClient(
       }
       // Not consumable is the acknowledge path; consumable would consume the
       // purchase and let the store sell the product again.
-      await call(() => finishTransaction({ purchase: owed, isConsumable: false }));
+      await call(
+        () => finishTransaction({ purchase: owed, isConsumable: false }),
+        networkTimeoutMs,
+      );
     },
   };
 }
