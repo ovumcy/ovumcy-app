@@ -262,8 +262,10 @@ describe("buildScreeningHistorySummaryViewData", () => {
       response("2026-07-01", answersSumming(12)),
     ];
     const summary = buildScreeningHistorySummaryViewData(responses, "en");
-    expect(summary?.label).toContain("2026-07-01");
-    expect(summary?.label).toContain("12");
+    expect(summary?.label).toBe("Last check-in: July 1, 2026, score 12");
+    expect(
+      buildScreeningHistorySummaryViewData(responses, "de")?.label,
+    ).toContain("1. Juli 2026");
   });
 });
 

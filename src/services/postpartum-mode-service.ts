@@ -32,10 +32,10 @@ import {
 // birth, ending it, and the postpartum-dashboard view-data. All week-since-
 // birth math reads only the record's own `startedAt` (the birth date). This
 // module never re-derives cycle predictions or touches the pregnancy pause —
-// cycle-history-service stays the sole owner of that. a later phase adds the
-// cycle-return offer (auto-detected "cycle_returned" end path) and the LAM
-// education card; both key off a `hasNewCycleStart` flag computed upstream in
-// dashboard-view-service -- this module still never reads day-log history.
+// cycle-history-service stays the sole owner of that. The cycle-return offer
+// (auto-detected "cycle_returned" end path) and the LAM education card both
+// key off a `hasNewCycleStart` flag computed upstream in
+// dashboard-view-service -- this module never reads day-log history.
 
 // Upper bound of the trackable postpartum window: 26 weeks (~6 months) since
 // birth. Beyond it the record is treated as stale (a review/close card),

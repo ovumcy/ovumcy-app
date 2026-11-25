@@ -1,5 +1,6 @@
 import { selectAccountSecurityCopy } from "../i18n/account-security-copy";
 import { APP_LANGUAGE_LABELS, resolveCopyLanguage } from "../i18n/runtime";
+import { getPregnancyEndCopy } from "../i18n/pregnancy-end-copy";
 import { getSettingsCopy } from "../i18n/settings-copy";
 import type {
   ManagedCloudActiveSubscription,
@@ -1411,6 +1412,20 @@ export function buildSettingsHubNavigation(
       title: viewData.danger.title,
       description: viewData.danger.subtitle,
     },
+  };
+}
+
+// Hub entry to the pregnancy / postpartum manage screen. Shown only while the
+// device holds any pregnancy, postpartum or check-in data (see
+// settings-state-service.loadHasPregnancyModuleData); it reads no entitlement,
+// so managing or deleting saved data never depends on the module unlock.
+export function buildSettingsPregnancyManageRow(
+  language: string,
+): Pick<SettingsHubNavigationRow, "title" | "description"> {
+  const copy = getPregnancyEndCopy(language);
+  return {
+    title: copy.manage.hubTitle,
+    description: copy.manage.hubDescription,
   };
 }
 

@@ -74,6 +74,7 @@ export function MultiSelectChipGroup<T extends string>({
             accessibilityLabel={option.label}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: isActive }}
+            aria-checked={isActive}
             onPress={() => onToggle(option.value)}
             style={[
               styles.chip,

@@ -219,7 +219,7 @@ describe("PregnancyEndScreen", () => {
         "pregnancy-end-birth-congratulations",
       );
       expect(congratulations.props.children).toBe(
-        "Congratulations on your new arrival. When you're ready, you can switch Ovumcy back to cycle tracking.",
+        "Congratulations on your new arrival. When you're ready, you can finish pregnancy tracking here.",
       );
       expect(screen.getByText("How was your baby born?")).toBeTruthy();
     });
@@ -231,7 +231,7 @@ describe("PregnancyEndScreen", () => {
         "pregnancy-end-birth-congratulations",
       );
       expect(congratulations.props.children).toBe(
-        "Congratulations on your new arrivals. When you're ready, you can switch Ovumcy back to cycle tracking.",
+        "Congratulations on your new arrivals. When you're ready, you can finish pregnancy tracking here.",
       );
       expect(screen.getByText("How were your babies born?")).toBeTruthy();
     });

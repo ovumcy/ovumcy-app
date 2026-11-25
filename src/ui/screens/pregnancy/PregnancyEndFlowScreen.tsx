@@ -350,7 +350,7 @@ export function PregnancyEndFlowScreen({
           </FeatureCard>
         ) : null}
 
-        {hasEndedRecords ? (
+        {hasEndedRecords && !hasActivePostpartum ? (
           <FeatureCard testID="pregnancy-end-manage-card" title={copy.manage.title}>
             <Text style={styles.bodyText}>{copy.manage.noActiveBody}</Text>
           </FeatureCard>
@@ -637,11 +637,16 @@ export function PregnancyEndFlowScreen({
     );
   }
 
+  // Active postpartum with no active pregnancy: the screen manages the
+  // postpartum record, so the pregnancy-only heading would misdescribe it.
+  const isPostpartumManage =
+    !postpartumOfferActive && !hasActivePregnancy && hasActivePostpartum;
+
   return (
     <ScreenScaffold
-      description={copy.subtitle}
-      eyebrow={copy.eyebrow}
-      title={copy.title}
+      description={isPostpartumManage ? copy.manage.hubDescription : copy.subtitle}
+      eyebrow={isPostpartumManage ? postpartumCopy.hero.eyebrow : copy.eyebrow}
+      title={isPostpartumManage ? copy.manage.hubTitle : copy.title}
     >
       {content}
       {/* The pregnancy footer speaks of timing and checkpoints; after a loss

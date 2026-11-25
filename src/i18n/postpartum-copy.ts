@@ -138,7 +138,7 @@ const postpartumCopyEn = {
     endHint: "Switch back to cycle tracking only.",
     endDialog: {
       title: "End postpartum tracking?",
-      body: "Ovumcy will stop postpartum tracking and return to your cycle. Your entries stay saved on this device. You can do this later instead.",
+      body: "Ovumcy will stop postpartum tracking and return to your cycle. Your entries stay saved on this device.",
       confirm: "End tracking",
       cancel: "Keep tracking",
     },
@@ -253,7 +253,7 @@ const postpartumCopyRu: PostpartumCopy = {
     endHint: "Вернуться только к отслеживанию цикла.",
     endDialog: {
       title: "Завершить отслеживание послеродового периода?",
-      body: "Ovumcy остановит послеродовое отслеживание и вернётся к вашему циклу. Ваши записи останутся на этом устройстве. Это можно сделать и позже.",
+      body: "Ovumcy остановит послеродовое отслеживание и вернётся к вашему циклу. Ваши записи останутся на этом устройстве.",
       confirm: "Завершить",
       cancel: "Продолжить отслеживание",
     },
@@ -368,7 +368,7 @@ const postpartumCopyDe: PostpartumCopy = {
     endHint: "Nur zum Zyklus-Tracking zurückkehren.",
     endDialog: {
       title: "Wochenbett-Tracking beenden?",
-      body: "Ovumcy beendet das Wochenbett-Tracking und kehrt zu Ihrem Zyklus zurück. Ihre Einträge bleiben auf diesem Gerät gespeichert. Sie können das auch später tun.",
+      body: "Ovumcy beendet das Wochenbett-Tracking und kehrt zu Ihrem Zyklus zurück. Ihre Einträge bleiben auf diesem Gerät gespeichert.",
       confirm: "Beenden",
       cancel: "Weiter verfolgen",
     },
@@ -485,7 +485,7 @@ const postpartumCopyFr: PostpartumCopy = {
     endHint: "Revenir au suivi du cycle uniquement.",
     endDialog: {
       title: "Terminer le suivi post-partum ?",
-      body: "Ovumcy arrêtera le suivi post-partum et reviendra à votre cycle. Vos entrées restent enregistrées sur cet appareil. Vous pouvez aussi le faire plus tard.",
+      body: "Ovumcy arrêtera le suivi post-partum et reviendra à votre cycle. Vos entrées restent enregistrées sur cet appareil.",
       confirm: "Terminer",
       cancel: "Continuer le suivi",
     },
@@ -602,7 +602,7 @@ const postpartumCopyEs: PostpartumCopy = {
     endHint: "Volver solo al seguimiento del ciclo.",
     endDialog: {
       title: "¿Finalizar el seguimiento posparto?",
-      body: "Ovumcy detendrá el seguimiento posparto y volverá a tu ciclo. Tus entradas se mantienen guardadas en este dispositivo. También puedes hacerlo más tarde.",
+      body: "Ovumcy detendrá el seguimiento posparto y volverá a tu ciclo. Tus entradas se mantienen guardadas en este dispositivo.",
       confirm: "Finalizar",
       cancel: "Seguir con el seguimiento",
     },
@@ -717,7 +717,7 @@ const postpartumCopyIt: PostpartumCopy = {
     endHint: "Tornare solo al monitoraggio del ciclo.",
     endDialog: {
       title: "Terminare il monitoraggio post-partum?",
-      body: "Ovumcy interromperà il monitoraggio post-partum e tornerà al tuo ciclo. Le tue voci restano salvate su questo dispositivo. Puoi farlo anche più tardi.",
+      body: "Ovumcy interromperà il monitoraggio post-partum e tornerà al tuo ciclo. Le tue voci restano salvate su questo dispositivo.",
       confirm: "Termina",
       cancel: "Continua a monitorare",
     },

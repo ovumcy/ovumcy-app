@@ -2,6 +2,7 @@ import {
   buildCrisisSupportViewData,
   type CrisisSupportViewData,
 } from "../i18n/crisis-copy";
+import { resolveCopyLanguage } from "../i18n/runtime";
 import { getScreeningCopy } from "../i18n/screening-copy";
 import type { PostpartumRecord } from "../models/postpartum";
 import type { LocalDateISO } from "../models/profile";
@@ -289,6 +290,22 @@ export type ScreeningHistoryRowViewData = {
   label: string;
 };
 
+// Display-only: the stored response date stays YYYY-MM-DD. Both callers drop
+// unparseable dates first, so the passthrough is a type guard only.
+function formatCheckInDate(value: string, language: string): string {
+  const parsed = parseLocalDate(value);
+  /* istanbul ignore if -- unreachable: callers filter out unparseable dates */
+  if (!parsed) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(resolveCopyLanguage(language), {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+}
+
 export type ScreeningHistoryViewData = {
   title: string;
   empty: string;
@@ -313,7 +330,10 @@ export function buildScreeningHistoryViewData(
       id: response.id,
       date: response.date,
       score: response.score,
-      label: copy.history.rowLabel(response.date, response.score),
+      label: copy.history.rowLabel(
+        formatCheckInDate(response.date, language),
+        response.score,
+      ),
     }));
 
   return {
@@ -343,7 +363,10 @@ export function buildScreeningHistorySummaryViewData(
 
   const copy = getScreeningCopy(language);
   return {
-    label: copy.history.lastCheckInLabel(latest.date, latest.score),
+    label: copy.history.lastCheckInLabel(
+      formatCheckInDate(latest.date, language),
+      latest.score,
+    ),
     openCtaLabel: copy.history.openCta,
   };
 }

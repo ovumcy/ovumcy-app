@@ -18,6 +18,7 @@ import {
   buildSettingsHubNavigation,
   buildSettingsImportPreviewViewData,
   type LoadedSettingsState,
+  type buildSettingsPregnancyManageRow,
   type SettingsHubSectionKey,
   type SettingsSyncSummaryViewData,
   type SettingsViewData,
@@ -130,6 +131,7 @@ export type SettingsFlowScreenProps = {
   onScreenCaptureProtectionChange: (value: boolean) => void;
   onOpenBackupSync: () => void | Promise<void>;
   onOpenPrivacyNotice: () => void | Promise<void>;
+  onOpenPregnancyManage: () => void;
   onPeriodLengthChange: (value: number) => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
@@ -149,6 +151,8 @@ export type SettingsFlowScreenProps = {
   onUpdateSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onUsageGoalSelect: (value: LoadedSettingsState["cycleValues"]["usageGoal"]) => void;
   pendingImportPreview: PendingImportPreview | null;
+  // Null hides the hub row (no pregnancy, postpartum or check-in data saved).
+  pregnancyManageRow: ReturnType<typeof buildSettingsPregnancyManageRow> | null;
   reminderStatusMessage: string;
   reminderStatusTone: "success" | "error" | "info";
   rowSymptomDrafts: Record<string, SymptomDraftValues>;
@@ -229,6 +233,7 @@ export function SettingsFlowScreen({
   onScreenCaptureProtectionChange,
   onOpenBackupSync,
   onOpenPrivacyNotice,
+  onOpenPregnancyManage,
   onPeriodLengthChange,
   onPredictionModeSelect,
   onRestoreSymptom,
@@ -243,6 +248,7 @@ export function SettingsFlowScreen({
   onUpdateSymptom,
   onUsageGoalSelect,
   pendingImportPreview,
+  pregnancyManageRow,
   reminderStatusMessage,
   reminderStatusTone,
   rowSymptomDrafts,
@@ -335,6 +341,13 @@ export function SettingsFlowScreen({
               onPress={() => onOpenSettingsSection("interface")}
               row={hubNavigation.interface}
               testID="settings-hub-open-interface"
+            />
+          ) : null}
+          {section === "hub" && pregnancyManageRow ? (
+            <SettingsHubNavigationRow
+              onPress={onOpenPregnancyManage}
+              row={pregnancyManageRow}
+              testID="settings-hub-open-pregnancy"
             />
           ) : null}
 

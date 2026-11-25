@@ -251,6 +251,7 @@ function SymptomEditorCard({
                 // the same); `selected` left this one silent about whether it
                 // was the chosen icon.
                 accessibilityState={{ checked: isSelected }}
+                aria-checked={isSelected}
                 onPress={() => onDraftChange({ icon: option.value })}
                 style={[
                   styles.iconOption,

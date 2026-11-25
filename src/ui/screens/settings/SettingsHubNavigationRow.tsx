@@ -1,10 +1,15 @@
 import { Feather } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { SettingsHubNavigationRow as SettingsHubNavigationRowData } from "../../../services/settings-view-service";
+import type { SettingsHubNavigationRow as SettingsHubNavigationRowFull } from "../../../services/settings-view-service";
 import type { AppThemeColors } from "../../theme/tokens";
 import { spacing } from "../../theme/tokens";
 import { useThemedStyles } from "../../theme/useThemedStyles";
+
+type SettingsHubNavigationRowData = Pick<
+  SettingsHubNavigationRowFull,
+  "title" | "description"
+>;
 
 type SettingsHubNavigationRowProps = {
   onPress: () => void;

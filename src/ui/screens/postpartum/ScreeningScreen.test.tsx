@@ -197,8 +197,11 @@ describe("ScreeningScreen", () => {
     await renderScreening(storage, "history");
 
     // Newest first, date + score visible in one row label.
-    expect(await screen.findByText(/2026-06-20.*score 12 of 30/)).toBeTruthy();
-    expect(screen.getByText(/2026-06-01.*score 9 of 30/)).toBeTruthy();
+    expect(await screen.findByText(/June 20, 2026.*score 12 of 30/)).toBeTruthy();
+    expect(screen.getByText(/June 1, 2026.*score 9 of 30/)).toBeTruthy();
+    expect(screen.queryByText(/2026-06-20/)).toBeNull();
+    // The scaffold heading is the only "Your check-ins" title on screen.
+    expect(screen.getAllByText("Your check-ins")).toHaveLength(1);
 
     // The per-item answers / question text never appear in the history view.
     expect(

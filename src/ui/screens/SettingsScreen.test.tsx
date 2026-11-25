@@ -464,6 +464,58 @@ describe("SettingsScreen", () => {
     }
   });
 
+  it("links the pregnancy manage screen only while pregnancy module data is saved", async () => {
+    await render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="hub"
+        storage={createSettingsStorageMock()}
+      />,
+    );
+    await screen.findByTestId("settings-hub-open-cycle");
+    expect(screen.queryByTestId("settings-hub-open-pregnancy")).toBeNull();
+
+    await render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="hub"
+        storage={createSettingsStorageMock({
+          listPostpartumRecords: jest.fn().mockResolvedValue([{ id: "postpartum-1" }]),
+        })}
+      />,
+    );
+    const row = await screen.findByTestId("settings-hub-open-pregnancy");
+    mockPush.mockClear();
+    await fireEvent.press(row);
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/pregnancy-end"));
+  });
+
+  it("drops a pregnancy data check that settles after the hub unmounts", async () => {
+    let resolvePregnancies: (records: unknown[]) => void = () => {};
+    const listPregnancyRecords = jest.fn(
+      () =>
+        new Promise<unknown[]>((resolve) => {
+          resolvePregnancies = resolve;
+        }),
+    );
+    const view = await render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="hub"
+        storage={createSettingsStorageMock({ listPregnancyRecords })}
+      />,
+    );
+    await screen.findByTestId("settings-hub-open-cycle");
+    await waitFor(() => expect(listPregnancyRecords).toHaveBeenCalled());
+
+    await view.unmount();
+    await act(async () => {
+      resolvePregnancies([{ id: "pregnancy-1" }]);
+    });
+
+    expect(screen.queryByTestId("settings-hub-open-pregnancy")).toBeNull();
+  });
+
   it.each([
     ["cycle", "settings-cycle-section"],
     ["symptoms", "settings-symptoms-section"],
