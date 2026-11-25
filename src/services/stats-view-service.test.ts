@@ -1,4 +1,5 @@
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
+import { createPostpartumRecord } from "../models/postpartum";
 import { createPregnancyRecord } from "../models/pregnancy";
 import type { ProfileRecord } from "../models/profile";
 import { createDefaultSymptomRecords } from "../models/symptom";
@@ -1260,5 +1261,121 @@ describe("buildStatsViewData day-log pause prediction suppression", () => {
     );
     // Historical facts untouched by suppression.
     expect(viewData.trendChart?.points).toHaveLength(3);
+  });
+
+  const positiveTestHint =
+    "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.";
+  const concludedHint =
+    "Cycle predictions stay paused until your next period. Log it when it starts to resume them.";
+
+  function buildPaused(endedPregnancies: { endedAt: string | null }[]) {
+    return buildStatsViewData(
+      activePauseProfile,
+      activePauseRecords,
+      createDefaultSymptomRecords(),
+      activePauseNow,
+      "en",
+      premiumFeatures,
+      { endedPregnancies },
+    );
+  }
+
+  function createEndedPregnancy(endedAt: string) {
+    return {
+      ...createPregnancyRecord({
+        edd: "2026-11-25",
+        eddBasis: "lmp",
+        lmpDate: "2026-02-18",
+        startedAt: "2026-03-20",
+      }),
+      status: "ended" as const,
+      endedAt,
+      endReason: "loss" as const,
+    };
+  }
+
+  async function seedPausedStorage() {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord(activePauseProfile);
+    for (const record of activePauseRecords) {
+      await storage.writeDayLogRecord(record);
+    }
+    return storage;
+  }
+
+  it("rewords the pause hint when an ended pregnancy concludes the positive test, keeping every suppression", () => {
+    const viewData = buildPaused([{ endedAt: "2026-03-28" }]);
+
+    expect(viewData.predictionExplanation).toBe(concludedHint);
+    expect(viewData.bbtTrend).toBeUndefined();
+    expect(viewData.personalForecasts).toBeUndefined();
+    expect(viewData.topCards).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "mucus-fertility" }),
+      ]),
+    );
+    expect(viewData.advancedFertility?.items).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
+    );
+  });
+
+  it("keeps the positive-test hint when the test postdates every ended pregnancy", () => {
+    expect(buildPaused([{ endedAt: "2026-03-10" }]).predictionExplanation).toBe(
+      positiveTestHint,
+    );
+    expect(buildPaused([{ endedAt: null }]).predictionExplanation).toBe(
+      positiveTestHint,
+    );
+  });
+
+  it("shows the neutral pause hint via loadStatsScreenState after a pregnancy loss", async () => {
+    const storage = await seedPausedStorage();
+    await storage.writePregnancyRecord(createEndedPregnancy("2026-03-27"));
+
+    const state = await loadStatsScreenState(storage, activePauseNow);
+
+    expect(state.viewData.predictionExplanation).toBe(concludedHint);
+    expect(state.viewData.bbtTrend).toBeUndefined();
+  });
+
+  it("shows the neutral pause hint via loadStatsScreenState while postpartum after the test", async () => {
+    const storage = await seedPausedStorage();
+    await storage.writePostpartumRecord(
+      createPostpartumRecord({ startedAt: "2026-03-28" }),
+    );
+    const listPregnancyRecords = jest.spyOn(storage, "listPregnancyRecords");
+
+    const state = await loadStatsScreenState(storage, activePauseNow);
+
+    expect(state.viewData.predictionExplanation).toBe(concludedHint);
+    expect(listPregnancyRecords).not.toHaveBeenCalled();
+  });
+
+  it("keeps the positive-test hint via loadStatsScreenState when a postpartum birth predates the test", async () => {
+    const storage = await seedPausedStorage();
+    await storage.writePostpartumRecord(
+      createPostpartumRecord({ startedAt: "2026-03-01" }),
+    );
+
+    const state = await loadStatsScreenState(storage, activePauseNow);
+
+    expect(state.viewData.predictionExplanation).toBe(positiveTestHint);
+  });
+
+  it("reads no pregnancy records via loadStatsScreenState when the pause is not active", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord(activePauseProfile);
+    for (const record of activePauseRecords.filter(
+      (record) => record.pregnancyTest !== "positive",
+    )) {
+      await storage.writeDayLogRecord(record);
+    }
+    await storage.writePregnancyRecord(createEndedPregnancy("2026-03-27"));
+    const listPregnancyRecords = jest.spyOn(storage, "listPregnancyRecords");
+
+    const state = await loadStatsScreenState(storage, activePauseNow);
+
+    expect(listPregnancyRecords).not.toHaveBeenCalled();
+    expect(state.viewData.predictionExplanation).not.toBe(concludedHint);
   });
 });
