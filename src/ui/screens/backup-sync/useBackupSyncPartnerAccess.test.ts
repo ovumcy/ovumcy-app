@@ -875,6 +875,53 @@ describe("useBackupSyncPartnerAccess", () => {
       expect(result.current.isPartnerBusy).toBe(false);
     });
 
+    it.each(["grant", "invite"] as const)(
+      "still reports a confirmed %s revoke when withdrawing the consent fails",
+      async (target) => {
+        const core = createBackupSyncSessionCoreMock();
+        jest
+          .mocked(core.storage.readSyncPreferencesRecord)
+          .mockRejectedValue(new Error("storage unavailable"));
+        mockOpenConfirmation.mockResolvedValue(true);
+        mockRevokeManagedPartnerGrant.mockResolvedValue({
+          ok: true,
+          value: createGrant({ revokedAt: "2026-03-20T08:00:00.000Z" }),
+        });
+        mockRevokeManagedPartnerInvite.mockResolvedValue({
+          ok: true,
+          value: {
+            id: "invite-1",
+            ownerAccountID: "owner-1",
+            accessLevel: "summary",
+            status: "revoked",
+            expiresAt: "2026-04-01T00:00:00.000Z",
+            acceptedAt: null,
+            acceptedAccountID: null,
+            revokedAt: "2026-03-20T08:00:00.000Z",
+            revokedReason: "owner_revoked",
+            createdBy: "owner-1",
+            createdAt: "2026-03-18T00:00:00.000Z",
+            updatedAt: "2026-03-20T08:00:00.000Z",
+          },
+        });
+        const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+
+        await act(async () => {
+          if (target === "grant") {
+            await result.current.handleRevokePartnerGrant("grant-1");
+          } else {
+            await result.current.handleRevokePartnerInvite("invite-1");
+          }
+        });
+
+        expect(core.setPartnerStatusMessage).toHaveBeenCalledWith(
+          target === "grant"
+            ? core.partnerCopy.statusGrantRevoked
+            : core.partnerCopy.statusInviteRevoked,
+        );
+      },
+    );
+
     it("withdraws the partner-sharing consent and keeps the sync consent on a confirmed revoke", async () => {
       const core = createBackupSyncSessionCoreMock();
       const grant = { revision: "2026-11-25", givenAt: "2026-11-25T10:00:00.000Z" };

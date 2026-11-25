@@ -468,7 +468,7 @@ export function createSQLiteAppStorage(
     const stored =
       options?.restoreInProgress === undefined ||
       options.dataSharingConsent === undefined
-        ? await readStoredSyncPreferencesRecord(database, localDataKey)
+        ? await readSyncPreferencesRecordInternal()
         : null;
     const restoreInProgress =
       options?.restoreInProgress ?? stored?.restoreInProgress === true;
@@ -1592,17 +1592,6 @@ async function upsertProfileRecord(
       buildLocalDataAad("profile_settings", "1"),
     ),
   );
-}
-
-async function readStoredSyncPreferencesRecord(
-  database: LocalAppDatabase,
-  localDataKey: string,
-): Promise<SyncPreferencesRecord | null> {
-  const row = await database.getFirstAsync<
-    Pick<SyncPreferencesRow, "encrypted_payload">
-  >("SELECT encrypted_payload FROM sync_preferences WHERE id = 1;");
-
-  return (row && mapSyncPreferencesRow(row, localDataKey)) || null;
 }
 
 async function upsertSyncPreferencesRecord(

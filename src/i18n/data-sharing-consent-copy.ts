@@ -338,5 +338,5 @@ const DATA_SHARING_CONSENT_COPY: Record<InterfaceLanguage, DataSharingConsentCop
 export function selectDataSharingConsentCopy(
   language: InterfaceLanguage,
 ): DataSharingConsentCopy {
-  return DATA_SHARING_CONSENT_COPY[language] ?? consentCopyEn;
+  return DATA_SHARING_CONSENT_COPY[language];
 }

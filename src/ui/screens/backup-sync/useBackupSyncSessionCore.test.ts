@@ -810,4 +810,70 @@ describe("useBackupSyncSessionCore", () => {
       expect(result.current.state).toEqual(dirtyState);
     });
   });
+
+  describe("ensureDataSharingConsent", () => {
+    async function renderConsentCore(
+      storageOverrides: Partial<LocalAppStorage> = {},
+      withFixedNow = true,
+    ) {
+      const storage = createSettingsStorageMock(storageOverrides);
+      const syncSecretStore = createSyncSecretStoreMock();
+      const now = withFixedNow ? FIXED_NOW : undefined;
+      const rendered = await renderHook(() =>
+        useBackupSyncSessionCore({ storage, syncSecretStore, now }),
+      );
+      await act(async () => {
+        for (let index = 0; index < 6; index += 1) {
+          await Promise.resolve();
+        }
+      });
+      return { ...rendered, storage };
+    }
+
+    it("drops a second request while the first is pending and records the first acceptance with the current date", async () => {
+      const { result, storage, unmount } = await renderConsentCore({}, false);
+
+      let first!: Promise<boolean>;
+      await act(async () => {
+        first = result.current.ensureDataSharingConsent("managed_sync");
+        await Promise.resolve();
+      });
+      let second = true;
+      await act(async () => {
+        second = await result.current.ensureDataSharingConsent("partner_share");
+      });
+      expect(second).toBe(false);
+      await waitFor(() =>
+        expect(result.current.pendingDataSharingConsent).toBe("managed_sync"),
+      );
+
+      await act(async () => {
+        result.current.answerDataSharingConsent(true);
+      });
+      expect(await first).toBe(true);
+      const options = jest.mocked(storage.writeSyncPreferencesRecord).mock.calls.at(-1)?.[1];
+      expect(options?.dataSharingConsent?.managed_sync?.givenAt).toEqual(expect.any(String));
+      await unmount();
+    });
+
+    it("answers false when the acceptance cannot be recorded", async () => {
+      const { result, unmount } = await renderConsentCore({
+        writeSyncPreferencesRecord: jest.fn().mockRejectedValue(new Error("disk full")),
+      });
+
+      let pending!: Promise<boolean>;
+      await act(async () => {
+        pending = result.current.ensureDataSharingConsent("self_hosted_sync");
+        await Promise.resolve();
+      });
+      await waitFor(() =>
+        expect(result.current.pendingDataSharingConsent).toBe("self_hosted_sync"),
+      );
+      await act(async () => {
+        result.current.answerDataSharingConsent(true);
+      });
+      expect(await pending).toBe(false);
+      await unmount();
+    });
+  });
 });

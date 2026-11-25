@@ -1207,6 +1207,15 @@ describe("sqlite-app-storage", () => {
     await expect(storage.readSyncPreferencesRecord()).resolves.not.toHaveProperty(
       "dataSharingConsent",
     );
+
+    await storage.writeSyncPreferencesRecord(preferences, {
+      restoreInProgress: true,
+      dataSharingConsent: { partner_share: grant },
+    });
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      restoreInProgress: true,
+      dataSharingConsent: { partner_share: grant },
+    });
   });
 
   it("keeps the floor's account id in the encrypted payload only, and reads an empty one as unbound", async () => {
