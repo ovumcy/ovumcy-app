@@ -545,7 +545,6 @@ export function buildDashboardViewData(
   };
 }
 
-
 // The single pregnancy/postpartum-mode branching point (architecture
 // invariant: screens never branch on domain state). Precedence: an active,
 // trackable pregnancy wins and produces the pregnancy dashboard; then an active
