@@ -2,6 +2,7 @@ import { storeClient } from "./store-client.web";
 
 describe("store client (web)", () => {
   it("rejects every call: the web build has no store", async () => {
+    expect(storeClient.supported).toBe(false);
     await expect(storeClient.listPurchases()).rejects.toThrow(
       /^store_unavailable$/,
     );

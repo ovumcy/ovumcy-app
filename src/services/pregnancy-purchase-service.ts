@@ -7,6 +7,7 @@ import { storeClient } from "../billing/store-client";
 import {
   PREGNANCY_MODULE_PRODUCT_ID,
   type StoreClient,
+  type StorePurchaseOutcome,
 } from "../billing/store-contract";
 import { resolvePregnancyModulePurchaseState } from "./pregnancy-store-entitlement-source";
 
@@ -29,6 +30,17 @@ export type PregnancyRestoreResult =
   | "unavailable";
 
 /**
+ * Whether this build can sell the module at all. A lock card offers the
+ * purchase screen only where this is true; elsewhere it stays informational,
+ * because an unlock action that can never succeed is worse than none.
+ */
+export function isPregnancyPurchaseSupported(
+  client: StoreClient = storeClient,
+): boolean {
+  return client.supported;
+}
+
+/**
  * What the unlock screen shows on open. An already-owned module skips the
  * product lookup; a product the store does not sell here reads as
  * "unavailable" rather than as a buy button without a price.
@@ -41,7 +53,7 @@ export async function loadPregnancyUnlockOffer(
       await client.listPurchases(),
     );
     if (state === "owned") {
-      await acknowledgeQuietly(client);
+      acknowledgeInBackground(client);
       return { status: "owned" };
     }
     if (state === "pending") {
@@ -66,22 +78,27 @@ export async function loadPregnancyUnlockOffer(
 export async function purchasePregnancyModule(
   client: StoreClient = storeClient,
 ): Promise<PregnancyPurchaseResult> {
-  let cancelled = false;
+  let outcome: StorePurchaseOutcome | "failed" = "failed";
   try {
-    cancelled = (await client.purchase(PREGNANCY_MODULE_PRODUCT_ID)) === "cancelled";
+    outcome = await client.purchase(PREGNANCY_MODULE_PRODUCT_ID);
   } catch {
     // Fall through to the re-read below.
   }
 
   const state = await readState(client);
   if (state === "owned") {
-    await acknowledgeQuietly(client);
+    acknowledgeInBackground(client);
     return "owned";
   }
   if (state === "pending") {
     return "pending";
   }
-  return cancelled && state === "not_owned" ? "cancelled" : "unavailable";
+  if (state === "unavailable") {
+    // The sheet completed but the store could not be re-read: the payment may
+    // well exist, so this is "check again", never "the store is down".
+    return outcome === "completed" ? "pending" : "unavailable";
+  }
+  return outcome === "cancelled" ? "cancelled" : "unavailable";
 }
 
 /**
@@ -93,7 +110,7 @@ export async function restorePregnancyModulePurchase(
 ): Promise<PregnancyRestoreResult> {
   const state = await readState(client);
   if (state === "owned") {
-    await acknowledgeQuietly(client);
+    acknowledgeInBackground(client);
     return "owned";
   }
   if (state === "pending") {
@@ -134,12 +151,11 @@ async function readState(client: StoreClient) {
   }
 }
 
-// Ownership does not wait on the acknowledgment: a failed one is retried at
-// the next launch, well inside the store's three-day window.
-async function acknowledgeQuietly(client: StoreClient): Promise<void> {
-  try {
-    await client.acknowledge(PREGNANCY_MODULE_PRODUCT_ID);
-  } catch {
+// Ownership never waits on the acknowledgment — it goes to the network
+// through the store, and a failed one is retried at the next launch, well
+// inside the store's three-day window.
+function acknowledgeInBackground(client: StoreClient): void {
+  client.acknowledge(PREGNANCY_MODULE_PRODUCT_ID).catch(() => {
     // Retried by acknowledgePregnancyModulePurchase.
-  }
+  });
 }

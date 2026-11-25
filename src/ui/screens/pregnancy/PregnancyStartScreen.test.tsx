@@ -5,6 +5,7 @@ import { createDefaultProfileRecord } from "../../../models/profile";
 import { getPregnancyCopy } from "../../../i18n/pregnancy-copy";
 import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
 import { loadPregnancyModuleOwned } from "../../../services/pregnancy-entitlement-service";
+import { isPregnancyPurchaseSupported } from "../../../services/pregnancy-purchase-service";
 import { addDays, parseLocalDate } from "../../../services/profile-settings-policy";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { createLocalAppStorageMock } from "../../../test/create-local-app-storage-mock";
@@ -45,7 +46,13 @@ jest.mock("../../../services/managed-partner-share-sync-service", () => ({
     .mockResolvedValue({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] }),
 }));
 
+jest.mock("../../../services/pregnancy-purchase-service", () => ({
+  ...jest.requireActual("../../../services/pregnancy-purchase-service"),
+  isPregnancyPurchaseSupported: jest.fn(() => false),
+}));
+
 const mockUnlocked = jest.mocked(loadPregnancyModuleOwned);
+const mockPurchaseSupported = jest.mocked(isPregnancyPurchaseSupported);
 const mockSyncPartnerProjections = jest.mocked(syncManagedPartnerSharedProjections);
 
 const EDD = "2026-10-08";
@@ -73,6 +80,7 @@ describe("PregnancyStartScreen", () => {
     mockBack.mockReset();
     mockUnlocked.mockReset();
     mockUnlocked.mockResolvedValue(true);
+    mockPurchaseSupported.mockReset();
   });
 
   it("prefills the LMP date from the profile last period start", async () => {
@@ -325,7 +333,21 @@ describe("PregnancyStartScreen", () => {
     expect(screen.getByTestId("pregnancy-start-disclaimer")).toBeTruthy();
   });
 
+  it("keeps the lock card informational where the build has no store", async () => {
+    mockPurchaseSupported.mockReturnValue(false);
+    mockUnlocked.mockResolvedValue(false);
+    await renderStart();
+
+    await screen.findByTestId("pregnancy-start-lock-title");
+    expect(screen.queryByTestId("pregnancy-start-lock-cta")).toBeNull();
+
+    await fireEvent.press(screen.getByTestId("pregnancy-start-lock"));
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   it("routes the lock card to the one-time purchase screen, never the subscription screen", async () => {
+    mockPurchaseSupported.mockReturnValue(true);
     mockUnlocked.mockResolvedValue(false);
     await renderStart();
 

@@ -19,6 +19,7 @@ import {
   loadManagedPremiumFeaturesForCurrentSession,
 } from "../../services/managed-premium-features-service";
 import { loadPregnancyModuleOwned } from "../../services/pregnancy-entitlement-service";
+import { isPregnancyPurchaseSupported } from "../../services/pregnancy-purchase-service";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { createVolatileWebAppStorage } from "../../storage/local/volatile-web-app-storage";
@@ -76,6 +77,12 @@ jest.mock("../../services/pregnancy-entitlement-service", () => ({
   loadPregnancyModuleOwned: jest.fn().mockResolvedValue(false),
 }));
 const mockLoadPregnancyModuleOwned = jest.mocked(loadPregnancyModuleOwned);
+
+jest.mock("../../services/pregnancy-purchase-service", () => ({
+  ...jest.requireActual("../../services/pregnancy-purchase-service"),
+  isPregnancyPurchaseSupported: jest.fn(() => false),
+}));
+const mockPurchaseSupported = jest.mocked(isPregnancyPurchaseSupported);
 
 const PREGNANCY_EDD = "2026-10-08";
 
@@ -1310,7 +1317,35 @@ describe("DashboardScreen", () => {
     expect(phaseCard.props.accessible).toBe(true);
   });
 
+  it("keeps the locked pregnancy entry card informational where the build has no store", async () => {
+    mockPurchaseSupported.mockReturnValue(false);
+    mockLoadPregnancyModuleOwned.mockResolvedValue(false);
+    await renderDashboard(
+      createStorageMock({
+        listDayLogRecordsInRange: jest
+          .fn()
+          .mockResolvedValue(positiveTestRecords("2026-06-01")),
+      }),
+      new Date(2026, 5, 1),
+    );
+
+    const lock = await screen.findByTestId("dashboard-pregnancy-entry-card-title");
+    expect(lock.props.children).toBe(getPregnancyCopy("en").entryCard.lockedTitle);
+
+    // No store on this platform: the card names the one-time unlock and stops
+    // there — no call-to-action, nothing to press, no navigation.
+    expect(
+      screen.queryByTestId("dashboard-pregnancy-entry-card-cta"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("dashboard-pregnancy-entry-card").props
+        .accessibilityRole,
+    ).toBeUndefined();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   it("routes the locked pregnancy entry card to the one-time purchase screen, never the subscription screen", async () => {
+    mockPurchaseSupported.mockReturnValue(true);
     mockLoadPregnancyModuleOwned.mockResolvedValue(false);
     await renderDashboard(
       createStorageMock({
@@ -1337,6 +1372,7 @@ describe("DashboardScreen", () => {
 
     await fireEvent.press(screen.getByTestId("dashboard-pregnancy-entry-card"));
     expect(mockPush.mock.calls).toEqual([["/pregnancy-unlock"]]);
+    mockPurchaseSupported.mockReturnValue(false);
   });
 
   it("navigates to pregnancy setup from the unlocked entry card", async () => {
