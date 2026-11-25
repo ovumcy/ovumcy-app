@@ -269,7 +269,7 @@ Yes. Export to CSV or JSON from Settings at any time, with no account. A JSON ex
 
 No. There is no analytics, crash-reporting, or advertising SDK in the app, and Ovumcy reports nothing about how you use it.
 
-One third-party component is worth knowing about. The pregnancy module is sold through Google Play, and that requires Google's own billing library inside the Android app. It starts only when the app checks or sells that module — never at launch, and never if you do not use pregnancy mode — and, being Google's code, it can send Google diagnostics about its own operation. Ovumcy gives it no health data. The detail is in [docs/privacy.md](docs/privacy.md).
+One third-party component is worth knowing about. The pregnancy module is sold through Google Play, and that requires Google's own billing library inside the Android app. It starts only when the app checks or sells that module: after you log a positive pregnancy test (then on each visit to the dashboard, until a pregnancy is set up), or when you open pregnancy mode or its purchase screen. If you do none of that, it never runs. And, being Google's code, it can send Google diagnostics about its own operation. Ovumcy gives it no health data. The detail is in [docs/privacy.md](docs/privacy.md).
 
 ### Is there a free trial of Ovumcy Cloud?
 

@@ -249,10 +249,50 @@ describe("store client (native adapter)", () => {
     await expect(androidClient(20).listPurchases()).rejects.toThrow(
       /^store_unavailable$/,
     );
-    // A timeout is not retried.
     expect(mockGetPurchases).toHaveBeenCalledTimes(1);
     // The limit a screen can wait on a cached read in the shipped client.
     expect(STORE_CALL_TIMEOUT_MS).toBe(5_000);
+  });
+
+  it("holds the retry to the same deadline as the first try", async () => {
+    // First read fails late, the retry never answers: one deadline covers both.
+    mockGetPurchases
+      .mockImplementationOnce(
+        () => new Promise((_, reject) => setTimeout(() => reject(new Error("x")), 30)),
+      )
+      .mockReturnValue(new Promise(() => undefined));
+    const started = Date.now();
+
+    await expect(androidClient(50).listPurchases()).rejects.toThrow(
+      /^store_unavailable$/,
+    );
+    expect(Date.now() - started).toBeLessThan(500);
+    expect(mockGetPurchases).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects instead of hanging when the connection, the product lookup or the acknowledgment never answers", async () => {
+    const never = () => new Promise<never>(() => undefined);
+
+    mockInit.mockImplementation(never);
+    const disconnected = androidClient(20);
+    await expect(disconnected.listPurchases()).rejects.toThrow(/^store_unavailable$/);
+    await expect(disconnected.purchase("pregnancy_module")).rejects.toThrow(
+      /^store_unavailable$/,
+    );
+    expect(mockGetPurchases).not.toHaveBeenCalled();
+    expect(mockRequestPurchase).not.toHaveBeenCalled();
+
+    mockInit.mockReset().mockResolvedValue(true);
+    mockFetchProducts.mockImplementation(never);
+    mockGetPurchases.mockResolvedValue([rawPurchase()]);
+    mockFinish.mockImplementation(never);
+    const connected = androidClient(20);
+    await expect(connected.loadProduct("pregnancy_module")).rejects.toThrow(
+      /^store_unavailable$/,
+    );
+    await expect(connected.acknowledge("pregnancy_module")).rejects.toThrow(
+      /^store_unavailable$/,
+    );
   });
 
   it("gives the product lookup longer than the cached purchase read", async () => {

@@ -174,14 +174,17 @@ describe("store library import boundary", () => {
     expect(actual).toEqual(allowed);
   });
 
-  it("contacts the store only from the pregnancy surfaces, never at launch", () => {
+  it("contacts the store only from the pregnancy surfaces, never from the launch tasks", () => {
     // Starting the store's billing client also starts the store vendor's own
-    // diagnostics, so who can reach the store is an exact, reviewed list.
+    // diagnostics, so who can reach the store is an exact, reviewed list. A
+    // platform-suffixed path (`store-client.native`) counts as the module.
     const importersOf = (moduleName: string) =>
       sources
         .filter((file) =>
           importedModules(read(file)).some((specifier) =>
-            specifier.endsWith(`/${moduleName}`),
+            new RegExp(`/${moduleName}(?:\\.(?:native|web|android|ios))?$`).test(
+              specifier,
+            ),
           ),
         )
         .sort();
