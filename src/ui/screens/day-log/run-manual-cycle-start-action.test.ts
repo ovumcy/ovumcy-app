@@ -234,4 +234,33 @@ describe("run-manual-cycle-start-action after a pregnancy ends", () => {
       }),
     );
   });
+
+  it("falls back to the screen's prompts when the day is outside the markable range", async () => {
+    const storage = createLocalAppStorageMock();
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: "2026-06-01" };
+    const draftRecord = { ...createEmptyDayLogRecord("2026-06-25"), isPeriod: true };
+    const confirmPrompt = jest.fn().mockResolvedValue(true);
+
+    const result = await runManualCycleStartAction({
+      cancelLabel: "Cancel",
+      confirmPrompt,
+      locale: "en",
+      manualCycleStart: {
+        buttonLabel: "Mark",
+        isActive: false,
+        isBlocked: false,
+        notices: {},
+        prompts: [{ acceptLabel: "Continue", kind: "replace_existing", message: "Replace?" }],
+      },
+      now: new Date(2026, 5, 20),
+      profile,
+      record: draftRecord,
+      records: [],
+      storage,
+    });
+
+    expect(confirmPrompt).toHaveBeenCalledWith("Replace?", "Continue", "Cancel");
+    expect(result).toEqual(expect.objectContaining({ ok: false }));
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+  });
 });

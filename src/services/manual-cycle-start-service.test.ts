@@ -731,6 +731,19 @@ describe("short-gap check after a pregnancy ends", () => {
     ]);
   });
 
+  it("measures from the latest of several pregnancy ends before the marked day", () => {
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      preStartRecords,
+      { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true },
+      now,
+      "en",
+      { pregnancyEndDates: ["2026-03-01", "2026-06-01", "2026-05-01", "not-a-date"] },
+    );
+
+    expect(viewData?.prompts[0]?.message).toContain("Jun 1, 2026");
+  });
+
   it("warns on a mark dated the birth day itself", () => {
     const viewData = buildManualCycleStartViewData(
       profile,
