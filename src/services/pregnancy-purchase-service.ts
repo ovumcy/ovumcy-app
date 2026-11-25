@@ -1,21 +1,28 @@
-// Buying, restoring and acknowledging the one-time pregnancy-module purchase.
-// The store's purchase list is the only truth: every function re-reads it and
-// never infers ownership from how the purchase sheet ended. Nothing is
-// persisted, and nothing here touches managed billing or a sync session.
+// Buying and restoring the one-time pregnancy-module purchase. The store's
+// purchase list is the only truth: every function re-reads it and never
+// infers ownership from how the purchase sheet ended. Nothing is persisted,
+// and nothing here touches managed billing or a sync session.
 
 import { storeClient } from "../billing/store-client";
 import {
   PREGNANCY_MODULE_PRODUCT_ID,
   type StoreClient,
+  type StorePurchase,
   type StorePurchaseOutcome,
 } from "../billing/store-contract";
-import { resolvePregnancyModulePurchaseState } from "./pregnancy-store-entitlement-source";
+import {
+  acknowledgeOwedPregnancyPurchase,
+  resolvePregnancyModulePurchaseState,
+  type PregnancyModulePurchaseState,
+} from "./pregnancy-store-entitlement-source";
 
 export type PregnancyUnlockOffer =
   | { status: "owned" }
   | { status: "pending" }
   | { status: "available"; displayPrice: string }
-  | { status: "unavailable" };
+  | { status: "unavailable" }
+  // This build has no store at all: nothing to retry or restore.
+  | { status: "unsupported" };
 
 export type PregnancyPurchaseResult =
   | "owned"
@@ -32,7 +39,8 @@ export type PregnancyRestoreResult =
 /**
  * Whether this build can sell the module at all. A lock card offers the
  * purchase screen only where this is true; elsewhere it stays informational,
- * because an unlock action that can never succeed is worse than none.
+ * because an unlock action that can never succeed is worse than none. Reads a
+ * constant: it does not contact the store.
  */
 export function isPregnancyPurchaseSupported(
   client: StoreClient = storeClient,
@@ -48,18 +56,16 @@ export function isPregnancyPurchaseSupported(
 export async function loadPregnancyUnlockOffer(
   client: StoreClient = storeClient,
 ): Promise<PregnancyUnlockOffer> {
-  try {
-    const state = resolvePregnancyModulePurchaseState(
-      await client.listPurchases(),
-    );
-    if (state === "owned") {
-      acknowledgeInBackground(client);
-      return { status: "owned" };
-    }
-    if (state === "pending") {
-      return { status: "pending" };
-    }
+  if (!client.supported) {
+    return { status: "unsupported" };
+  }
 
+  const state = await readState(client);
+  if (state === "owned" || state === "pending" || state === "unavailable") {
+    return { status: state };
+  }
+
+  try {
     const product = await client.loadProduct(PREGNANCY_MODULE_PRODUCT_ID);
     if (!product || product.displayPrice.trim() === "") {
       return { status: "unavailable" };
@@ -86,12 +92,8 @@ export async function purchasePregnancyModule(
   }
 
   const state = await readState(client);
-  if (state === "owned") {
-    acknowledgeInBackground(client);
-    return "owned";
-  }
-  if (state === "pending") {
-    return "pending";
+  if (state === "owned" || state === "pending") {
+    return state;
   }
   if (state === "unavailable") {
     // The sheet completed but the store could not be re-read: the payment may
@@ -109,53 +111,20 @@ export async function restorePregnancyModulePurchase(
   client: StoreClient = storeClient,
 ): Promise<PregnancyRestoreResult> {
   const state = await readState(client);
-  if (state === "owned") {
-    acknowledgeInBackground(client);
-    return "owned";
-  }
-  if (state === "pending") {
-    return "pending";
-  }
-  return state === "not_owned" ? "not_found" : "unavailable";
+  return state === "not_owned" ? "not_found" : state;
 }
 
-/**
- * Launch task. A purchase that was pending when the app last ran may have
- * been charged since; the store refunds a purchase left unacknowledged for
- * three days. Never rejects.
- */
-export async function acknowledgePregnancyModulePurchase(
-  client: StoreClient = storeClient,
-): Promise<void> {
+// Every read also starts the acknowledgment an owned purchase still owes;
+// ownership never waits on it.
+async function readState(
+  client: StoreClient,
+): Promise<PregnancyModulePurchaseState | "unavailable"> {
+  let purchases: readonly StorePurchase[];
   try {
-    const purchases = await client.listPurchases();
-    const owed = purchases.some(
-      (purchase) =>
-        purchase.productId === PREGNANCY_MODULE_PRODUCT_ID &&
-        purchase.state === "purchased" &&
-        !purchase.acknowledged,
-    );
-    if (owed) {
-      await client.acknowledge(PREGNANCY_MODULE_PRODUCT_ID);
-    }
+    purchases = await client.listPurchases();
   } catch {
-    // Best effort: the next launch, or the unlock screen, retries.
+    return "unavailable";
   }
-}
-
-async function readState(client: StoreClient) {
-  try {
-    return resolvePregnancyModulePurchaseState(await client.listPurchases());
-  } catch {
-    return "unavailable" as const;
-  }
-}
-
-// Ownership never waits on the acknowledgment — it goes to the network
-// through the store, and a failed one is retried at the next launch, well
-// inside the store's three-day window.
-function acknowledgeInBackground(client: StoreClient): void {
-  client.acknowledge(PREGNANCY_MODULE_PRODUCT_ID).catch(() => {
-    // Retried by acknowledgePregnancyModulePurchase.
-  });
+  acknowledgeOwedPregnancyPurchase(client, purchases);
+  return resolvePregnancyModulePurchaseState(purchases);
 }

@@ -28,12 +28,27 @@ describe("privacy-notice-service", () => {
       "on-device",
       "no-tracking",
       "leaves-device",
+      "store-purchase",
       "exports",
       "rights",
       "retention",
       "predictions",
       "contact",
     ]);
+  });
+
+  it("discloses the store's billing component and when it runs, in every language", () => {
+    for (const language of LANGUAGES) {
+      const { sections } = buildPrivacyNoticeViewData(language);
+      const store = sections.find((section) => section.id === "store-purchase")!;
+      const noTracking = sections.find((section) => section.id === "no-tracking")!;
+
+      // Names the vendor and the platform, and the tracking section points at it.
+      expect(store.title).toContain("Google Play");
+      expect(store.body).toContain("Google Play");
+      expect(store.body).toContain("Android");
+      expect(noTracking.body).toContain("Google Play");
+    }
   });
 
   it("builds a complete, non-empty notice for every selectable language", () => {
@@ -43,7 +58,7 @@ describe("privacy-notice-service", () => {
       expect(viewData.title.trim()).not.toBe("");
       expect(viewData.subtitle.trim()).not.toBe("");
       expect(viewData.backLabel.trim()).not.toBe("");
-      expect(viewData.sections).toHaveLength(8);
+      expect(viewData.sections).toHaveLength(9);
       for (const section of viewData.sections) {
         expect(section.title.trim()).not.toBe("");
         expect(section.body.trim()).not.toBe("");
@@ -96,7 +111,7 @@ describe("privacy-notice-service", () => {
     );
 
     expect(viewData.title).toBe(selectPrivacyNoticeCopy("en").title);
-    expect(viewData.sections).toHaveLength(8);
+    expect(viewData.sections).toHaveLength(9);
   });
 });
 
