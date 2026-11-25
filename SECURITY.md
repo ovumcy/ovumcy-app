@@ -217,7 +217,9 @@ follows from that:
   reading or exporting data the owner already logged in any of these domains is never blocked. The
   module is a **one-time on-device unlock**, not a subscription: ownership is resolved through
   `pregnancy-entitlement-service` (fail-closed) and never through the managed billing snapshot, a sync
-  session, or the secret store. An active pregnancy or postpartum record renders fully from local data
+  session, or the secret store. Its source is the store's own record of a one-time `pregnancy_module`
+  purchase, read on the device (Google Play today) and never copied into app storage; a development
+  build may add a build flag on top. An active pregnancy or postpartum record renders fully from local data
   whatever that ownership check later says; only *starting* new tracking consults it (postpartum
   reuses the same selector, not a second key).
 - **Crisis-support content is a hard safety boundary, never gated.** The personal crisis-support
@@ -727,7 +729,17 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | The crisis-support surface never consults an entitlement loader while rendering or saving | `never consults the premium loader while rendering or saving (never plan-gated)` in [src/ui/components/CrisisSupportCard.test.tsx](src/ui/components/CrisisSupportCard.test.tsx) |
 | Module ownership is fail-closed: a throwing or non-`true` source reads as not owned, and a release build never unlocks from the dev flag | `returns true only when the source answers true`, `fails closed when the source throws`, `treats a non-boolean truthy answer as not owned`, `never unlocks a release build, whatever the flag says` in [src/services/pregnancy-entitlement-service.test.ts](src/services/pregnancy-entitlement-service.test.ts) |
 | A locked module shows the lock card instead of the start form | `renders the premium lock card and no form when locked` in [src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx](src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx) |
-| A locked module's lock card is informational only — it never offers a subscription route, which would misstate a one-time unlock as plan-gated | `renders the locked pregnancy entry card as information only, with no subscription route` in [src/ui/screens/DashboardScreen.test.tsx](src/ui/screens/DashboardScreen.test.tsx) |
+| A locked pregnancy surface routes to the one-time purchase screen, never to the subscription screen, and a completed purchase continues to pregnancy setup | `routes the locked pregnancy entry card to the one-time purchase screen, never the subscription screen` in [src/ui/screens/DashboardScreen.test.tsx](src/ui/screens/DashboardScreen.test.tsx); `routes the lock card to the one-time purchase screen, never the subscription screen` in [src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx](src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx); `unlocks after a completed purchase and continues to pregnancy setup, never to the subscription screen` in [src/ui/screens/pregnancy/PregnancyUnlockScreen.test.tsx](src/ui/screens/pregnancy/PregnancyUnlockScreen.test.tsx) |
+| The module is owned only for a `pregnancy_module` store purchase in the purchased state; a pending or unrecognized purchase, another product, a subscription alone, an empty store, or a store read error resolves to not owned | `owns the module for a pregnancy_module purchase in the purchased state`, `does not own the module for a pending purchase, another product, a subscription alone, or an empty store`, `does not own the module when the store read fails` in [src/services/pregnancy-store-entitlement-source.test.ts](src/services/pregnancy-store-entitlement-source.test.ts); `defaults to the store source: no store purchase and no flag means not owned` in [src/services/pregnancy-entitlement-service.test.ts](src/services/pregnancy-entitlement-service.test.ts) |
+| The development flag only adds ownership, and only in a development build: in a release build the store purchase alone decides | `owns the module from the store purchase alone in a release build`, `ignores the development flag in a release build: without a store purchase the module is not owned`, `never lets a failing or truthy-but-not-true flag hide or fake a store answer` in [src/services/pregnancy-entitlement-service.test.ts](src/services/pregnancy-entitlement-service.test.ts) |
+| Ownership follows the store's record, not how the purchase sheet ended: a cancelled, failed or pending purchase unlocks nothing | `reports a pending payment as pending and acknowledges nothing`, `reports a cancelled sheet as cancelled`, `trusts the store's record over how the sheet ended`, `reports unavailable when the purchase fails or the store cannot be re-read` in [src/services/pregnancy-purchase-service.test.ts](src/services/pregnancy-purchase-service.test.ts); `shows a pending payment as pending, with no way into the module`, `keeps the module locked and says so when the purchase is cancelled` in [src/ui/screens/pregnancy/PregnancyUnlockScreen.test.tsx](src/ui/screens/pregnancy/PregnancyUnlockScreen.test.tsx) |
+| The one-time purchase is acknowledged and never consumed: the store contract has no consume operation, the adapter's only finish call is the non-consumable one, and an owed acknowledgment is retried on every launch | `acknowledges a purchased, unacknowledged purchase and never consumes it` in [src/billing/store-client.native.test.ts](src/billing/store-client.native.test.ts); `has no consume call anywhere in the adapter`, `keeps consume and the purchase token out of the store contract` in [src/billing/store-client-import-boundary.test.ts](src/billing/store-client-import-boundary.test.ts); `acknowledges a completed purchase and never consumes it`, `acknowledges a purchased, unacknowledged module purchase` in [src/services/pregnancy-purchase-service.test.ts](src/services/pregnancy-purchase-service.test.ts); `acknowledges an owed store purchase on every launch without delaying the reminder rebuild` in [src/services/app-launch-tasks.test.ts](src/services/app-launch-tasks.test.ts) |
+| The app acknowledges only the `pregnancy_module` purchase: a subscription, or any other purchase in the store's list, is never acknowledged by the app | `acknowledges nothing when no purchase of the product is owed` in [src/billing/store-client.native.test.ts](src/billing/store-client.native.test.ts); `leaves pending, acknowledged and foreign purchases alone` in [src/services/pregnancy-purchase-service.test.ts](src/services/pregnancy-purchase-service.test.ts) |
+| The purchase token never leaves the store adapter: the contract's purchase type has no token field, and an adapter error carries nothing from the store library | `maps store purchases onto the contract without the purchase token`, `rejects a failed purchase without retrying it or quoting the store error` in [src/billing/store-client.native.test.ts](src/billing/store-client.native.test.ts); `keeps consume and the purchase token out of the store contract` in [src/billing/store-client-import-boundary.test.ts](src/billing/store-client-import-boundary.test.ts) |
+| The store library is imported in one adapter file and limited to five billing calls — never its purchase-verification, app-ownership or alternative-store helpers, which are its only network paths | `imports the store library in the one adapter file only`, `imports only the billing calls the adapter needs, never a network or verification helper` in [src/billing/store-client-import-boundary.test.ts](src/billing/store-client-import-boundary.test.ts) |
+| The pregnancy purchase chain imports nothing from managed billing, a sync session, premium entitlements or app storage, and reading ownership neither buys nor acknowledges | `keeps managed billing, sync and storage out of the pregnancy purchase chain` in [src/billing/store-client-import-boundary.test.ts](src/billing/store-client-import-boundary.test.ts); `reads the store and never buys, acknowledges or looks up a product` in [src/services/pregnancy-store-entitlement-source.test.ts](src/services/pregnancy-store-entitlement-source.test.ts) |
+| The store is Google Play only: on any other platform every store call rejects without touching the store library, so the module stays locked there | `rejects every call off Google Play without touching the store library` in [src/billing/store-client.native.test.ts](src/billing/store-client.native.test.ts); `rejects every call: the web build has no store` in [src/billing/store-client.web.test.ts](src/billing/store-client.web.test.ts) |
+| A store that never answers cannot hold a screen: a store call rejects after its timeout and is not retried | `rejects instead of hanging when the store never answers` in [src/billing/store-client.native.test.ts](src/billing/store-client.native.test.ts) |
 
 ### Medical-safety prediction suppression
 
@@ -832,28 +844,35 @@ pregnancy never sets it, so neither signal ever covers the other.
   explicit non-goal recorded in the Accepted-Residual note above, reviewed by
   humans. The token is treated as a hardened UX control over the
   user's own local data, not a DRM trust boundary.
-- **Store purchases (planned, no code yet).** The two purchase flows are modeled
-  in `docs/sync-trust-model.md` (*Purchase flows*). Each claim below becomes a
-  matrix row, with its test, in the change that implements it; none is enforced
-  today.
-  - The pregnancy module is owned only for a `pregnancy_module` purchase in the
-    purchased state; a pending purchase, another product, a subscription alone,
-    or a store error resolves to not owned.
-  - The one-time purchase is acknowledged and never consumed; the store contract
-    has no consume operation.
-  - A locked pregnancy surface routes to the one-time purchase screen, never to
-    the subscription screen (this replaces the informational-only lock card row
-    under the pregnancy module).
+- **Store purchases — the subscription door (planned, no code yet).** The
+  one-time pregnancy-module purchase is implemented and pinned by the matrix
+  rows under the pregnancy module. The subscription flow is modeled in
+  `docs/sync-trust-model.md` (*Purchase flows*); each claim below becomes a
+  matrix row, with its test, in the change that implements it, and none is
+  enforced today.
   - Premium turns on only from the billing snapshot the managed cloud returns
-    for a handed-over purchase token; a local purchase record unlocks no premium
-    surface and never writes the offline-grace cache.
-  - A purchase token is never written to app storage, logged, or carried in a
-    route parameter or URL.
-  - The app never acknowledges a subscription purchase.
+    for a handed-over purchase token; a local purchase record — the pregnancy
+    module's included — unlocks no premium surface and never writes the
+    offline-grace cache.
+  - A subscription purchase token is never written to app storage, logged, or
+    carried in a route parameter or URL.
   - A server-described store offer whose product or base plan is not on the
     app's allowlist is dropped.
-  - The two entitlements are independent: neither purchase grants or revokes
-    the other.
+- **Store library and device store (code review, not a test).** The pin
+  `expo-iap@6.5.1` (Google Play Billing Library 9.1.0 through `openiap-google`
+  4.2.1, store pinned to `play` in `app.json`) was read at source level on
+  2026-11-25. Through the five imported calls it opens no network connection of
+  its own and ships no analytics or crash-reporting SDK; its native logging is
+  off in release builds and masks token-named fields. It also carries code the
+  app never reaches — a purchase-verification HTTP client, a Play Integrity
+  app-ownership check, alternative-store flavors — which is why the import
+  list is a tested boundary. A version bump repeats this review. The store
+  itself is outside the boundary: asking Google Play for purchases (at launch,
+  on the unlock screen, and where ownership gates new pregnancy data) is local
+  IPC to the Play Store app, which talks to Google on its own terms. The app
+  verifies no receipt signature — ownership is a UX control over the user's own
+  device, not DRM — so a modified client can unlock the module; nothing
+  server-side depends on it.
 - **Secure-storage backing for keys/secrets.** Keys and sync/partner secrets are
   placed in `expo-secure-store` with device-only accessibility; the OS keystore
   itself is not exercised by Jest (it is mocked), so this is a code-review
