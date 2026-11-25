@@ -141,6 +141,8 @@ describe("connectBackupSyncAccount managed plan refresh", () => {
     if (!result.ok || !("state" in result)) {
       throw new Error("expected a connected state result");
     }
+    expect(result.accountLogin).toBe("a3f9-0c12-77be-4d01");
+    expect(result.recoveryCode).toBe("recovery-code-1");
     expect(result.state.managedPremiumAccess).toEqual({
       planStatus: "active",
       doctorPDF: true,
@@ -544,7 +546,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+      { password: "very secure password 12345" },
       new Date(2026, 3, 5),
     );
 
@@ -574,7 +576,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+      { password: "very secure password 12345" },
       new Date(2026, 3, 5),
     );
 
@@ -582,7 +584,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
     if (!result.ok) {
       throw new Error("expected a successful upgrade result");
     }
-    expect(result.email).toBe("owner@example.com");
+    expect(result.login).toBe("a3f9-0c12-77be-4d01");
     expect(result.recoveryCode).toBe("fresh1234fresh1234fresh1234fresh");
     // The one and only local side effect on success: the guest marker is
     // gone from BOTH the draft and saved preferences on the returned state,
@@ -621,7 +623,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
         storage,
         secretStore,
         state,
-        { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+        { password: "very secure password 12345" },
         screenNow,
       );
 
@@ -647,7 +649,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+      { password: "very secure password 12345" },
       new Date(2026, 3, 5),
     );
 
@@ -674,7 +676,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+      { password: "very secure password 12345" },
       new Date(2026, 3, 5),
     );
 
@@ -701,7 +703,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { login: "a3f9-0c12-77be-4d01", password: "short" },
+      { password: "short" },
       new Date(2026, 3, 5),
     );
 
@@ -912,7 +914,7 @@ describe("connectBackupSyncAccount additional branches", () => {
       storage,
       secretStore,
       initialState,
-      { login: "owner@example.com", password: "very-secure-pass" },
+      { login: "a3f9-0c12-77be-4d01", password: "very-secure-pass" },
       "login",
       new Date(2026, 2, 19),
     );
@@ -1994,7 +1996,7 @@ describe("account key reset hand-off to the screen", () => {
       storage,
       secretStore,
       state,
-      { login: "owner@example.com", password: "very-secure-pass" },
+      { login: "a3f9-0c12-77be-4d01", password: "very-secure-pass" },
       "login",
       new Date(2026, 2, 19),
     );

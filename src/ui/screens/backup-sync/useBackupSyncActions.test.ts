@@ -493,7 +493,10 @@ describe("useBackupSyncActions recovery-key step-up", () => {
   async function openPrompt(errorCode: string, twoFactorEnabled?: boolean) {
     const core = createBackupSyncSessionCoreMock();
     if (twoFactorEnabled !== undefined) {
-      mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled });
+      mockDescribeTwoFactor.mockResolvedValue({
+        twoFactorEnabled,
+        accountLogin: null,
+      });
     }
     mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
       ok: false,
@@ -551,7 +554,10 @@ describe("useBackupSyncActions recovery-key step-up", () => {
   });
 
   it("a step-up retry does not ask the overwrite confirm the same attempt passed", async () => {
-    mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: false });
+    mockDescribeTwoFactor.mockResolvedValue({
+      twoFactorEnabled: false,
+      accountLogin: null,
+    });
     mockOpenConfirmation.mockResolvedValue(true);
     mockUploadBackupSyncSnapshot.mockImplementationOnce(
       async (_storage, _secrets, _state, _now, guard) => {
@@ -597,7 +603,10 @@ describe("useBackupSyncActions recovery-key step-up", () => {
   });
 
   it("retires the prompt once the loaded session changes, and its submit uploads nothing", async () => {
-    mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: false });
+    mockDescribeTwoFactor.mockResolvedValue({
+      twoFactorEnabled: false,
+      accountLogin: null,
+    });
     mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
       ok: false,
       errorCode: "recovery_key_step_up_required",

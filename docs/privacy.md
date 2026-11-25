@@ -60,7 +60,7 @@ Explicit consent comes first. Before a connect, phrase recovery or upload to a s
 
 | Call | When | Carries |
 |---|---|---|
-| Account auth (`/auth/register`, `/login`, `/refresh`, `/session`, `/sync-session`, password change and reset, recovery-code regeneration, TOTP enrol/verify/challenge/disable) to the self-hosted endpoint or the managed cloud | connecting or maintaining an account | email, password or recovery credentials, TOTP codes, session and refresh tokens: account metadata, no health data |
+| Account auth (`/auth/register`, `/login`, `/refresh`, `/session`, `/sync-session`, password change and reset, recovery-code regeneration, TOTP enrol/verify/challenge/disable) to the self-hosted endpoint or the managed cloud | connecting or maintaining an account | login (on Ovumcy Cloud a server-generated Account ID; no email address), password or recovery credentials, TOTP codes, session and refresh tokens: account metadata, no health data |
 | `/sync/capabilities`, `/sync/devices`, `/sync/recovery-key` | preparing and managing sync | device ID and label, wrapped-key metadata (the master key wrapped under the recovery phrase; the phrase and master key themselves stay on the device) |
 | `/sync/blob` (upload and restore) | owner uploads or restores a backup | one ciphertext blob (XChaCha20-Poly1305 under sync subkeys) plus size, checksum and generation. The decrypted snapshot contains the bootstrap state, profile, symptoms, day logs, pregnancy, kick and contraction sessions, postpartum and screening data (`SyncSnapshotV3`), so everything health-related travels, but only as ciphertext |
 | `DELETE /account` (self-hosted or managed); managed cloud only: `/account/billing`, `/account/entitlements/token`, `/account/upgrade` | opening billing surfaces, upgrading, deleting the account | session token; billing, entitlement and subscription state: no health data |
@@ -82,7 +82,7 @@ The only deliberate exception to "no secret in a URL" is the managed partner inv
 
 ## What the Managed Cloud Sees
 
-The cloud sees account email, billing and entitlement state, device IDs and labels, wrapped-key metadata, blob size, checksum and generation, partner invite and grant metadata, and request metadata. It stores ciphertext for the sync blob and each partner projection and does not hold the master key or any grant key. See [docs/sync-trust-model.md](sync-trust-model.md) for the planes, key hierarchy and what a malicious or compromised cloud can and cannot do.
+The cloud sees a randomly generated Account ID (no email address), billing and entitlement state, device IDs and labels, wrapped-key metadata, blob size, checksum and generation, partner invite and grant metadata, and request metadata. It stores ciphertext for the sync blob and each partner projection and does not hold the master key or any grant key. See [docs/sync-trust-model.md](sync-trust-model.md) for the planes, key hierarchy and what a malicious or compromised cloud can and cannot do.
 
 ## Partner Share Minimization
 

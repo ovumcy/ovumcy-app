@@ -255,7 +255,7 @@ describe("managed phrase recovery with two-factor on", () => {
       storage,
       secretStore,
       managedPreferences,
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       serverAccount().recoveryPhrase,
       NOW,
       apiClientFactory,

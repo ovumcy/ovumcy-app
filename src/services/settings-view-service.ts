@@ -272,6 +272,7 @@ export type SettingsViewData = {
     loginPlaceholder: string;
     managedLoginLabel: string;
     managedLoginPlaceholder: string;
+    managedLoginHint: string;
     passwordLabel: string;
     passwordPlaceholder: string;
     recoveryImportTitle: string;
@@ -856,6 +857,7 @@ export function buildSettingsViewData(
       loginPlaceholder: settingsCopy.account.loginPlaceholder,
       managedLoginLabel: settingsCopy.account.managedLoginLabel,
       managedLoginPlaceholder: settingsCopy.account.managedLoginPlaceholder,
+      managedLoginHint: settingsCopy.account.managedLoginHint,
       passwordLabel: settingsCopy.account.passwordLabel,
       passwordPlaceholder: settingsCopy.account.passwordPlaceholder,
       recoveryImportTitle: settingsCopy.account.recoveryImportTitle,

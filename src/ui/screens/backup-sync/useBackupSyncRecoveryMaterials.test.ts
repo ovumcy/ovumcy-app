@@ -803,7 +803,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
   });
 
   describe("handleAcknowledgeRecoveryCode", () => {
-    it("clears the generated recovery code", async () => {
+    it("clears the generated recovery code and Account ID", async () => {
       const core = createBackupSyncSessionCoreMock();
       const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
@@ -812,6 +812,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
       });
 
       expect(core.setGeneratedRecoveryCode).toHaveBeenCalledWith("");
+      expect(core.setGeneratedAccountLogin).toHaveBeenCalledWith("");
     });
   });
 

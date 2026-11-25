@@ -277,6 +277,57 @@ describe("useBackupSyncAccountConnection", () => {
       );
     });
 
+    it("surfaces the generated Account ID together with the recovery code on a managed register", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockConnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        connected: true,
+        state: core.state!,
+        recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+        accountLogin: "a3f9-0c12-77be-4d01",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("register");
+      });
+
+      expect(core.setGeneratedAccountLogin).toHaveBeenCalledWith("a3f9-0c12-77be-4d01");
+    });
+
+    it("stores an empty Account ID when the register result carries none", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockConnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        connected: true,
+        state: core.state!,
+        recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("register");
+      });
+
+      expect(core.setGeneratedAccountLogin).toHaveBeenCalledWith("");
+    });
+
+    it("does not touch the Account ID when a sign-in yields no recovery code", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockConnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        connected: true,
+        state: core.state!,
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("login");
+      });
+
+      expect(core.setGeneratedAccountLogin).not.toHaveBeenCalled();
+    });
+
     it("still surfaces the recovery code when the register's later steps fail", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockConnectBackupSyncAccount.mockResolvedValue({

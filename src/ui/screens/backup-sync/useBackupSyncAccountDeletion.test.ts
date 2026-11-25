@@ -98,7 +98,10 @@ describe("useBackupSyncAccountDeletion", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearManagedPartnerInviteToken();
-    mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: false });
+    mockDescribeTwoFactor.mockResolvedValue({
+      twoFactorEnabled: false,
+      accountLogin: null,
+    });
     mockBuildAccountDeletionViewModel.mockReturnValue({
       mode: "managed",
       hasConnectedSession: true,
@@ -464,8 +467,8 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it.each([
-      [{ twoFactorEnabled: false }, false],
-      [{ twoFactorEnabled: true }, true],
+      [{ twoFactorEnabled: false, accountLogin: null }, false],
+      [{ twoFactorEnabled: true, accountLogin: null }, true],
       // Unknown status shows the field; an empty code is not sent.
       [null, true],
     ] as const)(
@@ -710,7 +713,10 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("opens the card when the server says a guest session's account has a password", async () => {
-      mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: true });
+      mockDescribeTwoFactor.mockResolvedValue({
+        twoFactorEnabled: true,
+        accountLogin: null,
+      });
       mockDeleteOvumcyAccount.mockResolvedValueOnce({
         ok: false,
         errorCode: "invalid_current_password",
@@ -732,7 +738,10 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("never logs or persists the password or code sent with a deletion", async () => {
-      mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: true });
+      mockDescribeTwoFactor.mockResolvedValue({
+        twoFactorEnabled: true,
+        accountLogin: null,
+      });
       mockDeleteOvumcyAccount.mockResolvedValue({
         ok: false,
         errorCode: "totp_replayed",
@@ -952,7 +961,10 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("asks a connected self-hosted account for the password before any delete", async () => {
-      mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: true });
+      mockDescribeTwoFactor.mockResolvedValue({
+        twoFactorEnabled: true,
+        accountLogin: null,
+      });
       const core = createSelfHostedCore();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 

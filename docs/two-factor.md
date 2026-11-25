@@ -79,7 +79,7 @@ If two-factor was already turned off elsewhere, the server (self-hosted or Ovumc
 Treat your account-level recovery code as your **only** backup for a lost authenticator:
 
 1. On the login screen, tap *Account Security → Forgot password*.
-2. Enter your login/email and the recovery code you saved last — shown once at registration, after the last reset or regeneration, when you turned two-factor on, or (self-hosted) when you changed the password.
+2. Enter your Account ID (Ovumcy Cloud) or login (self-hosted) and the recovery code you saved last — shown once at registration, after the last reset or regeneration, when you turned two-factor on, or (self-hosted) when you changed the password.
 3. Set a new password.
 
 A successful recovery-code-driven reset does three things together:

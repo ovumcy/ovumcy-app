@@ -678,6 +678,7 @@ describe("useBackupSyncSessionCore", () => {
         result.current.setState(dirtyState);
         result.current.setGeneratedRecoveryPhrase("existing phrase");
         result.current.setGeneratedRecoveryCode("existing code");
+        result.current.setGeneratedAccountLogin("a3f9-0c12-77be-4d01");
         await flushMicrotasks();
       });
       expect(result.current.state).toEqual(dirtyState);
@@ -711,6 +712,7 @@ describe("useBackupSyncSessionCore", () => {
       // already-revealed recovery phrase/code must be left alone.
       expect(result.current.generatedRecoveryPhrase).toBe("existing phrase");
       expect(result.current.generatedRecoveryCode).toBe("existing code");
+      expect(result.current.generatedAccountLogin).toBe("a3f9-0c12-77be-4d01");
     });
 
     it("clears the revealed recovery phrase and code when the saved result no longer has stored secrets", async () => {
@@ -726,6 +728,7 @@ describe("useBackupSyncSessionCore", () => {
         result.current.setState(dirtyState);
         result.current.setGeneratedRecoveryPhrase("existing phrase");
         result.current.setGeneratedRecoveryCode("existing code");
+        result.current.setGeneratedAccountLogin("a3f9-0c12-77be-4d01");
         await flushMicrotasks();
       });
       expect(result.current.state).toEqual(dirtyState);
@@ -745,6 +748,7 @@ describe("useBackupSyncSessionCore", () => {
 
       expect(result.current.generatedRecoveryPhrase).toBe("");
       expect(result.current.generatedRecoveryCode).toBe("");
+      expect(result.current.generatedAccountLogin).toBe("");
       expect(result.current.state).toEqual(savedState);
     });
 

@@ -49,7 +49,7 @@ export function resolveGuestUpgradeErrorMessage(
     case "invalid_registration_input":
       return copy.guestUpgrade.errors.invalidRegistrationInput;
     case "registration_failed":
-      return copy.guestUpgrade.errors.emailTaken;
+      return copy.guestUpgrade.errors.registrationFailed;
     case "rate_limited":
       return copy.guestUpgrade.errors.rateLimited;
     case "network_failed":

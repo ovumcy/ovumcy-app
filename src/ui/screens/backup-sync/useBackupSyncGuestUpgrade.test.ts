@@ -21,6 +21,9 @@ const mockUpgradeBackupSyncGuestAccount = jest.mocked(
   backupSyncScreenService.upgradeBackupSyncGuestAccount,
 );
 
+const ACCOUNT_ID = "a3f9-0c12-77be-4d01";
+const PASSWORD = "a very secure password 123";
+
 describe("useBackupSyncGuestUpgrade", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -94,7 +97,7 @@ describe("useBackupSyncGuestUpgrade", () => {
   });
 
   describe("handleCancelForm", () => {
-    it("closes the form and clears the typed email and password", async () => {
+    it("closes the form and clears the typed password", async () => {
       const core = createBackupSyncSessionCoreMock();
       const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
@@ -102,7 +105,6 @@ describe("useBackupSyncGuestUpgrade", () => {
         await result.current.handleTapKeepAccess();
       });
       await act(() => {
-        result.current.setEmailValue("owner@example.com");
         result.current.setPasswordValue("a temporary draft password");
       });
 
@@ -111,8 +113,15 @@ describe("useBackupSyncGuestUpgrade", () => {
       });
 
       expect(result.current.isFormOpen).toBe(false);
-      expect(result.current.emailValue).toBe("");
       expect(result.current.passwordValue).toBe("");
+    });
+
+    it("exposes no email field on the form state", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
+
+      expect(result.current).not.toHaveProperty("emailValue");
+      expect(result.current).not.toHaveProperty("setEmailValue");
     });
   });
 
@@ -129,27 +138,10 @@ describe("useBackupSyncGuestUpgrade", () => {
       expect(core.setState).not.toHaveBeenCalled();
     });
 
-    it("requires an email before submitting", async () => {
-      const core = createBackupSyncSessionCoreMock();
-      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
-
-      await act(async () => {
-        await result.current.handleSubmitUpgrade();
-      });
-
-      expect(result.current.formErrorMessage).toBe(
-        core.partnerCopy.guestUpgrade.errors.emailRequired,
-      );
-      expect(mockUpgradeBackupSyncGuestAccount).not.toHaveBeenCalled();
-    });
-
     it("requires a password before submitting", async () => {
       const core = createBackupSyncSessionCoreMock();
       const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
-      await act(() => {
-        result.current.setEmailValue("owner@example.com");
-      });
       await act(async () => {
         await result.current.handleSubmitUpgrade();
       });
@@ -165,7 +157,6 @@ describe("useBackupSyncGuestUpgrade", () => {
       const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(() => {
-        result.current.setEmailValue("owner@example.com");
         result.current.setPasswordValue("short");
       });
       await act(async () => {
@@ -183,7 +174,6 @@ describe("useBackupSyncGuestUpgrade", () => {
       const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(() => {
-        result.current.setEmailValue("owner@example.com");
         result.current.setPasswordValue("ж".repeat(37));
       });
       await act(async () => {
@@ -196,20 +186,19 @@ describe("useBackupSyncGuestUpgrade", () => {
       expect(mockUpgradeBackupSyncGuestAccount).not.toHaveBeenCalled();
     });
 
-    it("reveals a one-time recovery code, closes the form, and clears the fields on success", async () => {
+    it("submits only the password and reveals the Account ID with the recovery code on success", async () => {
       const nextState = createLoadedSettingsStateFixture({ hasSyncSession: true });
       mockUpgradeBackupSyncGuestAccount.mockResolvedValue({
         ok: true,
         state: nextState,
-        login: "a3f9-0c12-77be-4d01",
+        login: ACCOUNT_ID,
         recoveryCode: "fresh-code-1234",
       });
       const core = createBackupSyncSessionCoreMock();
       const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(() => {
-        result.current.setEmailValue("  owner@example.com  ");
-        result.current.setPasswordValue("a very secure password 123");
+        result.current.setPasswordValue(PASSWORD);
       });
       await act(async () => {
         await result.current.handleSubmitUpgrade();
@@ -219,14 +208,14 @@ describe("useBackupSyncGuestUpgrade", () => {
         core.storage,
         core.syncSecretStore,
         core.state,
-        { login: "a3f9-0c12-77be-4d01", password: "a very secure password 123" },
+        { password: PASSWORD },
         core.effectiveNow,
       );
       expect(core.setState).toHaveBeenCalledWith(nextState);
       expect(result.current.isFormOpen).toBe(false);
-      expect(result.current.emailValue).toBe("");
       expect(result.current.passwordValue).toBe("");
       expect(result.current.generatedRecoveryCode).toBe("fresh-code-1234");
+      expect(result.current.generatedAccountLogin).toBe(ACCOUNT_ID);
       expect(result.current.isSubmitting).toBe(false);
       expect(core.setAccountChangeRecoveryPhrase).not.toHaveBeenCalled();
     });
@@ -235,7 +224,7 @@ describe("useBackupSyncGuestUpgrade", () => {
       mockUpgradeBackupSyncGuestAccount.mockResolvedValue({
         ok: true,
         state: createLoadedSettingsStateFixture({ hasSyncSession: true }),
-        login: "a3f9-0c12-77be-4d01",
+        login: ACCOUNT_ID,
         recoveryCode: "fresh-code-1234",
         accountKeyReset: true,
       });
@@ -243,8 +232,7 @@ describe("useBackupSyncGuestUpgrade", () => {
       const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(() => {
-        result.current.setEmailValue("owner@example.com");
-        result.current.setPasswordValue("a very secure password 123");
+        result.current.setPasswordValue(PASSWORD);
       });
       await act(async () => {
         await result.current.handleSubmitUpgrade();
@@ -267,8 +255,7 @@ describe("useBackupSyncGuestUpgrade", () => {
         await result.current.handleTapKeepAccess();
       });
       await act(() => {
-        result.current.setEmailValue("owner@example.com");
-        result.current.setPasswordValue("a very secure password 123");
+        result.current.setPasswordValue(PASSWORD);
       });
       await act(async () => {
         await result.current.handleSubmitUpgrade();
@@ -279,9 +266,10 @@ describe("useBackupSyncGuestUpgrade", () => {
         core.partnerCopy.guestUpgrade.errors.unauthorized,
       );
       expect(result.current.isFormOpen).toBe(true);
-      expect(result.current.emailValue).toBe("owner@example.com");
+      expect(result.current.passwordValue).toBe(PASSWORD);
       expect(result.current.isSubmitting).toBe(false);
       expect(result.current.generatedRecoveryCode).toBe("");
+      expect(result.current.generatedAccountLogin).toBe("");
     });
 
     it("closes the now-dead form when the account turns out to already be upgraded", async () => {
@@ -298,8 +286,7 @@ describe("useBackupSyncGuestUpgrade", () => {
         await result.current.handleTapKeepAccess();
       });
       await act(() => {
-        result.current.setEmailValue("owner@example.com");
-        result.current.setPasswordValue("a very secure password 123");
+        result.current.setPasswordValue(PASSWORD);
       });
       await act(async () => {
         await result.current.handleSubmitUpgrade();
@@ -309,36 +296,36 @@ describe("useBackupSyncGuestUpgrade", () => {
         core.partnerCopy.guestUpgrade.alreadyUpgradedMessage,
       );
       expect(result.current.isFormOpen).toBe(false);
-      expect(result.current.emailValue).toBe("");
       expect(result.current.passwordValue).toBe("");
     });
   });
 
   describe("handleAcknowledgeUpgradeRecoveryCode", () => {
-    it("clears the revealed recovery code", async () => {
+    it("clears the revealed recovery code and Account ID", async () => {
       mockUpgradeBackupSyncGuestAccount.mockResolvedValue({
         ok: true,
         state: createLoadedSettingsStateFixture(),
-        login: "a3f9-0c12-77be-4d01",
+        login: ACCOUNT_ID,
         recoveryCode: "fresh-code-1234",
       });
       const core = createBackupSyncSessionCoreMock();
       const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(() => {
-        result.current.setEmailValue("owner@example.com");
-        result.current.setPasswordValue("a very secure password 123");
+        result.current.setPasswordValue(PASSWORD);
       });
       await act(async () => {
         await result.current.handleSubmitUpgrade();
       });
       expect(result.current.generatedRecoveryCode).toBe("fresh-code-1234");
+      expect(result.current.generatedAccountLogin).toBe(ACCOUNT_ID);
 
       await act(() => {
         result.current.handleAcknowledgeUpgradeRecoveryCode();
       });
 
       expect(result.current.generatedRecoveryCode).toBe("");
+      expect(result.current.generatedAccountLogin).toBe("");
     });
   });
 });

@@ -38,7 +38,7 @@ describe("resolveGuestUpgradeErrorMessage", () => {
       "invalid_registration_input",
       copy.guestUpgrade.errors.invalidRegistrationInput,
     ],
-    ["registration_failed", copy.guestUpgrade.errors.emailTaken],
+    ["registration_failed", copy.guestUpgrade.errors.registrationFailed],
     ["rate_limited", copy.guestUpgrade.errors.rateLimited],
     // network_failed deliberately reuses the shared (non-guestUpgrade) copy
     // key -- see the doc comment on resolveGuestUpgradeErrorMessage.

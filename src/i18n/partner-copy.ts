@@ -114,12 +114,10 @@ const partnerCopyEn = {
   guestUpgrade: {
     ctaLabel: "Keep your access",
     ctaHint:
-      "Add an email and password so this shared access keeps working even after this device's guest session expires.",
+      "Add a password so this shared access keeps working even after this device's guest session expires.",
     formTitle: "Keep your access",
     formHint:
-      "This turns your guest access into a normal Ovumcy Cloud account. You'll get a one-time recovery code — save it somewhere safe.",
-    emailLabel: "Email",
-    emailPlaceholder: "you@example.com",
+      "This turns your guest access into a normal Ovumcy Cloud account. You'll get an Account ID to sign in with and a one-time recovery code — save both somewhere safe.",
     passwordLabel: "Password",
     passwordPlaceholder: "Enter password",
     submitLabel: "Keep access",
@@ -127,23 +125,22 @@ const partnerCopyEn = {
     deviceAuthPrompt:
       "Confirm with device security to keep access to this shared account.",
     successMessage:
-      "Your access is saved. Save the recovery code below — it won't be shown again.",
+      "Your access is saved. Save the Account ID and recovery code below — the recovery code won't be shown again.",
     alreadyUpgradedMessage: "This account has already been upgraded.",
-    revealTitle: "Save your recovery code",
+    revealTitle: "Save your Account ID and recovery code",
     revealHint:
-      "Shown only once. Use it if you ever forget this account's password.",
+      "You sign in with the Account ID and your password. The recovery code is shown only once; use it if you ever forget the password.",
+    revealAccountIdLabel: "Account ID",
     revealConfirmLabel: "I have saved it",
     nudgeMessage: (days: number) =>
       `Your guest access expires in ${days} ${days === 1 ? "day" : "days"} — keep it before then.`,
     errors: {
-      emailRequired: "Email is required.",
       passwordRequired: "Password is required.",
       passwordTooShort: "Password must be at least 12 characters.",
       passwordTooLong:
         "Password is too long: use at most 72 characters, fewer with non-Latin letters or emoji.",
-      invalidRegistrationInput: "Use a valid email and a stronger password.",
-      emailTaken:
-        "This email is already registered. Try a different email or sign in on another device instead.",
+      invalidRegistrationInput: "Use a stronger password.",
+      registrationFailed: "Unable to create the account right now. Please try again.",
       unauthorized: "This session has expired. Ask the owner for a new invite link.",
       rateLimited: "Too many attempts. Please wait a moment before trying again.",
       deviceAuthUnavailable:
@@ -266,12 +263,10 @@ const partnerCopyDe = {
   guestUpgrade: {
     ctaLabel: "Zugriff sichern",
     ctaHint:
-      "Fügen Sie eine E-Mail-Adresse und ein Passwort hinzu, damit dieser geteilte Zugriff auch nach Ablauf der Gastsitzung auf diesem Gerät weiter funktioniert.",
+      "Fügen Sie ein Passwort hinzu, damit dieser geteilte Zugriff auch nach Ablauf der Gastsitzung auf diesem Gerät weiter funktioniert.",
     formTitle: "Zugriff sichern",
     formHint:
-      "Dadurch wird Ihr Gastzugriff in ein normales Ovumcy-Cloud-Konto umgewandelt. Sie erhalten einen einmaligen Wiederherstellungscode — bewahren Sie ihn sicher auf.",
-    emailLabel: "E-Mail",
-    emailPlaceholder: "sie@example.com",
+      "Dadurch wird Ihr Gastzugriff in ein normales Ovumcy-Cloud-Konto umgewandelt. Sie erhalten eine Account-ID für die Anmeldung und einen einmaligen Wiederherstellungscode — bewahren Sie beides sicher auf.",
     passwordLabel: "Passwort",
     passwordPlaceholder: "Passwort eingeben",
     submitLabel: "Zugriff sichern",
@@ -279,24 +274,24 @@ const partnerCopyDe = {
     deviceAuthPrompt:
       "Bestätigen Sie mit der Gerätesicherheit, um diesen geteilten Zugriff zu sichern.",
     successMessage:
-      "Ihr Zugriff ist gesichert. Speichern Sie den Wiederherstellungscode unten — er wird nicht erneut angezeigt.",
+      "Ihr Zugriff ist gesichert. Speichern Sie die Account-ID und den Wiederherstellungscode unten — der Code wird nicht erneut angezeigt.",
     alreadyUpgradedMessage: "Dieses Konto wurde bereits aktualisiert.",
-    revealTitle: "Wiederherstellungscode speichern",
+    revealTitle: "Account-ID und Wiederherstellungscode speichern",
     revealHint:
-      "Wird nur einmal angezeigt. Verwenden Sie ihn, falls Sie das Passwort dieses Kontos vergessen.",
+      "Sie melden sich mit der Account-ID und Ihrem Passwort an. Der Wiederherstellungscode wird nur einmal angezeigt; verwenden Sie ihn, falls Sie das Passwort vergessen.",
+    revealAccountIdLabel: "Account-ID",
     revealConfirmLabel: "Ich habe ihn gespeichert",
     nudgeMessage: (days: number) =>
       `Ihr Gastzugriff läuft in ${days} ${days === 1 ? "Tag" : "Tagen"} ab — sichern Sie ihn vorher.`,
     errors: {
-      emailRequired: "E-Mail ist erforderlich.",
       passwordRequired: "Passwort ist erforderlich.",
       passwordTooShort: "Das Passwort muss mindestens 12 Zeichen lang sein.",
       passwordTooLong:
         "Das Passwort ist zu lang: höchstens 72 Zeichen, mit nicht-lateinischen Buchstaben oder Emoji weniger.",
       invalidRegistrationInput:
-        "Verwenden Sie eine gültige E-Mail-Adresse und ein stärkeres Passwort.",
-      emailTaken:
-        "Diese E-Mail-Adresse ist bereits registriert. Verwenden Sie eine andere E-Mail-Adresse oder melden Sie sich stattdessen auf einem anderen Gerät an.",
+        "Verwenden Sie ein stärkeres Passwort.",
+      registrationFailed:
+        "Das Konto kann gerade nicht erstellt werden. Bitte versuchen Sie es erneut.",
       unauthorized:
         "Diese Sitzung ist abgelaufen. Bitten Sie den Besitzer um einen neuen Einladungslink.",
       rateLimited:
@@ -423,12 +418,10 @@ const partnerCopyFr = {
   guestUpgrade: {
     ctaLabel: "Conserver votre accès",
     ctaHint:
-      "Ajoutez un e-mail et un mot de passe pour que cet accès partagé continue de fonctionner même après l’expiration de la session invité sur cet appareil.",
+      "Ajoutez un mot de passe pour que cet accès partagé continue de fonctionner même après l’expiration de la session invité sur cet appareil.",
     formTitle: "Conserver votre accès",
     formHint:
-      "Cela transforme votre accès invité en compte Ovumcy Cloud normal. Vous recevrez un code de récupération à usage unique — conservez-le en lieu sûr.",
-    emailLabel: "E-mail",
-    emailPlaceholder: "vous@example.com",
+      "Cela transforme votre accès invité en compte Ovumcy Cloud normal. Vous recevrez un ID de compte pour vous connecter et un code de récupération à usage unique — conservez les deux en lieu sûr.",
     passwordLabel: "Mot de passe",
     passwordPlaceholder: "Saisir le mot de passe",
     submitLabel: "Conserver l’accès",
@@ -436,24 +429,24 @@ const partnerCopyFr = {
     deviceAuthPrompt:
       "Confirmez avec la sécurité de l’appareil pour conserver cet accès partagé.",
     successMessage:
-      "Votre accès est enregistré. Sauvegardez le code de récupération ci-dessous — il ne sera plus affiché.",
+      "Votre accès est enregistré. Sauvegardez l’ID de compte et le code de récupération ci-dessous — le code ne sera plus affiché.",
     alreadyUpgradedMessage: "Ce compte a déjà été mis à niveau.",
-    revealTitle: "Sauvegardez votre code de récupération",
+    revealTitle: "Sauvegardez votre ID de compte et votre code de récupération",
     revealHint:
-      "Affiché une seule fois. Utilisez-le si vous oubliez le mot de passe de ce compte.",
+      "Vous vous connectez avec l’ID de compte et votre mot de passe. Le code de récupération n’est affiché qu’une fois ; utilisez-le si vous oubliez le mot de passe.",
+    revealAccountIdLabel: "ID de compte",
     revealConfirmLabel: "Je l’ai sauvegardé",
     nudgeMessage: (days: number) =>
       `Votre accès invité expire dans ${days} ${days === 1 ? "jour" : "jours"} — conservez-le avant.`,
     errors: {
-      emailRequired: "L’e-mail est requis.",
       passwordRequired: "Le mot de passe est requis.",
       passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
       passwordTooLong:
         "Le mot de passe est trop long : 72 caractères au maximum, moins avec des lettres non latines ou des emoji.",
       invalidRegistrationInput:
-        "Utilisez un e-mail valide et un mot de passe plus robuste.",
-      emailTaken:
-        "Cet e-mail est déjà enregistré. Utilisez un autre e-mail ou connectez-vous plutôt sur un autre appareil.",
+        "Utilisez un mot de passe plus robuste.",
+      registrationFailed:
+        "Impossible de créer le compte pour le moment. Veuillez réessayer.",
       unauthorized:
         "Cette session a expiré. Demandez un nouveau lien d’invitation au propriétaire.",
       rateLimited:
@@ -579,12 +572,10 @@ const partnerCopyRu = {
   guestUpgrade: {
     ctaLabel: "Сохранить доступ",
     ctaHint:
-      "Добавьте email и пароль, чтобы этот общий доступ продолжал работать даже после истечения гостевой сессии на этом устройстве.",
+      "Добавьте пароль, чтобы этот общий доступ продолжал работать даже после истечения гостевой сессии на этом устройстве.",
     formTitle: "Сохранить доступ",
     formHint:
-      "Это превратит ваш гостевой доступ в обычный аккаунт Ovumcy Cloud. Вы получите одноразовый код восстановления — сохраните его в надёжном месте.",
-    emailLabel: "Email",
-    emailPlaceholder: "you@example.com",
+      "Это превратит ваш гостевой доступ в обычный аккаунт Ovumcy Cloud. Вы получите ID аккаунта для входа и одноразовый код восстановления — сохраните оба в надёжном месте.",
     passwordLabel: "Пароль",
     passwordPlaceholder: "Введите пароль",
     submitLabel: "Сохранить доступ",
@@ -592,23 +583,22 @@ const partnerCopyRu = {
     deviceAuthPrompt:
       "Подтвердите защитой устройства, чтобы сохранить этот общий доступ.",
     successMessage:
-      "Доступ сохранён. Сохрани код восстановления ниже — он больше не будет показан.",
+      "Доступ сохранён. Сохраните ID аккаунта и код восстановления ниже — код больше не будет показан.",
     alreadyUpgradedMessage: "Этот аккаунт уже был обновлён.",
-    revealTitle: "Сохрани код восстановления",
+    revealTitle: "Сохраните ID аккаунта и код восстановления",
     revealHint:
-      "Показывается только один раз. Понадобится, если забудете пароль этого аккаунта.",
+      "Вход — по ID аккаунта и паролю. Код восстановления показывается только один раз; он понадобится, если вы забудете пароль.",
+    revealAccountIdLabel: "ID аккаунта",
     revealConfirmLabel: "Я сохранил(а)",
     nudgeMessage: (days: number) =>
       `Гостевой доступ истекает через ${days} ${ruDayWord(days)} — сохраните его заранее.`,
     errors: {
-      emailRequired: "Укажите email.",
       passwordRequired: "Введите пароль.",
       passwordTooShort: "Пароль должен содержать не менее 12 символов.",
       passwordTooLong:
         "Пароль слишком длинный: не более 72 латинских символов; кириллица и эмодзи занимают больше места.",
-      invalidRegistrationInput: "Укажите корректный email и более надёжный пароль.",
-      emailTaken:
-        "Этот email уже зарегистрирован. Используйте другой email или войдите на другом устройстве.",
+      invalidRegistrationInput: "Укажите более надёжный пароль.",
+      registrationFailed: "Не удалось создать аккаунт. Попробуйте ещё раз.",
       unauthorized: "Сессия истекла. Попросите у владельца новую ссылку-приглашение.",
       rateLimited: "Слишком много попыток. Пожалуйста, подождите немного, прежде чем повторить.",
       deviceAuthUnavailable:
@@ -731,12 +721,10 @@ const partnerCopyEs = {
   guestUpgrade: {
     ctaLabel: "Conservar tu acceso",
     ctaHint:
-      "Añade un correo y una contraseña para que este acceso compartido siga funcionando incluso después de que expire la sesión de invitado en este dispositivo.",
+      "Añade una contraseña para que este acceso compartido siga funcionando incluso después de que expire la sesión de invitado en este dispositivo.",
     formTitle: "Conservar tu acceso",
     formHint:
-      "Esto convierte tu acceso de invitado en una cuenta normal de Ovumcy Cloud. Recibirás un código de recuperación de un solo uso — guárdalo en un lugar seguro.",
-    emailLabel: "Correo electrónico",
-    emailPlaceholder: "tu@example.com",
+      "Esto convierte tu acceso de invitado en una cuenta normal de Ovumcy Cloud. Recibirás un ID de cuenta para iniciar sesión y un código de recuperación de un solo uso — guarda ambos en un lugar seguro.",
     passwordLabel: "Contraseña",
     passwordPlaceholder: "Introduce la contraseña",
     submitLabel: "Conservar acceso",
@@ -744,23 +732,22 @@ const partnerCopyEs = {
     deviceAuthPrompt:
       "Confirma con la seguridad del dispositivo para conservar este acceso compartido.",
     successMessage:
-      "Tu acceso está guardado. Guarda el código de recuperación de abajo — no volverá a mostrarse.",
+      "Tu acceso está guardado. Guarda el ID de cuenta y el código de recuperación de abajo — el código no volverá a mostrarse.",
     alreadyUpgradedMessage: "Esta cuenta ya se ha actualizado.",
-    revealTitle: "Guarda tu código de recuperación",
+    revealTitle: "Guarda tu ID de cuenta y tu código de recuperación",
     revealHint:
-      "Se muestra solo una vez. Úsalo si alguna vez olvidas la contraseña de esta cuenta.",
+      "Inicias sesión con el ID de cuenta y tu contraseña. El código de recuperación se muestra solo una vez; úsalo si alguna vez olvidas la contraseña.",
+    revealAccountIdLabel: "ID de cuenta",
     revealConfirmLabel: "Lo he guardado",
     nudgeMessage: (days: number) =>
       `Tu acceso de invitado caduca en ${days} ${days === 1 ? "día" : "días"} — consérvalo antes de que ocurra.`,
     errors: {
-      emailRequired: "El correo electrónico es obligatorio.",
       passwordRequired: "La contraseña es obligatoria.",
       passwordTooShort: "La contraseña debe tener al menos 12 caracteres.",
       passwordTooLong:
         "La contraseña es demasiado larga: 72 caracteres como máximo, menos con letras no latinas o emoji.",
-      invalidRegistrationInput: "Usa un correo válido y una contraseña más segura.",
-      emailTaken:
-        "Este correo ya está registrado. Prueba con otro correo o inicia sesión en otro dispositivo.",
+      invalidRegistrationInput: "Usa una contraseña más segura.",
+      registrationFailed: "No se puede crear la cuenta ahora mismo. Inténtalo de nuevo.",
       unauthorized:
         "Esta sesión ha caducado. Pide a la persona propietaria un nuevo enlace de invitación.",
       rateLimited: "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
@@ -885,12 +872,10 @@ const partnerCopyIt = {
   guestUpgrade: {
     ctaLabel: "Mantieni il tuo accesso",
     ctaHint:
-      "Aggiungi un'email e una password in modo che questo accesso condiviso continui a funzionare anche dopo la scadenza della sessione ospite su questo dispositivo.",
+      "Aggiungi una password in modo che questo accesso condiviso continui a funzionare anche dopo la scadenza della sessione ospite su questo dispositivo.",
     formTitle: "Mantieni il tuo accesso",
     formHint:
-      "Questo trasforma il tuo accesso ospite in un normale account Ovumcy Cloud. Riceverai un codice di recupero monouso — conservalo in un luogo sicuro.",
-    emailLabel: "Email",
-    emailPlaceholder: "tu@example.com",
+      "Questo trasforma il tuo accesso ospite in un normale account Ovumcy Cloud. Riceverai un ID account per accedere e un codice di recupero monouso — conservali entrambi in un luogo sicuro.",
     passwordLabel: "Password",
     passwordPlaceholder: "Inserisci la password",
     submitLabel: "Mantieni l'accesso",
@@ -898,23 +883,22 @@ const partnerCopyIt = {
     deviceAuthPrompt:
       "Conferma con la sicurezza del dispositivo per mantenere questo accesso condiviso.",
     successMessage:
-      "Il tuo accesso è stato salvato. Salva il codice di recupero qui sotto — non verrà mostrato di nuovo.",
+      "Il tuo accesso è stato salvato. Salva l'ID account e il codice di recupero qui sotto — il codice non verrà mostrato di nuovo.",
     alreadyUpgradedMessage: "Questo account è già stato aggiornato.",
-    revealTitle: "Salva il tuo codice di recupero",
+    revealTitle: "Salva il tuo ID account e il codice di recupero",
     revealHint:
-      "Mostrato solo una volta. Usalo se dovessi dimenticare la password di questo account.",
+      "Accedi con l'ID account e la tua password. Il codice di recupero viene mostrato solo una volta; usalo se dovessi dimenticare la password.",
+    revealAccountIdLabel: "ID account",
     revealConfirmLabel: "L'ho salvato",
     nudgeMessage: (days: number) =>
       `Il tuo accesso ospite scade tra ${days} ${days === 1 ? "giorno" : "giorni"} — mantienilo prima che accada.`,
     errors: {
-      emailRequired: "L'email è obbligatoria.",
       passwordRequired: "La password è obbligatoria.",
       passwordTooShort: "La password deve contenere almeno 12 caratteri.",
       passwordTooLong:
         "La password è troppo lunga: al massimo 72 caratteri, meno con lettere non latine o emoji.",
-      invalidRegistrationInput: "Usa un'email valida e una password più sicura.",
-      emailTaken:
-        "Questa email è già registrata. Prova un'altra email oppure accedi da un altro dispositivo.",
+      invalidRegistrationInput: "Usa una password più sicura.",
+      registrationFailed: "Impossibile creare l'account in questo momento. Riprova.",
       unauthorized: "Questa sessione è scaduta. Chiedi al proprietario un nuovo link di invito.",
       rateLimited: "Troppi tentativi. Attendi un momento prima di riprovare.",
       deviceAuthUnavailable:
