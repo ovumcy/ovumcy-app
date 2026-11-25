@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
     "test:live:sync": "jest --runInBand --ci --testPathPatterns sync-client-service.live.test",
+    "test:live:managed": "jest --runInBand --ci --testPathPatterns sync-client-service.managed.live.test",
     "doctor": "npx expo-doctor@1.20.1",
     "export:web": "expo export -p web",
     "e2e:web": "playwright test",

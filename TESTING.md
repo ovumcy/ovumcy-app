@@ -61,11 +61,16 @@ variables, so a normal `npm test` never depends on external services:
 # a second run needs a fresh server.
 OVUMCY_SYNC_LIVE_BASE_URL=http://127.0.0.1:8080 npm run test:live:sync
 
-# Live managed + community bridge (needs all three set)
+# Live managed + community bridge (needs all three set). A scheduled CI job
+# (Managed live contract, not a required check) runs it against both pinned
+# commits: managed started with ADMIN_TOKEN, SYNC_BASE_URL, SYNC_BRIDGE_TOKEN
+# (equal to the community server's MANAGED_BRIDGE_TOKEN) and three distinct
+# `openssl rand -hex 32` keys: FIELD_ENCRYPTION_KEY, ENTITLEMENT_SIGNING_KEY,
+# TRIAL_EMAIL_HASH_KEY (unset, signup answers 503 trial_unavailable).
 OVUMCY_MANAGED_LIVE_BASE_URL=... \
 OVUMCY_SYNC_LIVE_BASE_URL=... \
 OVUMCY_MANAGED_LIVE_ADMIN_TOKEN=... \
-  npx jest sync-client-service.managed.live
+  npm run test:live:managed
 
 # Render the doctor PDF to e2e/screenshots/ per locale (en/ru/de/fr/es/it)
 OVUMCY_PDF_SAMPLE=1 npx jest export-pdf-service.sample
