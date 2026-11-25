@@ -11,13 +11,14 @@
 // CSV/JSON export stay available regardless (local-first privacy boundary
 // invariant, see SECURITY.md).
 
+import { createStorePregnancyEntitlementSource } from "./pregnancy-store-entitlement-source";
+
 /**
  * A source answers one question: does this device own the pregnancy module?
  *
- * The production source will be a store-receipt check (StoreKit 2 /
- * Play Billing) once in-app purchases land; until then the dev-flag source
- * below is the only implementation. Every source is treated as untrusted by
- * the resolver: a throw or a non-`true` answer reads as "not owned".
+ * The production source is the store's purchase record
+ * (pregnancy-store-entitlement-source). Every source is treated as untrusted
+ * by the resolver: a throw or a non-`true` answer reads as "not owned".
  */
 export type PregnancyEntitlementSource = {
   loadOwnsPregnancyModule(): Promise<boolean>;
@@ -29,7 +30,7 @@ export type PregnancyEntitlementSource = {
  * `false`. Callers never need their own try/catch.
  */
 export async function loadPregnancyModuleOwned(
-  source: PregnancyEntitlementSource = createDevFlagPregnancyEntitlementSource(),
+  source: PregnancyEntitlementSource = createDefaultPregnancyEntitlementSource(),
 ): Promise<boolean> {
   try {
     return (await source.loadOwnsPregnancyModule()) === true;
@@ -39,11 +40,40 @@ export async function loadPregnancyModuleOwned(
 }
 
 /**
- * Interim source until the store-receipt source exists: a build-time flag,
- * honored ONLY in development builds (`__DEV__`, which also covers the E2E
- * lanes — they run dev builds). A release build always resolves `false`, no
- * matter what the environment claims: there is no legitimate way to own the
- * module in production before the purchase path ships.
+ * The runtime source: the store purchase, OR-ed with the development flag.
+ * The flag can only add ownership, and only in a development build — in a
+ * release build it answers `false` and the store alone decides. A flag that
+ * is off, or throws, never hides a store purchase.
+ */
+export function createDefaultPregnancyEntitlementSource(
+  options: {
+    devFlagSource?: PregnancyEntitlementSource;
+    storeSource?: PregnancyEntitlementSource;
+  } = {},
+): PregnancyEntitlementSource {
+  const devFlagSource =
+    options.devFlagSource ?? createDevFlagPregnancyEntitlementSource();
+  const storeSource =
+    options.storeSource ?? createStorePregnancyEntitlementSource();
+
+  return {
+    async loadOwnsPregnancyModule(): Promise<boolean> {
+      const devUnlocked = await devFlagSource
+        .loadOwnsPregnancyModule()
+        .catch(() => false);
+      if (devUnlocked === true) {
+        return true;
+      }
+      return storeSource.loadOwnsPregnancyModule();
+    },
+  };
+}
+
+/**
+ * Development override: a build-time flag, honored ONLY in development builds
+ * (`__DEV__`, which also covers the E2E lanes — they run dev builds). A
+ * release build always resolves `false`, no matter what the environment
+ * claims: the only way to own the module in production is the store purchase.
  *
  * `isDevelopment` / `flagValue` exist for tests (mirrors
  * app-screen-protection's `options.isDevelopment ?? __DEV__` pattern); runtime

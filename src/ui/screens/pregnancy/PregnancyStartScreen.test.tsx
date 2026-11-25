@@ -323,10 +323,21 @@ describe("PregnancyStartScreen", () => {
     expect(lock.props.children).toBe(getPregnancyCopy("en").entryCard.lockedTitle);
     expect(screen.queryByTestId("pregnancy-start-basis-step")).toBeNull();
     expect(screen.getByTestId("pregnancy-start-disclaimer")).toBeTruthy();
+  });
 
-    // Info-only until the purchase flow ships: pressing the lock never routes
-    // to plan options — the module is a one-time unlock, not a subscription.
+  it("routes the lock card to the one-time purchase screen, never the subscription screen", async () => {
+    mockUnlocked.mockResolvedValue(false);
+    await renderStart();
+
+    await screen.findByTestId("pregnancy-start-lock-title");
+    expect(screen.getByTestId("pregnancy-start-lock-cta").props.children).toBe(
+      getPregnancyCopy("en").entryCard.lockedCta,
+    );
+
+    // The module is a one-time unlock, not a subscription: the only route is
+    // the purchase screen, and it replaces this locked screen.
     await fireEvent.press(screen.getByTestId("pregnancy-start-lock"));
+    expect(mockReplace.mock.calls).toEqual([["/pregnancy-unlock"]]);
     expect(mockPush).not.toHaveBeenCalled();
   });
 

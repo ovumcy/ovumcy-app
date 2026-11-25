@@ -2,6 +2,7 @@ import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { cleanupStaleExportArtifacts } from "./export-artifact-cleanup";
 import type { LocalReminderScheduler } from "./local-reminder-scheduler-contract";
 import { rebuildLocalReminderScheduleFromStorage } from "./local-reminder-sync-service";
+import { acknowledgePregnancyModulePurchase } from "./pregnancy-purchase-service";
 import { repointLegacyStoredCycleStart } from "./stored-cycle-start-repoint-service";
 
 export const STORED_CYCLE_START_REPOINT_TIMEOUT_MS = 10_000;
@@ -49,7 +50,14 @@ export async function runAppLaunchTasks(
     // Best effort: the next launch sweeps again.
   }
 
+  // A store purchase that was still pending at the last run may have been
+  // charged since, and the store refunds one left unacknowledged for three
+  // days. It runs beside the rebuild — a slow store never delays reminders —
+  // and never rejects.
+  const acknowledged = acknowledgePregnancyModulePurchase();
+
   // A one-time reminder that already fired is replaced only by a rebuild, so
   // every launch rebuilds the schedule from stored data.
   await rebuildLocalReminderScheduleFromStorage(storage, scheduler);
+  await acknowledged;
 }

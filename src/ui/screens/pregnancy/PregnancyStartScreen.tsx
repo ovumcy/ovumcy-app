@@ -234,11 +234,12 @@ export function PregnancyStartScreen({
       onDateChange={handleDateChange}
       onFetusCountSelect={handleFetusCountSelect}
       onNext={handleNext}
-      // Info-only until the purchase flow ships: module ownership is a
-      // one-time on-device unlock, never a subscription upsell, so routing to
-      // plan options would point at the wrong door. The CTA appears when the
-      // store-receipt purchase path lands.
-      onPremiumCTAPress={undefined}
+      // Module ownership is a one-time on-device unlock, never a subscription
+      // upsell: the card opens the one-time purchase screen, not plan options.
+      // `replace` drops this locked screen from the stack — it reads ownership
+      // once on mount, so returning to it after a purchase would still show
+      // the lock.
+      onPremiumCTAPress={() => router.replace("/pregnancy-unlock")}
       preview={preview}
       step={step}
     />

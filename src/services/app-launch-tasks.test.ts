@@ -2,12 +2,25 @@ import { createDefaultProfileRecord, type ProfileRecord } from "../models/profil
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { STORED_CYCLE_START_REPOINT_TIMEOUT_MS, runAppLaunchTasks } from "./app-launch-tasks";
 import { cleanupStaleExportArtifacts } from "./export-artifact-cleanup";
+import { acknowledgePregnancyModulePurchase } from "./pregnancy-purchase-service";
+
+async function waitForCalls(mock: jest.Mock): Promise<void> {
+  for (let turn = 0; turn < 50 && mock.mock.calls.length === 0; turn += 1) {
+    await Promise.resolve();
+  }
+  expect(mock).toHaveBeenCalled();
+}
 
 jest.mock("./export-artifact-cleanup", () => ({
   cleanupStaleExportArtifacts: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock("./pregnancy-purchase-service", () => ({
+  acknowledgePregnancyModulePurchase: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockCleanup = jest.mocked(cleanupStaleExportArtifacts);
+const mockAcknowledge = jest.mocked(acknowledgePregnancyModulePurchase);
 
 function createScheduler() {
   return { sync: jest.fn().mockResolvedValue("scheduled") };
@@ -17,6 +30,34 @@ describe("runAppLaunchTasks", () => {
   beforeEach(() => {
     mockCleanup.mockReset();
     mockCleanup.mockResolvedValue(undefined);
+    mockAcknowledge.mockReset();
+    mockAcknowledge.mockResolvedValue(undefined);
+  });
+
+  it("acknowledges an owed store purchase on every launch without delaying the reminder rebuild", async () => {
+    let finishAcknowledge: () => void = () => undefined;
+    mockAcknowledge.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishAcknowledge = resolve;
+      }),
+    );
+    const scheduler = createScheduler();
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        dailyLogReminderEnabled: false,
+        languageOverride: "en",
+      }),
+    });
+
+    const launch = runAppLaunchTasks(storage, scheduler);
+    await waitForCalls(scheduler.sync);
+
+    // The rebuild finished while the store call was still open.
+    expect(mockAcknowledge).toHaveBeenCalledTimes(1);
+    expect(mockAcknowledge).toHaveBeenCalledWith();
+
+    finishAcknowledge();
+    await expect(launch).resolves.toBeUndefined();
   });
 
   it("sweeps stale export artifacts and rebuilds the reminder schedule once", async () => {

@@ -58,6 +58,23 @@ jest.mock("expo-notifications", () => ({
   setNotificationChannelAsync: jest.fn(async () => undefined),
 }));
 
+// No store in Jest: every call rejects, so module ownership resolves to
+// "not owned" unless a test injects its own source or store client.
+jest.mock("expo-iap", () => {
+  const unavailable = () =>
+    jest.fn(async () => {
+      throw new Error("expo-iap is not available in Jest");
+    });
+
+  return {
+    fetchProducts: unavailable(),
+    finishTransaction: unavailable(),
+    getAvailablePurchases: unavailable(),
+    initConnection: unavailable(),
+    requestPurchase: unavailable(),
+  };
+});
+
 // The native fetch module has no Node implementation; tests stub
 // globalThis.fetch, so expo/fetch resolves to it at call time.
 jest.mock("expo/fetch", () => ({
