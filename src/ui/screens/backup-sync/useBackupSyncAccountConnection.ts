@@ -12,10 +12,10 @@ import {
   recoverBackupSyncAccess,
 } from "../../../services/backup-sync-screen-service";
 import {
-  resolveDisconnectConsentPurposes,
   resolveSyncConsentPurpose,
   withdrawDataSharingConsent,
 } from "../../../services/data-sharing-consent-service";
+import { resolveSyncModeConsentPurposes } from "../../../sync/sync-contract";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import { clearManagedPartnerInviteToken } from "../../../security/managed-partner-invite-token-buffer";
 import { openConfirmation } from "../../confirm/open-confirmation";
@@ -74,17 +74,20 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     }
 
     resetFeedbackMessages();
-    if (
-      !(await ensureDataSharingConsent(
-        resolveSyncConsentPurpose(state.syncPreferences.mode),
-      ))
-    ) {
-      return;
-    }
     setIsAuthenticatingSync(true);
 
     const syncReadyState = await saveSyncDraftIfNeeded("account");
     if (!syncReadyState) {
+      setIsAuthenticatingSync(false);
+      return;
+    }
+    // Asked after the draft is saved, so the consent names the destination
+    // the request goes to.
+    if (
+      !(await ensureDataSharingConsent(
+        resolveSyncConsentPurpose(syncReadyState.syncPreferences.mode),
+      ))
+    ) {
       setIsAuthenticatingSync(false);
       return;
     }
@@ -267,17 +270,20 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     }
 
     resetFeedbackMessages();
-    if (
-      !(await ensureDataSharingConsent(
-        resolveSyncConsentPurpose(state.syncPreferences.mode),
-      ))
-    ) {
-      return;
-    }
     setIsRecoveringSync(true);
 
     const syncReadyState = await saveSyncDraftIfNeeded("account");
     if (!syncReadyState) {
+      setIsRecoveringSync(false);
+      return;
+    }
+    // Asked after the draft is saved, so the consent names the destination
+    // the request goes to.
+    if (
+      !(await ensureDataSharingConsent(
+        resolveSyncConsentPurpose(syncReadyState.syncPreferences.mode),
+      ))
+    ) {
       setIsRecoveringSync(false);
       return;
     }
@@ -392,7 +398,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     // failed clear leaves the disconnect itself in place.
     await withdrawDataSharingConsent(
       storage,
-      resolveDisconnectConsentPurposes(currentState.savedSyncPreferences.mode),
+      resolveSyncModeConsentPurposes(currentState.savedSyncPreferences.mode),
     ).catch(() => undefined);
     setErrorState(null);
     setState(result.state);

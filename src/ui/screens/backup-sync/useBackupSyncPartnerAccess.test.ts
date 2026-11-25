@@ -14,6 +14,7 @@ import {
   createLoadedSettingsStateFixture,
 } from "../../../test/create-backup-sync-session-core-mock";
 import type { ManagedCloudPartnerAccessGrant } from "../../../sync/managed-cloud-api-client";
+import { createDefaultSyncPreferencesRecord } from "../../../sync/sync-contract";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import { useBackupSyncPartnerAccess } from "./useBackupSyncPartnerAccess";
 
@@ -872,6 +873,30 @@ describe("useBackupSyncPartnerAccess", () => {
       );
       expect(core.reloadPartnerAccess).toHaveBeenCalledWith(core.state);
       expect(result.current.isPartnerBusy).toBe(false);
+    });
+
+    it("withdraws the partner-sharing consent and keeps the sync consent on a confirmed revoke", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      const grant = { revision: "2026-11-25", givenAt: "2026-11-25T10:00:00.000Z" };
+      jest.mocked(core.storage.readSyncPreferencesRecord).mockResolvedValue({
+        ...createDefaultSyncPreferencesRecord(),
+        dataSharingConsent: { managed_sync: grant, partner_share: grant },
+      });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRevokeManagedPartnerGrant.mockResolvedValue({
+        ok: true,
+        value: createGrant({ revokedAt: "2026-03-20T08:00:00.000Z" }),
+      });
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+
+      await act(async () => {
+        await result.current.handleRevokePartnerGrant("grant-1");
+      });
+
+      expect(core.storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+        expect.anything(),
+        { dataSharingConsent: { managed_sync: grant } },
+      );
     });
 
     it("still surfaces success after a non-fatal failure to clear the local grant key", async () => {

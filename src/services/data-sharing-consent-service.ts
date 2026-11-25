@@ -1,9 +1,10 @@
 import { selectDataSharingConsentCopy } from "../i18n/data-sharing-consent-copy";
 import type { InterfaceLanguage } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
-import type {
-  DataSharingConsentPurpose,
-  SyncMode,
+import {
+  withoutDataSharingConsent,
+  type DataSharingConsentPurpose,
+  type SyncMode,
 } from "../sync/sync-contract";
 import { PRIVACY_POLICY_URL } from "./privacy-notice-service";
 
@@ -58,23 +59,9 @@ export async function withdrawDataSharingConsent(
   if (!purposes.some((purpose) => current[purpose] !== undefined)) {
     return;
   }
-  const next = { ...current };
-  for (const purpose of purposes) {
-    delete next[purpose];
-  }
-  await storage.writeSyncPreferencesRecord(record, { dataSharingConsent: next });
-}
-
-/**
- * The consent purposes a disconnect of `mode` ends: a managed disconnect also
- * ends partner sharing, which runs only under the managed account.
- */
-export function resolveDisconnectConsentPurposes(
-  mode: SyncMode,
-): DataSharingConsentPurpose[] {
-  return mode === "self_hosted"
-    ? ["self_hosted_sync"]
-    : ["managed_sync", "partner_share"];
+  await storage.writeSyncPreferencesRecord(record, {
+    dataSharingConsent: withoutDataSharingConsent(current, purposes),
+  });
 }
 
 export type DataSharingConsentViewData = {

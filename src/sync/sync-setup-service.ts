@@ -13,10 +13,13 @@ import { isSyncDeviceLabelLengthValid } from "./sync-input-limits";
 import {
   createDefaultManagedBillingCacheRecord,
   type LocalAppStorage,
+  type SyncPreferencesWriteOptions,
 } from "../storage/local/storage-contract";
 import {
   MANAGED_SYNC_BASE_URL,
   createDefaultSyncPreferencesRecord,
+  resolveSyncModeConsentPurposes,
+  withoutDataSharingConsent,
   type SyncPreferencesRecord,
   type SyncSecretsRecord,
 } from "./sync-contract";
@@ -290,9 +293,28 @@ export async function saveSyncPreferencesDraft(
     }
     // Cleared secrets end the old backup relationship along with the floor;
     // see prepareSyncSetup for why the unfinished-restore mark goes too.
+    // A consent covers the destination it was given for: a new mode or
+    // endpoint asks again before anything is sent there.
+    const writeOptions: SyncPreferencesWriteOptions = {};
+    if (shouldResetPreparedState) {
+      writeOptions.restoreInProgress = false;
+    }
+    if (materialChange) {
+      const storedConsent = (await storage.readSyncPreferencesRecord())
+        .dataSharingConsent;
+      const endedPurposes = resolveSyncModeConsentPurposes(
+        savedPreferences.mode,
+      ).filter((purpose) => storedConsent?.[purpose] !== undefined);
+      if (endedPurposes.length > 0) {
+        writeOptions.dataSharingConsent = withoutDataSharingConsent(
+          storedConsent,
+          endedPurposes,
+        );
+      }
+    }
     await storage.writeSyncPreferencesRecord(
       nextPreferences,
-      shouldResetPreparedState ? { restoreInProgress: false } : undefined,
+      Object.keys(writeOptions).length > 0 ? writeOptions : undefined,
     );
 
     return {

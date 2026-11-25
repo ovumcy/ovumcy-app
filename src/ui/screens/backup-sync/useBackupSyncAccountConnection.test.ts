@@ -73,7 +73,7 @@ describe("useBackupSyncAccountConnection", () => {
       });
 
       expect(core.ensureDataSharingConsent).toHaveBeenCalledWith("managed_sync");
-      expect(core.saveSyncDraftIfNeeded).not.toHaveBeenCalled();
+      expect(core.saveSyncDraftIfNeeded).toHaveBeenCalledTimes(1);
       expect(mockConnectBackupSyncAccount).not.toHaveBeenCalled();
       expect(core.setErrorState).not.toHaveBeenCalled();
       expect(result.current.isAuthenticatingSync).toBe(false);
@@ -474,7 +474,7 @@ describe("useBackupSyncAccountConnection", () => {
         await result.current.handleRecoverSync();
       });
 
-      expect(core.saveSyncDraftIfNeeded).not.toHaveBeenCalled();
+      expect(core.saveSyncDraftIfNeeded).toHaveBeenCalledTimes(1);
       expect(mockRecoverBackupSyncAccess).not.toHaveBeenCalled();
       expect(core.setErrorState).not.toHaveBeenCalled();
       expect(result.current.isRecoveringSync).toBe(false);

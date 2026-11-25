@@ -23,6 +23,7 @@ import { openConfirmation } from "../../confirm/open-confirmation";
 import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
 import type { ManagedCloudPartnerAccessLevel } from "../../../sync/managed-cloud-api-client";
 import { resolvePartnerErrorMessage } from "./backup-sync-partner-errors";
+import { withdrawDataSharingConsent } from "../../../services/data-sharing-consent-service";
 
 function isInviteSecretUsable(inviteToken: string, inviteSecretHex: string): boolean {
   if (inviteSecretHex.length === 0) {
@@ -294,6 +295,10 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
       setPartnerInviteLink("");
       setPartnerInviteLinkInviteID("");
     }
+    // Revoking a partner withdraws the sharing consent: the next invite asks again.
+    await withdrawDataSharingConsent(storage, ["partner_share"]).catch(
+      () => undefined,
+    );
     setPartnerStatusMessage(partnerCopy.statusInviteRevoked);
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
@@ -333,6 +338,9 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     // become possible). A failure here is non-fatal for the user (server
     // already accepted the revoke), but we surface the generic copy so the
     // local-state divergence doesn't go silent.
+    await withdrawDataSharingConsent(storage, ["partner_share"]).catch(
+      () => undefined,
+    );
     try {
       await clearManagedPartnerGrantKey(partnerShareSecretStore, grantID);
     } catch {
