@@ -60,7 +60,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
         .mockResolvedValueOnce(null)
         // After verify succeeds, describe returns the real server state
-        .mockResolvedValueOnce({ twoFactorEnabled: true });
+        .mockResolvedValueOnce({ twoFactorEnabled: true, accountLogin: null });
 
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
@@ -83,6 +83,42 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.twoFactorEnabled).toBe(true);
     });
 
+    it("exposes the Account ID read from the session and flags a managed account", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: false, accountLogin: "a3f9-0c12-77be-4d01" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+
+      expect(result.current.accountLogin).toBe("a3f9-0c12-77be-4d01");
+      expect(result.current.isManaged).toBe(true);
+    });
+
+    it("exposes no Account ID and no managed flag for a self-hosted account whose status cannot be read", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(selfHostedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+
+      expect(result.current.accountLogin).toBeNull();
+      expect(result.current.isManaged).toBe(false);
+    });
+
     it("keeps previous twoFactorEnabled when describe fails after verify", async () => {
       const storage = createLocalAppStorageMock({
         readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
@@ -92,7 +128,7 @@ describe("useSyncAccountSecurityController", () => {
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
         // Mount: returns false (was already disabled)
-        .mockResolvedValueOnce({ twoFactorEnabled: false })
+        .mockResolvedValueOnce({ twoFactorEnabled: false, accountLogin: null })
         // After verify: describe fails
         .mockResolvedValueOnce(null);
 
@@ -135,7 +171,7 @@ describe("useSyncAccountSecurityController", () => {
         });
         jest
           .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-          .mockResolvedValue({ twoFactorEnabled: true });
+          .mockResolvedValue({ twoFactorEnabled: true, accountLogin: null });
         jest.spyOn(syncTOTPService, "disableTOTP").mockResolvedValue({ ok: true });
 
         const { result } = await renderHook(() =>
@@ -174,7 +210,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: true });
+        .mockResolvedValue({ twoFactorEnabled: true, accountLogin: null });
       jest.spyOn(syncTOTPService, "disableTOTP").mockResolvedValue({ ok: true });
 
       const { result } = await renderHook(() =>
@@ -646,7 +682,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: false });
+        .mockResolvedValue({ twoFactorEnabled: false, accountLogin: null });
       jest
         .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
         .mockResolvedValue({ ok: true, recoveryCode: "NEW-CODE-1" });
@@ -684,7 +720,7 @@ describe("useSyncAccountSecurityController", () => {
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
         .mockResolvedValue(
-          twoFactorEnabled === null ? null : { twoFactorEnabled },
+          twoFactorEnabled === null ? null : { twoFactorEnabled, accountLogin: null },
         );
       const rendered = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
@@ -726,7 +762,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: true });
+        .mockResolvedValue({ twoFactorEnabled: true, accountLogin: null });
       const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
@@ -987,7 +1023,7 @@ describe("useSyncAccountSecurityController", () => {
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
         .mockResolvedValue(
-          twoFactorEnabled === null ? null : { twoFactorEnabled },
+          twoFactorEnabled === null ? null : { twoFactorEnabled, accountLogin: null },
         );
       const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
@@ -1126,7 +1162,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: true });
+        .mockResolvedValue({ twoFactorEnabled: true, accountLogin: null });
       jest
         .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
         .mockResolvedValue({ ok: false, errorCode: "totp_replayed" });
@@ -1291,7 +1327,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: false });
+        .mockResolvedValue({ twoFactorEnabled: false, accountLogin: null });
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
@@ -1324,7 +1360,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: false });
+        .mockResolvedValue({ twoFactorEnabled: false, accountLogin: null });
       jest.spyOn(syncTOTPService, "startTOTPEnrollment").mockResolvedValue({
         ok: true,
         enrollment: {
@@ -1368,7 +1404,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: false });
+        .mockResolvedValue({ twoFactorEnabled: false, accountLogin: null });
       jest.spyOn(syncTOTPService, "startTOTPEnrollment").mockResolvedValue({
         ok: true,
         enrollment: {
@@ -1414,7 +1450,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: true });
+        .mockResolvedValue({ twoFactorEnabled: true, accountLogin: null });
       jest.spyOn(syncTOTPService, "verifyTOTPEnrollment").mockResolvedValue({
         ok: true,
         recoveryCode: "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
@@ -1451,7 +1487,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: true });
+        .mockResolvedValue({ twoFactorEnabled: true, accountLogin: null });
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: true, recoveryCode: null });
@@ -1478,7 +1514,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: true });
+        .mockResolvedValue({ twoFactorEnabled: true, accountLogin: null });
       jest.spyOn(syncTOTPService, "verifyTOTPEnrollment").mockResolvedValue({
         ok: true,
         recoveryCode: "supersecretrecoverycode111111111",
@@ -1531,8 +1567,8 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValueOnce({ twoFactorEnabled: false })
-        .mockResolvedValueOnce({ twoFactorEnabled: true });
+        .mockResolvedValueOnce({ twoFactorEnabled: false, accountLogin: null })
+        .mockResolvedValueOnce({ twoFactorEnabled: true, accountLogin: null });
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: false, errorCode: "network_failed" });
@@ -1559,8 +1595,8 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValueOnce({ twoFactorEnabled: false })
-        .mockResolvedValueOnce({ twoFactorEnabled: true });
+        .mockResolvedValueOnce({ twoFactorEnabled: false, accountLogin: null })
+        .mockResolvedValueOnce({ twoFactorEnabled: true, accountLogin: null });
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: false, errorCode: "generic" });
@@ -1588,7 +1624,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: false });
+        .mockResolvedValue({ twoFactorEnabled: false, accountLogin: null });
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: false, errorCode: "totp_already_enabled" });
@@ -1617,7 +1653,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: false });
+        .mockResolvedValue({ twoFactorEnabled: false, accountLogin: null });
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
@@ -1645,7 +1681,7 @@ describe("useSyncAccountSecurityController", () => {
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        .mockResolvedValue({ twoFactorEnabled: true });
+        .mockResolvedValue({ twoFactorEnabled: true, accountLogin: null });
       jest
         .spyOn(syncTOTPService, "disableTOTP")
         .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
@@ -1670,7 +1706,7 @@ describe("useSyncAccountSecurityController", () => {
     });
 
     it.each([
-      ["reads off", { twoFactorEnabled: false }],
+      ["reads off", { twoFactorEnabled: false, accountLogin: null }],
       ["cannot be read", null],
     ] as const)(
       "shows 2FA off when the server says it is already off and the refreshed status %s",
@@ -1681,7 +1717,7 @@ describe("useSyncAccountSecurityController", () => {
         const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
         jest
           .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-          .mockResolvedValueOnce({ twoFactorEnabled: true })
+          .mockResolvedValueOnce({ twoFactorEnabled: true, accountLogin: null })
           .mockResolvedValueOnce(refreshedStatus);
         jest
           .spyOn(syncTOTPService, "disableTOTP")

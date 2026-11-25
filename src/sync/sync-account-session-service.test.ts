@@ -127,7 +127,10 @@ describe("sync-account-session-service", () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
       const getSession = jest
         .fn()
-        .mockResolvedValue({ ok: true, session: { twoFactorEnabled: true } });
+        .mockResolvedValue({
+          ok: true,
+          session: { twoFactorEnabled: true, login: "a3f9-0c12-77be-4d01" },
+        });
       const managedFactory = jest
         .fn()
         .mockReturnValue(managedClientMock({ getSession }));
@@ -139,8 +142,33 @@ describe("sync-account-session-service", () => {
         managedFactory,
       );
 
-      expect(result).toEqual({ twoFactorEnabled: true });
+      expect(result).toEqual({
+        twoFactorEnabled: true,
+        accountLogin: "a3f9-0c12-77be-4d01",
+      });
       expect(getSession).toHaveBeenCalledWith("managed-session-1");
+    });
+
+    it("reports a null accountLogin when the managed session carries an empty login", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const getSession = jest
+        .fn()
+        .mockResolvedValue({
+          ok: true,
+          session: { twoFactorEnabled: false, login: "" },
+        });
+      const managedFactory = jest
+        .fn()
+        .mockReturnValue(managedClientMock({ getSession }));
+
+      const result = await describeSyncAccountTwoFactor(
+        secretStore,
+        managedPreferences(),
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ twoFactorEnabled: false, accountLogin: null });
     });
 
     it("returns null when the managed session lookup fails", async () => {
@@ -212,7 +240,7 @@ describe("sync-account-session-service", () => {
         jest.fn(),
       );
 
-      expect(result).toEqual({ twoFactorEnabled: false });
+      expect(result).toEqual({ twoFactorEnabled: false, accountLogin: null });
       expect(getSession).toHaveBeenCalledWith("community-session-1");
     });
 

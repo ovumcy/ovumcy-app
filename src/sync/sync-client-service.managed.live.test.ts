@@ -102,14 +102,14 @@ describeIfLive("sync-client-service managed live transport", () => {
       const client = createManagedCloudAPIClient(managedBaseURL);
       return {
         ...client,
-        async register(input: { email: string; password: string }) {
+        async register(input: { password: string }) {
           const result = await client.register(input);
           if (result.ok) {
             managedAccountID = result.auth.accountID;
           }
           return result;
         },
-        async login(input: { email: string; password: string }) {
+        async login(input: { login: string; password: string }) {
           const result = await client.login(input);
           if (result.ok) {
             managedAccountID = result.auth.accountID;
@@ -405,14 +405,14 @@ describeIfLive("sync-client-service managed live transport", () => {
       const client = createManagedCloudAPIClient(managedBaseURL);
       return {
         ...client,
-        async register(input: { email: string; password: string }) {
+        async register(input: { password: string }) {
           const result = await client.register(input);
           if (result.ok) {
             managedAccountID = result.auth.accountID;
           }
           return result;
         },
-        async login(input: { email: string; password: string }) {
+        async login(input: { login: string; password: string }) {
           const result = await client.login(input);
           if (result.ok) {
             managedAccountID = result.auth.accountID;

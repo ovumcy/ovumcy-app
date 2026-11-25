@@ -13,6 +13,8 @@ function noop() {}
 function baseProps() {
   return {
     copy,
+    accountLogin: null as string | null,
+    isManaged: false,
 
     changeCurrentPassword: "",
     onChangeCurrentPasswordChange: noop,
@@ -762,6 +764,7 @@ describe("SyncAccountSecuritySection", () => {
   describe("remaining forgot-password credentials-stage error mappings", () => {
     it.each([
       ["login_required", () => copy.errors.loginRequired],
+      ["account_id_invalid", () => copy.errors.accountIdInvalid],
       ["recovery_code_required", () => copy.errors.recoveryCodeRequired],
       ["network_failed", () => copy.errors.networkFailed],
     ] as const)("maps %s to its localized copy", async (errorCode, expected) => {
@@ -772,6 +775,61 @@ describe("SyncAccountSecuritySection", () => {
       );
 
       expect(screen.getByText(expected())).toBeTruthy();
+    });
+  });
+
+  describe("Account ID card and forgot-password login wording", () => {
+    it("shows the Account ID card with the signed-in Account ID when it is known", async () => {
+      await render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection
+            {...baseProps()}
+            accountLogin="a3f9-0c12-77be-4d01"
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(copy.accountId.title)).toBeTruthy();
+      expect(screen.getByText(copy.accountId.hint)).toBeTruthy();
+      expect(screen.getByTestId("account-security-account-id").props.children).toBe(
+        "a3f9-0c12-77be-4d01",
+      );
+    });
+
+    it("hides the Account ID card when the Account ID is unknown", async () => {
+      await render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection {...baseProps()} accountLogin={null} />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.queryByTestId("account-security-account-id")).toBeNull();
+      expect(screen.queryByText(copy.accountId.title)).toBeNull();
+    });
+
+    it("labels the forgot-password login as the Account ID for a managed account", async () => {
+      await render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection {...baseProps()} isManaged />
+        </AppPreferencesTestProvider>,
+      );
+
+      const input = screen.getByTestId("account-security-forgot-login");
+      expect(input.props.accessibilityLabel).toBe(copy.forgotPassword.managedLoginLabel);
+      expect(input.props.keyboardType).toBe("default");
+      expect(screen.getByText(copy.forgotPassword.managedLoginLabel)).toBeTruthy();
+    });
+
+    it("keeps the free-form login label and email keyboard for a self-hosted account", async () => {
+      await render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection {...baseProps()} isManaged={false} />
+        </AppPreferencesTestProvider>,
+      );
+
+      const input = screen.getByTestId("account-security-forgot-login");
+      expect(input.props.accessibilityLabel).toBe(copy.forgotPassword.loginLabel);
+      expect(input.props.keyboardType).toBe("email-address");
     });
   });
 

@@ -2110,6 +2110,194 @@ describe("BackupSyncScreen", () => {
     );
   });
 
+  describe("managed register with a generated Account ID", () => {
+    const registerPreferences = {
+      mode: "managed" as const,
+      endpointInput: "",
+      normalizedEndpoint: "https://sync.ovumcy.cloud",
+      deviceLabel: "Pixel 7",
+      setupStatus: "local_ready" as const,
+      preparedAt: "2026-05-17T08:00:00.000Z",
+      lastRemoteGeneration: null,
+      lastSyncedAt: null,
+      guestSessionExpiresAt: null,
+      guestSessionRenewable: false,
+      accountId: null,
+    };
+
+    async function renderRegisterScreen() {
+      const storage = createSettingsStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(registerPreferences),
+      });
+      const syncSecretStore = createSyncSecretStoreMock();
+      await syncSecretStore.writeSyncSecrets({
+        device: {
+          deviceID: "device-1",
+          deviceLabel: "Pixel 7",
+          createdAt: "2026-05-17T08:00:00.000Z",
+        },
+        masterKeyHex: "aa",
+        deviceSecretHex: "bb",
+        wrappedKey: {
+          algorithm: "xchacha20poly1305",
+          kdf: "bip39_seed_hkdf_sha256",
+          mnemonicWordCount: 12,
+          wrapNonceHex: "cc",
+          wrappedMasterKeyHex: "dd",
+          phraseFingerprintHex: "ee",
+        },
+        authSessionToken: null,
+        managedAuthSessionToken: null,
+        managedAuthSessionExpiresAt: null,
+        managedRefreshToken: null,
+        managedRefreshTokenExpiresAt: null,
+      });
+      await render(
+        <BackupSyncScreen
+          now={new Date("2026-05-17T08:00:00.000Z")}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+      await screen.findByTestId("settings-sync-section");
+    }
+
+    it("labels the login field as the Account ID and explains that a new account needs only a password", async () => {
+      const settingsCopy = getSettingsCopy("en");
+      await renderRegisterScreen();
+
+      expect(
+        screen.getByTestId("settings-sync-login-input").props.accessibilityLabel,
+      ).toBe(settingsCopy.account.managedLoginLabel);
+      expect(
+        screen.getByTestId("settings-sync-managed-login-hint").props.children,
+      ).toBe(settingsCopy.account.managedLoginHint);
+    });
+
+    it("shows the recovery kit with the Account ID after a register and clears both on acknowledgement", async () => {
+      const settingsCopy = getSettingsCopy("en");
+      const registeredState = createLoadedSettingsState(
+        {
+          lastPeriodStart: "2026-05-01",
+          cycleLength: 28,
+          periodLength: 5,
+          autoPeriodFill: true,
+          irregularCycle: false,
+          unpredictableCycle: false,
+          ageGroup: "",
+          usageGoal: "health",
+          trackBBT: false,
+          temperatureUnit: "c",
+          trackCervicalMucus: false,
+          hideSexChip: false,
+          hideNotes: false,
+          languageOverride: "en",
+          themeOverride: "light",
+          screenCaptureProtectionEnabled: true,
+        },
+        { ...registerPreferences, setupStatus: "connected" as const },
+        true,
+        true,
+        [],
+        {
+          values: { preset: "all", fromDate: "2026-05-01", toDate: "2026-05-17" },
+          availableSummary: {
+            totalEntries: 1,
+            hasData: true,
+            dateFrom: "2026-05-01",
+            dateTo: "2026-05-17",
+          },
+          summary: {
+            totalEntries: 1,
+            hasData: true,
+            dateFrom: "2026-05-01",
+            dateTo: "2026-05-17",
+          },
+          bounds: { minDate: "2026-05-01", maxDate: "2026-05-17" },
+        },
+        { ...registerPreferences, setupStatus: "connected" as const },
+        {
+          mode: "managed",
+          syncEnabled: true,
+          recoverySupported: false,
+          pushSupported: false,
+          portalSupported: false,
+          advancedCloudInsights: false,
+          maxDevices: 5,
+          maxBlobBytes: 1024,
+        },
+        { ...createEmptySettingsManagedPremiumAccess(), planStatus: "active" },
+      );
+      const connectSpy = jest
+        .spyOn(backupSyncScreenService, "connectBackupSyncAccount")
+        .mockResolvedValue({
+          ok: true,
+          connected: true,
+          state: registeredState,
+          recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+          accountLogin: "a3f9-0c12-77be-4d01",
+        });
+
+      try {
+        await renderRegisterScreen();
+        await fireEvent.changeText(
+          screen.getByTestId("settings-sync-password-input"),
+          "correct horse battery staple",
+        );
+        await fireEvent.press(screen.getByTestId("settings-sync-register-button"));
+        await agreeToDataSharingConsent();
+
+        const accountIdNode = await screen.findByTestId("settings-sync-account-id-value");
+        expect(accountIdNode.props.children).toBe("a3f9-0c12-77be-4d01");
+        expect(
+          screen.getByTestId("settings-sync-recovery-code-value").props.children,
+        ).toBe("abcd1234abcd1234abcd1234abcd1234");
+        expect(screen.getByText(settingsCopy.account.recoveryKitTitle)).toBeTruthy();
+        expect(connectSpy.mock.calls[0]?.[3]).toMatchObject({
+          login: "",
+          password: "correct horse battery staple",
+        });
+
+        await fireEvent.press(
+          screen.getByTestId("settings-sync-recovery-code-confirm-button"),
+        );
+        await waitFor(() =>
+          expect(screen.queryByTestId("settings-sync-account-id-value")).toBeNull(),
+        );
+        expect(screen.queryByTestId("settings-sync-recovery-code-value")).toBeNull();
+      } finally {
+        connectSpy.mockRestore();
+      }
+    });
+
+    it("shows the Account ID message under the login field when the server rejects it", async () => {
+      const settingsCopy = getSettingsCopy("en");
+      const connectSpy = jest
+        .spyOn(backupSyncScreenService, "connectBackupSyncAccount")
+        .mockResolvedValue({ ok: false, errorCode: "account_id_invalid" });
+
+      try {
+        await renderRegisterScreen();
+        await fireEvent.changeText(
+          screen.getByTestId("settings-sync-login-input"),
+          "not-an-account-id",
+        );
+        await fireEvent.changeText(
+          screen.getByTestId("settings-sync-password-input"),
+          "correct horse battery staple",
+        );
+        await fireEvent.press(screen.getByTestId("settings-sync-login-button"));
+        await agreeToDataSharingConsent();
+
+        expect(
+          await screen.findByText(settingsCopy.account.errors.accountIdInvalid),
+        ).toBeTruthy();
+      } finally {
+        connectSpy.mockRestore();
+      }
+    });
+  });
+
   it("drives a managed login through the TOTP challenge and finalises the connection", async () => {
     const preparedPreferences = {
       mode: "managed" as const,
@@ -2894,23 +3082,15 @@ describe("BackupSyncScreen", () => {
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
     });
 
-    it("validates email and password before submitting, with no network call", async () => {
+    it("validates the password before submitting, with no network call and no email field", async () => {
       await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
       await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
+      expect(screen.queryByTestId("backup-sync-guest-upgrade-email-input")).toBeNull();
 
       const fetchSpy = jest.fn();
       global.fetch = fetchSpy as unknown as typeof fetch;
 
-      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
-      expect(
-        await screen.findByText(partnerCopy.guestUpgrade.errors.emailRequired),
-      ).toBeTruthy();
-
-      await fireEvent.changeText(
-        screen.getByTestId("backup-sync-guest-upgrade-email-input"),
-        "owner@example.com",
-      );
       await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
       expect(
         await screen.findByText(partnerCopy.guestUpgrade.errors.passwordRequired),
@@ -2934,10 +3114,6 @@ describe("BackupSyncScreen", () => {
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
 
       await fireEvent.changeText(
-        screen.getByTestId("backup-sync-guest-upgrade-email-input"),
-        "owner@example.com",
-      );
-      await fireEvent.changeText(
         screen.getByTestId("backup-sync-guest-upgrade-password-input"),
         "very secure password 12345",
       );
@@ -2957,6 +3133,10 @@ describe("BackupSyncScreen", () => {
       );
       expect(codeNode.props.children).toBe("fresh1234fresh1234fresh1234fresh");
       expect(codeNode.props.selectable).toBe(true);
+      const accountIdNode = screen.getByTestId(
+        "backup-sync-guest-upgrade-account-id-value",
+      );
+      expect(accountIdNode.props.children).toBe("a3f9-0c12-77be-4d01");
       // The form itself is gone once the reveal is up.
       expect(screen.queryByTestId("backup-sync-guest-upgrade-form-modal")).toBeNull();
       // The CTA/nudge card is gone too — the account is no longer a guest —
@@ -2965,6 +3145,8 @@ describe("BackupSyncScreen", () => {
 
       const upgradeCall = (global.fetch as jest.Mock).mock.calls[0];
       expect(String(upgradeCall[0])).toContain("/account/upgrade");
+      const upgradeBody = JSON.parse(String(upgradeCall[1]?.body));
+      expect(upgradeBody).toEqual({ password: "very secure password 12345" });
       expect((upgradeCall[1]?.headers as Headers).get("Authorization")).toBe(
         "Bearer guest-session-1",
       );
@@ -2995,10 +3177,6 @@ describe("BackupSyncScreen", () => {
       await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
 
-      await fireEvent.changeText(
-        screen.getByTestId("backup-sync-guest-upgrade-email-input"),
-        "owner@example.com",
-      );
       await fireEvent.changeText(
         screen.getByTestId("backup-sync-guest-upgrade-password-input"),
         "very secure password 12345",

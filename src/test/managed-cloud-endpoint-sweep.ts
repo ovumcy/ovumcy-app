@@ -7,7 +7,7 @@ export const MANAGED_CLOUD_ENDPOINTS: {
     client: ManagedCloudAPIClient,
   ) => Promise<unknown>;
 } = {
-  register: (c) => c.register({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
+  register: (c) => c.register({ password: "pw" }),
   login: (c) => c.login({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
   logout: (c) => c.logout({ sessionToken: "s", refreshToken: "r" }),
   deleteAccount: (c) => c.deleteAccount("s", {} as never),

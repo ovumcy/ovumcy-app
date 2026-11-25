@@ -886,7 +886,7 @@ describe("sync-client-service", () => {
         deviceLabel: "Recovered Pixel",
       },
       {
-        login: "alice@example.com",
+        login: "a3f9-0c12-77be-4d01",
         password: "correct horse battery staple",
       },
       originalSecrets.recoveryPhrase,
@@ -1748,7 +1748,7 @@ describe("connectSyncAccount recovery code surfacing", () => {
         setupStatus: "local_ready",
       },
       {
-        login: "alice@example.com",
+        login: "a3f9-0c12-77be-4d01",
         password: "correct horse battery staple",
       },
       "login",
@@ -2087,7 +2087,7 @@ describe("upgradeGuestPartnerAccount", () => {
       storage,
       secretStore,
       guestPreferences,
-      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+      { password: "very secure password 12345" },
       managedClientFactory,
     );
 
@@ -2100,7 +2100,7 @@ describe("upgradeGuestPartnerAccount", () => {
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 
-  it("on success clears the local guest marker and surfaces the account/email/recovery code", async () => {
+  it("on success clears the local guest marker and surfaces the account/login/recovery code", async () => {
     const storage = createLocalAppStorageMock();
     const preparedSecrets = createSyncSecretsRecord(
       "Pixel 7",
@@ -2126,7 +2126,7 @@ describe("upgradeGuestPartnerAccount", () => {
       storage,
       secretStore,
       guestPreferences,
-      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+      { password: "very secure password 12345" },
       managedClientFactory,
     );
 
@@ -2141,10 +2141,10 @@ describe("upgradeGuestPartnerAccount", () => {
         guestSessionExpiresAt: null,
       },
     });
-    // The email is trimmed before it reaches the server, and auth uses the
-    // guest's CURRENT session token — upgrade never mints or reads a new one.
+    // Only the password reaches the server (the cloud generates the Account
+    // ID), and auth uses the guest's CURRENT session token — upgrade never
+    // mints or reads a new one.
     expect(upgradeGuestAccount).toHaveBeenCalledWith("guest-session-1", {
-      login: "a3f9-0c12-77be-4d01",
       password: "very secure password 12345",
     });
     expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith({
@@ -2179,7 +2179,7 @@ describe("upgradeGuestPartnerAccount", () => {
       storage,
       secretStore,
       guestPreferences,
-      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+      { password: "very secure password 12345" },
       managedClientFactory,
     );
 
@@ -2222,7 +2222,7 @@ describe("upgradeGuestPartnerAccount", () => {
         storage,
         secretStore,
         guestPreferences,
-        { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
+        { password: "very secure password 12345" },
         managedClientFactory,
       );
 
@@ -2510,7 +2510,7 @@ describe("connectSyncAccount input validation", () => {
         mode: "managed",
         deviceLabel: "Pixel 7",
       },
-      { login: "alice@example.com", password: "" },
+      { login: "a3f9-0c12-77be-4d01", password: "" },
       "login",
       new Date("2026-03-20T08:05:00.000Z"),
       jest.fn(),
@@ -2562,7 +2562,7 @@ describe("connectSyncAccount input validation", () => {
         mode: "managed",
         deviceLabel: "Pixel 7",
       },
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       "login",
       new Date("2026-03-20T08:05:00.000Z"),
       apiClientFactory,
@@ -2617,7 +2617,7 @@ describe("connectSyncAccount TOTP challenge handoff", () => {
       storage,
       secretStore,
       preferences,
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       "login",
       new Date("2026-03-20T08:05:00.000Z"),
       jest.fn(),
@@ -3635,7 +3635,7 @@ describe("recoverSyncAccess managed failures", () => {
         storage,
         secretStore,
         managedRecoverPreferences,
-        { login: "alice@example.com", password: "correct horse battery staple" },
+        { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
         validPhrase,
         new Date("2026-03-20T08:05:00.000Z"),
         jest.fn(),
@@ -3680,7 +3680,7 @@ describe("recoverSyncAccess managed failures", () => {
       storage,
       secretStore,
       managedRecoverPreferences,
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       validPhrase,
       new Date("2026-03-20T08:05:00.000Z"),
       jest.fn(),
@@ -3724,7 +3724,7 @@ describe("recoverSyncAccess managed failures", () => {
       storage,
       secretStore,
       managedRecoverPreferences,
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       validPhrase,
       new Date("2026-03-20T08:05:00.000Z"),
       jest.fn(),
@@ -3753,7 +3753,7 @@ describe("recoverSyncAccess managed failures", () => {
       storage,
       secretStore,
       managedRecoverPreferences,
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       validPhrase,
       new Date("2026-03-20T08:05:00.000Z"),
       apiClientFactory,
@@ -3784,7 +3784,7 @@ describe("recoverSyncAccess managed failures", () => {
       storage,
       secretStore,
       managedRecoverPreferences,
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       wrongAccountSecrets.recoveryPhrase,
       new Date("2026-03-20T08:05:00.000Z"),
       apiClientFactory,
@@ -3814,7 +3814,7 @@ describe("recoverSyncAccess managed failures", () => {
       storage,
       secretStore,
       managedRecoverPreferences,
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       originalSecrets.recoveryPhrase,
       new Date("2026-03-20T08:05:00.000Z"),
       apiClientFactory,
@@ -5687,5 +5687,144 @@ describe("snapshot AAD across devices", () => {
       expect(result).toEqual({ ok: false, errorCode: "stale_generation" });
       expect(putBlob).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("managed Account ID sign-in", () => {
+  const managedPrefs = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    deviceLabel: "Pixel 7",
+    setupStatus: "local_ready" as const,
+  };
+  const NOW = new Date("2026-03-20T08:05:00.000Z");
+
+  function managedAuth(login: string, recoveryCode?: string) {
+    return {
+      ok: true,
+      auth: {
+        accountID: "managed-account-1",
+        login,
+        sessionToken: "managed-session-1",
+        sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+        entitlement: {
+          syncAllowed: true,
+          source: "default_register",
+          updatedAt: "2026-03-20T08:05:00.000Z",
+          effectiveAt: "2026-03-20T08:05:00.000Z",
+          explanation: "Trial active.",
+        },
+        ...(recoveryCode ? { recoveryCode } : {}),
+      },
+    };
+  }
+
+  function freshSecretStore() {
+    return createSyncSecretStoreMock(
+      createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z")).record,
+    );
+  }
+
+  it("register sends no identifier and carries the generated Account ID next to the recovery code", async () => {
+    const register = jest
+      .fn()
+      .mockResolvedValue(managedAuth("a3f9-0c12-77be-4d01", "abcd1234abcd1234abcd1234abcd1234"));
+    const result = await connectSyncAccount(
+      createLocalAppStorageMock(),
+      freshSecretStore(),
+      managedPrefs,
+      { login: "typed-and-ignored", password: "correct horse battery staple" },
+      "register",
+      NOW,
+      jest.fn(),
+      jest.fn().mockReturnValue(createManagedClientMock({ register })),
+    );
+
+    expect(register).toHaveBeenCalledWith({ password: "correct horse battery staple" });
+    expect(result).toMatchObject({
+      ok: true,
+      recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+      accountLogin: "a3f9-0c12-77be-4d01",
+    });
+  });
+
+  it("register omits accountLogin when the server returns an empty login", async () => {
+    const result = await connectSyncAccount(
+      createLocalAppStorageMock(),
+      freshSecretStore(),
+      managedPrefs,
+      { login: "", password: "correct horse battery staple" },
+      "register",
+      NOW,
+      jest.fn(),
+      jest.fn().mockReturnValue(
+        createManagedClientMock({
+          register: jest
+            .fn()
+            .mockResolvedValue(managedAuth("", "abcd1234abcd1234abcd1234abcd1234")),
+        }),
+      ),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result).toHaveProperty("recoveryCode", "abcd1234abcd1234abcd1234abcd1234");
+    expect(result).not.toHaveProperty("accountLogin");
+  });
+
+  it("login sends the canonical Account ID", async () => {
+    const login = jest.fn().mockResolvedValue(managedAuth("a3f9-0c12-77be-4d01"));
+    await connectSyncAccount(
+      createLocalAppStorageMock(),
+      freshSecretStore(),
+      managedPrefs,
+      { login: " A3F9-0C12-77BE-4D01 ", password: "correct horse battery staple" },
+      "login",
+      NOW,
+      jest.fn(),
+      jest.fn().mockReturnValue(createManagedClientMock({ login })),
+    );
+
+    expect(login).toHaveBeenCalledWith({
+      login: "a3f90c1277be4d01",
+      password: "correct horse battery staple",
+    });
+  });
+
+  it("login returns account_id_invalid for a login that is not an Account ID", async () => {
+    const managedClientFactory = jest.fn();
+    const result = await connectSyncAccount(
+      createLocalAppStorageMock(),
+      freshSecretStore(),
+      managedPrefs,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      "login",
+      NOW,
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "account_id_invalid" });
+    expect(managedClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("recover returns account_id_invalid for a login that is not an Account ID", async () => {
+    const managedClientFactory = jest.fn();
+    const phrase = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).recoveryPhrase;
+    const result = await recoverSyncAccess(
+      createLocalAppStorageMock(),
+      createSyncSecretStoreMock(null),
+      managedPrefs,
+      { login: "a3f9-0c12", password: "correct horse battery staple" },
+      phrase,
+      NOW,
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "account_id_invalid" });
+    expect(managedClientFactory).not.toHaveBeenCalled();
   });
 });

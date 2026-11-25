@@ -89,7 +89,6 @@ describe("managed-cloud-api-client", () => {
 
     await expect(
       client.register({
-        login: "a3f9-0c12-77be-4d01",
         password: "very-secure-pass",
       }),
     ).resolves.toEqual({
@@ -686,7 +685,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     await expect(
-      client.register({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
+      client.register({ password: "pw" }),
     ).resolves.toEqual({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 15 });
   });
 
@@ -700,7 +699,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     await expect(
-      client.register({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
+      client.register({ password: "pw" }),
     ).resolves.toEqual({ ok: false, errorCode: "trial_unavailable" });
   });
 
@@ -735,7 +734,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     await expect(
-      client.register({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
+      client.register({ password: "pw" }),
     ).resolves.toEqual({ ok: false, errorCode: "generic" });
   });
 
@@ -1031,7 +1030,6 @@ describe("managed-cloud-api-client", () => {
 
     await expect(
       client.upgradeGuestAccount("guest-session-1", {
-        login: "a3f9-0c12-77be-4d01",
         password: "very secure password 12345",
       }),
     ).resolves.toEqual({
@@ -1053,7 +1051,6 @@ describe("managed-cloud-api-client", () => {
     );
     expect(call?.[1]?.body).toBe(
       JSON.stringify({
-        login: "a3f9-0c12-77be-4d01",
         password: "very secure password 12345",
       }),
     );
@@ -1105,7 +1102,7 @@ describe("managed-cloud-api-client", () => {
       "https://managed.example",
       fetch as unknown as typeof global.fetch,
     );
-    const input = { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" };
+    const input = { password: "very secure password 12345" };
 
     await expect(client.upgradeGuestAccount("session-1", input)).resolves.toEqual({
       ok: false,
@@ -1188,7 +1185,6 @@ describe("managed-cloud-api-client", () => {
     );
 
     const result = await client.register({
-      login: "a3f9-0c12-77be-4d01",
       password: "very secure password 12345",
     });
 
@@ -1197,6 +1193,84 @@ describe("managed-cloud-api-client", () => {
       expect(result.auth.recoveryCode).toBe(
         "abcd1234abcd1234abcd1234abcd1234",
       );
+    }
+  });
+
+  it("register sends the password only and no account identifier", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          login: "a3f9-0c12-77be-4d01",
+          email: "",
+          session_token: "managed-session-1",
+          session_expires_at: "2026-03-24T00:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "default_register",
+            updated_at: "2026-03-23T00:00:00.000Z",
+            effective_at: "2026-03-23T00:00:00.000Z",
+            explanation: "Trial active.",
+          },
+          recovery_code: "abcd1234abcd1234abcd1234abcd1234",
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    const result = await client.register({ password: "very secure password 12345" });
+
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://managed.example/auth/register");
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual({
+      password: "very secure password 12345",
+      refresh_supported: true,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.auth.login).toBe("a3f9-0c12-77be-4d01");
+      expect(result.auth).not.toHaveProperty("email");
+    }
+  });
+
+  it("login sends the Account ID as login and maps a guest's empty login to an empty string", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "guest-1",
+          login: "",
+          email: "",
+          session_token: "managed-session-1",
+          session_expires_at: "2026-03-24T00:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "default_register",
+            updated_at: "2026-03-23T00:00:00.000Z",
+            effective_at: "2026-03-23T00:00:00.000Z",
+            explanation: "Trial active.",
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    const result = await client.login({ login: "a3f90c1277be4d01", password: "pw" });
+
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual({
+      login: "a3f90c1277be4d01",
+      password: "pw",
+      refresh_supported: true,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.auth.login).toBe("");
     }
   });
 
@@ -1736,7 +1810,7 @@ describe("managed-cloud-api-client", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.auth.sessionToken).toBe("managed-session-after-totp");
-      expect(result.auth.email).toBe("owner@example.com");
+      expect(result.auth.login).toBe("a3f9-0c12-77be-4d01");
       expect(result.auth.entitlement.syncAllowed).toBe(true);
     }
   });

@@ -151,7 +151,7 @@ describe("billing-cache reset at a new managed session", () => {
       storage,
       secretStore,
       { ...managedPreferences, setupStatus: "local_ready" },
-      { login: "alice@example.com", password: "correct horse battery staple" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
       "login",
       NOW,
       jest.fn(),

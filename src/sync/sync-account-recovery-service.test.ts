@@ -437,7 +437,7 @@ describe("sync-account-recovery-service", () => {
       const result = await requestSyncPasswordReset(
         selfHostedPreferences(),
         {
-          loginOrEmail: "owner@example.com",
+          login: "owner@example.com",
           recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
         },
         apiFactory,
@@ -455,7 +455,7 @@ describe("sync-account-recovery-service", () => {
       });
     });
 
-    it("dispatches to the managed client by email", async () => {
+    it("dispatches to the managed client with the canonical Account ID", async () => {
       const forgotPassword = jest.fn().mockResolvedValue({
         ok: true,
         result: {
@@ -470,7 +470,7 @@ describe("sync-account-recovery-service", () => {
       const result = await requestSyncPasswordReset(
         managedPreferences(),
         {
-          loginOrEmail: "owner@example.com",
+          login: "A3F9-0C12-77BE-4D01",
           recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
         },
         jest.fn(),
@@ -483,9 +483,26 @@ describe("sync-account-recovery-service", () => {
         resetTokenExpiresAt: "2026-03-23T01:00:00.000Z",
       });
       expect(forgotPassword).toHaveBeenCalledWith({
-        login: "a3f9-0c12-77be-4d01",
+        login: "a3f90c1277be4d01",
         recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
       });
+    });
+
+    it("returns account_id_invalid for a malformed managed Account ID before any network call", async () => {
+      const managedFactory = jest.fn();
+
+      const result = await requestSyncPasswordReset(
+        managedPreferences(),
+        {
+          login: "owner@example.com",
+          recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+        },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "account_id_invalid" });
+      expect(managedFactory).not.toHaveBeenCalled();
     });
 
     it("forwards generic invalid_recovery_credentials", async () => {
@@ -500,7 +517,7 @@ describe("sync-account-recovery-service", () => {
       const result = await requestSyncPasswordReset(
         selfHostedPreferences(),
         {
-          loginOrEmail: "ghost@example.com",
+          login: "ghost@example.com",
           recoveryCode: "00000000000000000000000000000000",
         },
         apiFactory,
@@ -518,13 +535,13 @@ describe("sync-account-recovery-service", () => {
 
       const withoutLogin = await requestSyncPasswordReset(
         selfHostedPreferences(),
-        { loginOrEmail: "   ", recoveryCode: "abcd1234abcd1234abcd1234abcd1234" },
+        { login: "   ", recoveryCode: "abcd1234abcd1234abcd1234abcd1234" },
         apiFactory,
         jest.fn(),
       );
       const withoutCode = await requestSyncPasswordReset(
         selfHostedPreferences(),
-        { loginOrEmail: "owner@example.com", recoveryCode: "  " },
+        { login: "owner@example.com", recoveryCode: "  " },
         apiFactory,
         jest.fn(),
       );
@@ -540,7 +557,7 @@ describe("sync-account-recovery-service", () => {
       const result = await requestSyncPasswordReset(
         selfHostedPreferences({ endpointInput: "  " }),
         {
-          loginOrEmail: "owner@example.com",
+          login: "owner@example.com",
           recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
         },
         apiFactory,
@@ -563,7 +580,7 @@ describe("sync-account-recovery-service", () => {
       const result = await requestSyncPasswordReset(
         managedPreferences(),
         {
-          loginOrEmail: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
         },
         jest.fn(),
@@ -585,7 +602,7 @@ describe("sync-account-recovery-service", () => {
       const result = await requestSyncPasswordReset(
         selfHostedPreferences(),
         {
-          loginOrEmail: "owner@example.com",
+          login: "owner@example.com",
           recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
         },
         apiFactory,

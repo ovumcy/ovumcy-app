@@ -25,7 +25,7 @@ import {
 } from "./sync-client-service";
 
 const NOW = new Date("2026-03-20T08:05:00.000Z");
-const CREDENTIALS = { login: "alice@example.com", password: "correct horse battery staple" };
+const CREDENTIALS = { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" };
 
 // A device that uploaded under account A and then disconnected: the floor and
 // the account it was raised under both survive the disconnect.

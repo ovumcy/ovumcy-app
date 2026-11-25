@@ -447,6 +447,14 @@ export function SettingsSyncSetupSection({
                       {errorPresentation.loginMessage}
                     </Text>
                   ) : null}
+                  {presentation.isManaged && activeAccountPane === "auth" ? (
+                    <Text
+                      style={styles.helperText}
+                      testID="settings-sync-managed-login-hint"
+                    >
+                      {viewData.managedLoginHint}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.formGroup}>

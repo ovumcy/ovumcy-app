@@ -335,7 +335,7 @@ export async function completeTOTPChallenge(
     }
     // ManagedCloudAuthResult is a structural superset of SyncAuthResult; we
     // only need the session-token-ish fields here. The caller (login flow)
-    // is the one that picks up the email / entitlement.
+    // is the one that picks up the login / entitlement.
     return {
       ok: true,
       auth: {

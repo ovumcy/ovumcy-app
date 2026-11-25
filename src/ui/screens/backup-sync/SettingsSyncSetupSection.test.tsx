@@ -25,6 +25,7 @@ function createBaseProps(viewData: ReturnType<typeof buildSettingsViewData>["acc
       recoveryPhraseMessage: "",
       syncMessage: "",
     },
+    generatedAccountLogin: "",
     generatedRecoveryCode: "",
     generatedRecoveryPhrase: "",
     hasStoredSyncSecrets: false,
@@ -368,7 +369,7 @@ describe("SettingsSyncSetupSection", () => {
     expect(screen.getByTestId("settings-sync-password-input")).toBeTruthy();
     expect(
       screen.getByTestId("settings-sync-login-input").props.accessibilityLabel,
-    ).toBe(viewData.loginLabel);
+    ).toBe(viewData.managedLoginLabel);
     expect(
       screen.getByTestId("settings-sync-password-input").props.accessibilityLabel,
     ).toBe(viewData.passwordLabel);
@@ -427,8 +428,8 @@ describe("SettingsSyncSetupSection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    expect(viewData.loginLabel).toBe("Email or login");
-    expect(await screen.findByText(viewData.loginLabel)).toBeTruthy();
+    expect(viewData.managedLoginLabel).toBe("Account ID");
+    expect(await screen.findByText(viewData.managedLoginLabel)).toBeTruthy();
     // The redundant per-step status cards (covered now by the guidance banner
     // and per-step done badges) were removed; only the unique last-sync line
     // remains in the recap.
@@ -628,6 +629,113 @@ describe("SettingsSyncSetupSection", () => {
     );
 
     expect(onAcknowledgeRecoveryCode).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the managed Account ID label, placeholder and hint on the sign-in form", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection {...props} />
+      </AppPreferencesTestProvider>,
+    );
+
+    const loginInput = await screen.findByTestId("settings-sync-login-input");
+    expect(loginInput.props.accessibilityLabel).toBe(viewData.managedLoginLabel);
+    expect(loginInput.props.placeholder).toBe(viewData.managedLoginPlaceholder);
+    expect(screen.getByTestId("settings-sync-managed-login-hint").props.children).toBe(
+      viewData.managedLoginHint,
+    );
+  });
+
+  it("keeps the free-form login wording and no Account ID hint in self-hosted mode", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const selfHostedPreferences = {
+      ...props.preferences,
+      mode: "self_hosted" as const,
+      endpointInput: "127.0.0.1:8080",
+    };
+
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: false,
+            hasSyncSession: false,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: selfHostedPreferences,
+            syncCapabilities: null,
+            viewData,
+          })}
+          preferences={selfHostedPreferences}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const loginInput = await screen.findByTestId("settings-sync-login-input");
+    expect(loginInput.props.accessibilityLabel).toBe(viewData.loginLabel);
+    expect(loginInput.props.placeholder).toBe(viewData.loginPlaceholder);
+    expect(screen.queryByTestId("settings-sync-managed-login-hint")).toBeNull();
+  });
+
+  it("shows the recovery kit with the Account ID when one was generated", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const onAcknowledgeRecoveryCode = jest.fn();
+    const props = createBaseProps(viewData);
+
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          generatedAccountLogin="a3f9-0c12-77be-4d01"
+          generatedRecoveryCode="abcd1234abcd1234abcd1234abcd1234"
+          onAcknowledgeRecoveryCode={onAcknowledgeRecoveryCode}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByText(viewData.recoveryKitTitle)).toBeTruthy();
+    expect(await screen.findByText(viewData.recoveryKitHint)).toBeTruthy();
+    expect(screen.queryByText(viewData.recoveryCodeTitle)).toBeNull();
+    expect(screen.getByTestId("settings-sync-account-id-value").props.children).toBe(
+      "a3f9-0c12-77be-4d01",
+    );
+    expect(screen.getByTestId("settings-sync-recovery-code-value").props.children).toBe(
+      "abcd1234abcd1234abcd1234abcd1234",
+    );
+
+    await fireEvent.press(
+      screen.getByTestId("settings-sync-recovery-code-confirm-button"),
+    );
+    expect(onAcknowledgeRecoveryCode).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the Account ID block from the recovery code modal when none was generated", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          generatedRecoveryCode="abcd1234abcd1234abcd1234abcd1234"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByText(viewData.recoveryCodeTitle)).toBeTruthy();
+    expect(screen.queryByText(viewData.recoveryKitTitle)).toBeNull();
+    expect(screen.queryByTestId("settings-sync-account-id-value")).toBeNull();
   });
 
   it("keeps the recovery code modal open on the system back gesture without acknowledging it", async () => {

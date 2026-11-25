@@ -176,7 +176,7 @@ const callSites: CallSite[] = [
         createLocalAppStorageMock(),
         secretStore,
         managedPreferences,
-        { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
+        { password: "correct horse battery staple" },
         cloud.managedClientFactory,
       ),
   },
