@@ -1,5 +1,6 @@
 import { createEmptyDayLogRecord } from "../../../models/day-log";
 import { createDefaultProfileRecord } from "../../../models/profile";
+import { createPostpartumRecord } from "../../../models/postpartum";
 import { createLocalAppStorageMock } from "../../../test/create-local-app-storage-mock";
 import { buildManualCycleStartViewData } from "../../../services/manual-cycle-start-service";
 import { runManualCycleStartAction } from "./run-manual-cycle-start-action";
@@ -183,6 +184,54 @@ describe("run-manual-cycle-start-action", () => {
       // The short-gap confirmation makes the mark uncertain, so it is not
       // mirrored; the stored start lies outside the marked cluster and stays.
       expect.objectContaining({ lastPeriodStart: "2026-02-01" }),
+    );
+  });
+});
+
+describe("run-manual-cycle-start-action after a pregnancy ends", () => {
+  it("rebuilds the prompts with the stored birth date and marks the start uncertain", async () => {
+    const storage = createLocalAppStorageMock({
+      readActivePostpartum: jest
+        .fn()
+        .mockResolvedValue(createPostpartumRecord({ startedAt: "2026-06-01" })),
+    });
+    const profile = {
+      ...createDefaultProfileRecord(),
+      autoPeriodFill: false,
+      lastPeriodStart: "2025-09-01",
+    };
+    const records = [
+      { ...createEmptyDayLogRecord("2025-09-01"), cycleStart: true, isPeriod: true },
+    ];
+    const draftRecord = { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true };
+    const now = new Date(2026, 5, 20);
+    // The screen's view data carries no pregnancy end dates, so no prompt.
+    const manualCycleStart = buildManualCycleStartViewData(profile, records, draftRecord, now, "en");
+    expect(manualCycleStart?.prompts).toEqual([]);
+
+    const confirmPrompt = jest.fn().mockResolvedValue(true);
+    const result = await runManualCycleStartAction({
+      cancelLabel: "Cancel",
+      confirmPrompt,
+      locale: "en",
+      manualCycleStart: manualCycleStart!,
+      now,
+      profile,
+      record: draftRecord,
+      records,
+      storage,
+    });
+
+    expect(confirmPrompt).toHaveBeenCalledWith(
+      expect.stringContaining("Days since the pregnancy ended: 10."),
+      "Mark anyway",
+      "Cancel",
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        record: expect.objectContaining({ isUncertain: true }),
+      }),
     );
   });
 });

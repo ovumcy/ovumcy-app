@@ -39,6 +39,9 @@ export type ManualCycleStartViewData = {
 
 type ManualCycleStartPolicy = {
   conflictDateLabel: string;
+  // Where the short-gap count is measured from: the previous cycle start, or
+  // a pregnancy end that came after it.
+  gapSource: "cycle" | "pregnancy_end";
   hasConflict: boolean;
   implantationGapDays: number;
   markUncertainRequired: boolean;
@@ -64,6 +67,7 @@ export function buildManualCycleStartViewData(
     // pregnancy record or the day-log pregnancy pause, as the screen loader
     // resolved them from the shared cycle history.
     predictionsSuppressed?: boolean;
+    pregnancyEndDates?: readonly string[];
   } = {},
 ): ManualCycleStartViewData | null {
   const dashboardCopy = getDashboardCopy(locale);
@@ -85,7 +89,14 @@ export function buildManualCycleStartViewData(
   }
 
   const mergedRecords = mergeDraftRecord(records, record);
-  const policy = resolveManualCycleStartPolicy(profile, mergedRecords, record.date, now, locale);
+  const policy = resolveManualCycleStartPolicy(
+    profile,
+    mergedRecords,
+    record.date,
+    now,
+    locale,
+    options.pregnancyEndDates ?? [],
+  );
   const prompts: ManualCycleStartPrompt[] = [];
   // The implantation notice is a prediction: it places the bleed against an
   // estimated ovulation, so it obeys the same suppression as every other
@@ -110,10 +121,12 @@ export function buildManualCycleStartViewData(
     prompts.push({
       acceptLabel: dashboardCopy.cycleStartShortGapAccept,
       kind: "short_gap",
-      message: formatPromptMessage(dashboardCopy.cycleStartShortGapMessage, [
-        String(policy.shortGapDays),
-        policy.previousDateLabel,
-      ]),
+      message: formatPromptMessage(
+        policy.gapSource === "pregnancy_end"
+          ? dashboardCopy.cycleStartPregnancyEndGapMessage
+          : dashboardCopy.cycleStartShortGapMessage,
+        [String(policy.shortGapDays), policy.previousDateLabel],
+      ),
     });
   }
 
@@ -145,6 +158,7 @@ export async function applyManualCycleStart(
   locale = "en",
   options: {
     markUncertain: boolean;
+    pregnancyEndDates?: readonly string[];
     replaceExisting: boolean;
   },
 ): Promise<ManualCycleStartResult> {
@@ -167,7 +181,14 @@ export async function applyManualCycleStart(
   }
 
   const mergedRecords = mergeDraftRecord(records, record);
-  const policy = resolveManualCycleStartPolicy(profile, mergedRecords, record.date, now, locale);
+  const policy = resolveManualCycleStartPolicy(
+    profile,
+    mergedRecords,
+    record.date,
+    now,
+    locale,
+    options.pregnancyEndDates ?? [],
+  );
 
   if (policy.hasConflict && !options.replaceExisting) {
     return {
@@ -286,11 +307,13 @@ function resolveManualCycleStartPolicy(
   date: string,
   now: Date,
   locale: string,
+  pregnancyEndDates: readonly string[],
 ): ManualCycleStartPolicy {
   const targetDate = parseLocalDate(date);
   if (!targetDate) {
     return {
       conflictDateLabel: "",
+      gapSource: "cycle",
       hasConflict: false,
       implantationGapDays: 0,
       markUncertainRequired: false,
@@ -307,32 +330,80 @@ function resolveManualCycleStartPolicy(
     [...records],
     formatLocalDate(addDays(targetDate, -1)),
   );
-  const shortGapDays = previousAnchorValue
-    ? diffCalendarDays(parseLocalDate(previousAnchorValue), targetDate)
+  // A pregnancy that ended after the previous cycle start replaces it as the
+  // gap reference: bleeding soon after a birth or loss is rarely a new cycle,
+  // and a gap counted from a pre-pregnancy start says nothing.
+  const pregnancyEndValue = resolveLatestPregnancyEndOnOrBefore(pregnancyEndDates, date);
+  const measuresFromPregnancyEnd =
+    pregnancyEndValue !== null &&
+    (previousAnchorValue === null || pregnancyEndValue > previousAnchorValue);
+  const gapReferenceValue = measuresFromPregnancyEnd ? pregnancyEndValue : previousAnchorValue;
+  const shortGapDays = gapReferenceValue
+    ? diffCalendarDays(parseLocalDate(gapReferenceValue), targetDate)
     : 0;
-  const [implantationGapDays, potentialImplantation] = resolvePotentialImplantationGapDays(
-    profile,
-    records,
-    targetDate,
-    previousAnchorValue,
-  );
+  // The implantation window sits against the previous start's ovulation,
+  // which a later pregnancy end makes irrelevant.
+  const [implantationGapDays, potentialImplantation] = measuresFromPregnancyEnd
+    ? [0, false]
+    : resolvePotentialImplantationGapDays(profile, records, targetDate, previousAnchorValue);
   const conflictDateValue = findCompetingCycleStartDate(records, date);
 
   return {
     conflictDateLabel: conflictDateValue
       ? formatDisplayDate(conflictDateValue, locale)
       : "",
+    gapSource: measuresFromPregnancyEnd ? "pregnancy_end" : "cycle",
     hasConflict: Boolean(conflictDateValue),
     implantationGapDays,
-    markUncertainRequired: shortGapDays > 0 && shortGapDays < MANUAL_CYCLE_START_SUGGESTION_GAP_DAYS,
+    // A mark on the pregnancy-end day itself (gap 0) still counts as short;
+    // a previous cycle start is always at least a day back.
+    markUncertainRequired:
+      gapReferenceValue !== null &&
+      shortGapDays >= (measuresFromPregnancyEnd ? 0 : 1) &&
+      shortGapDays < MANUAL_CYCLE_START_SUGGESTION_GAP_DAYS,
     potentialImplantation,
-    previousDateLabel: previousAnchorValue
-      ? formatDisplayDate(previousAnchorValue, locale)
+    previousDateLabel: gapReferenceValue
+      ? formatDisplayDate(gapReferenceValue, locale)
       : "",
     previousStartValue: previousAnchorValue,
     shortGapDays,
     targetDateLabel: formatDisplayDate(date, locale),
   };
+}
+
+function resolveLatestPregnancyEndOnOrBefore(
+  pregnancyEndDates: readonly string[],
+  date: string,
+): string | null {
+  let latest: string | null = null;
+  for (const endDate of pregnancyEndDates) {
+    if (parseLocalDate(endDate) && endDate <= date && (latest === null || endDate > latest)) {
+      latest = endDate;
+    }
+  }
+  return latest;
+}
+
+// The dates the short-gap check measures from: every ended pregnancy's end,
+// plus the active postpartum record's birth date (it outlives a deleted
+// pregnancy record). Read on the mark action only, so a screen load never
+// touches the pregnancy tables. A failed read falls back to the cycle-start
+// reference rather than blocking the mark.
+export async function listManualCycleStartPregnancyEndDates(
+  storage: LocalAppStorage,
+): Promise<string[]> {
+  try {
+    const [pregnancyRecords, activePostpartum] = await Promise.all([
+      storage.listPregnancyRecords(),
+      storage.readActivePostpartum(),
+    ]);
+    const endDates = pregnancyRecords.flatMap((pregnancy) =>
+      pregnancy.status === "ended" && pregnancy.endedAt ? [pregnancy.endedAt] : [],
+    );
+    return activePostpartum ? [...endDates, activePostpartum.startedAt] : endDates;
+  } catch {
+    return [];
+  }
 }
 
 function resolvePotentialImplantationGapDays(

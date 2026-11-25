@@ -27,6 +27,8 @@ const dashboardCopyEn = {
     "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
   pregnancyConcludedPausedHint:
     "Cycle predictions stay paused until your next period. Log it when it starts to resume them.",
+  postpartumCycleHint:
+    "Your first period after birth may take weeks or months to return, often longer while breastfeeding. Log it when it starts to resume cycle predictions.",
   predictionDisclaimer:
     "These are estimates, not medical advice or a method of contraception.",
   cycleHeroDayLabel: "Day",
@@ -35,6 +37,7 @@ const dashboardCopyEn = {
   cycleHeroFactsOnly: "Predictions off",
   cycleHeroWaiting: "Add a cycle start",
   cycleHeroPaused: "Predictions paused",
+  cycleHeroPostpartum: "Waiting for your first period after birth",
   cycleHeroStale: "Cycle data may be outdated. Log your period when it starts.",
   cycleHeroPhaseCards: {
     period: "Period",
@@ -87,6 +90,8 @@ const dashboardCopyEn = {
     "Confirm replacing the already marked cycle start.",
   cycleStartShortGapMessage:
     "⚠️ Only %s days have passed since the previous cycle. This may not be a new cycle. Previous date: %s.",
+  cycleStartPregnancyEndGapMessage:
+    "⚠️ Days since the pregnancy ended: %s. Bleeding this soon afterwards is usually not a new cycle. End date: %s.",
   cycleStartShortGapAccept: "Mark anyway",
   cycleStartConfirmationRequired:
     "Confirm marking a cycle start with a short gap.",
@@ -125,6 +130,8 @@ const dashboardCopyDe: DashboardCopy = {
     "Nach einem positiven Schwangerschaftstest pausieren die Zyklusvorhersagen. Erfassen Sie eine neue Periode, um sie fortzusetzen.",
   pregnancyConcludedPausedHint:
     "Die Zyklusvorhersagen bleiben bis zu Ihrer nächsten Periode pausiert. Erfassen Sie sie, sobald sie beginnt, um sie fortzusetzen.",
+  postpartumCycleHint:
+    "Bis zur ersten Periode nach der Geburt können Wochen oder Monate vergehen, beim Stillen oft länger. Erfassen Sie sie, sobald sie beginnt, um die Zyklusvorhersagen fortzusetzen.",
   predictionDisclaimer:
     "Dies sind Schätzungen, keine medizinische Beratung und keine Verhütungsmethode.",
   cycleHeroDayLabel: "Tag",
@@ -133,6 +140,7 @@ const dashboardCopyDe: DashboardCopy = {
   cycleHeroFactsOnly: "Vorhersagen aus",
   cycleHeroWaiting: "Zyklusbeginn ergänzen",
   cycleHeroPaused: "Vorhersagen pausiert",
+  cycleHeroPostpartum: "Warten auf die erste Periode nach der Geburt",
   cycleHeroStale:
     "Zyklusdaten könnten veraltet sein. Erfassen Sie Ihre Periode, sobald sie beginnt.",
   cycleHeroPhaseCards: {
@@ -187,6 +195,8 @@ const dashboardCopyDe: DashboardCopy = {
     "Bestätigen Sie das Ersetzen des bereits markierten Zyklusbeginns.",
   cycleStartShortGapMessage:
     "⚠️ Seit dem vorherigen Zyklus sind erst %s Tage vergangen. Das ist vielleicht kein neuer Zyklus. Vorheriges Datum: %s.",
+  cycleStartPregnancyEndGapMessage:
+    "⚠️ Tage seit dem Ende der Schwangerschaft: %s. Eine Blutung so kurz danach ist meist kein neuer Zyklus. Enddatum: %s.",
   cycleStartShortGapAccept: "Trotzdem markieren",
   cycleStartConfirmationRequired:
     "Bestätigen Sie das Markieren eines Zyklusbeginns mit kurzem Abstand.",
@@ -224,6 +234,8 @@ const dashboardCopyFr: DashboardCopy = {
     "Les prédictions de cycle sont en pause après un test de grossesse positif. Enregistrez de nouvelles règles pour les reprendre.",
   pregnancyConcludedPausedHint:
     "Les prédictions de cycle restent en pause jusqu'à vos prochaines règles. Enregistrez-les dès qu'elles commencent pour les reprendre.",
+  postpartumCycleHint:
+    "Le retour des règles après l'accouchement peut prendre des semaines ou des mois, souvent plus pendant l'allaitement. Enregistrez-les dès qu'elles commencent pour reprendre les prédictions de cycle.",
   predictionDisclaimer:
     "Ce sont des estimations, pas un avis médical ni une méthode de contraception.",
   cycleHeroDayLabel: "Jour",
@@ -232,6 +244,7 @@ const dashboardCopyFr: DashboardCopy = {
   cycleHeroFactsOnly: "Prédictions désactivées",
   cycleHeroWaiting: "Ajoutez un début de cycle",
   cycleHeroPaused: "Prédictions en pause",
+  cycleHeroPostpartum: "En attente de vos premières règles après l'accouchement",
   cycleHeroStale:
     "Les données du cycle peuvent être obsolètes. Enregistrez vos règles dès qu'elles commencent.",
   cycleHeroPhaseCards: {
@@ -286,6 +299,8 @@ const dashboardCopyFr: DashboardCopy = {
     "Confirmez le remplacement du début de cycle déjà marqué.",
   cycleStartShortGapMessage:
     "⚠️ Seulement %s jours se sont écoulés depuis le cycle précédent. Ce n'est peut-être pas un nouveau cycle. Date précédente : %s.",
+  cycleStartPregnancyEndGapMessage:
+    "⚠️ Jours depuis la fin de la grossesse : %s. Un saignement si tôt n'est généralement pas un nouveau cycle. Date de fin : %s.",
   cycleStartShortGapAccept: "Marquer quand même",
   cycleStartConfirmationRequired:
     "Confirmez le marquage d'un début de cycle avec un intervalle court.",
@@ -324,6 +339,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "Прогнозы цикла приостановлены после положительного теста на беременность. Отметьте начало новых месячных, чтобы возобновить их.",
     pregnancyConcludedPausedHint:
       "Прогнозы цикла остаются на паузе до следующих месячных. Отметьте их начало, чтобы возобновить прогнозы.",
+    postpartumCycleHint:
+      "Первые месячные после родов могут прийти через недели или месяцы, при грудном вскармливании часто позже. Отметьте их начало, чтобы возобновить прогнозы цикла.",
     predictionDisclaimer:
       "Это оценки, а не медицинский совет и не метод контрацепции.",
     cycleHeroDayLabel: "День",
@@ -332,6 +349,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleHeroFactsOnly: "Прогнозы выключены",
     cycleHeroWaiting: "Добавьте начало цикла",
     cycleHeroPaused: "Прогнозы на паузе",
+    cycleHeroPostpartum: "Ожидание первых месячных после родов",
     cycleHeroStale:
       "Данные цикла могут быть устаревшими. Отметьте начало новых месячных, когда они начнутся.",
     cycleHeroPhaseCards: {
@@ -386,6 +404,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "Подтвердите замену уже отмеченного начала цикла.",
     cycleStartShortGapMessage:
       "⚠️ С прошлого цикла прошло только %s дней. Возможно, это не новый цикл. Предыдущая дата: %s.",
+    cycleStartPregnancyEndGapMessage:
+      "⚠️ Дней с окончания беременности: %s. Кровотечение так скоро обычно не означает новый цикл. Дата окончания: %s.",
     cycleStartShortGapAccept: "Отметить всё равно",
     cycleStartConfirmationRequired:
       "Подтвердите отметку начала цикла при коротком интервале.",
@@ -421,6 +441,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "Las predicciones del ciclo están en pausa tras un test de embarazo positivo. Registra una nueva regla para reanudarlas.",
     pregnancyConcludedPausedHint:
       "Las predicciones del ciclo siguen en pausa hasta tu próxima regla. Regístrala cuando empiece para reanudarlas.",
+    postpartumCycleHint:
+      "La primera regla después del parto puede tardar semanas o meses, a menudo más durante la lactancia. Regístrala cuando empiece para reanudar las predicciones del ciclo.",
     predictionDisclaimer:
       "Son estimaciones, no consejo médico ni un método anticonceptivo.",
     cycleHeroDayLabel: "Día",
@@ -429,6 +451,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleHeroFactsOnly: "Predicciones desactivadas",
     cycleHeroWaiting: "Añade un inicio de ciclo",
     cycleHeroPaused: "Predicciones en pausa",
+    cycleHeroPostpartum: "Esperando tu primera regla después del parto",
     cycleHeroStale:
       "Los datos del ciclo pueden estar desactualizados. Registra tu período cuando empiece.",
     cycleHeroPhaseCards: {
@@ -483,6 +506,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "Confirma el reemplazo del inicio de ciclo ya marcado.",
     cycleStartShortGapMessage:
       "⚠️ Solo han pasado %s días desde el ciclo anterior. Puede que no sea un ciclo nuevo. Fecha anterior: %s.",
+    cycleStartPregnancyEndGapMessage:
+      "⚠️ Días desde el final del embarazo: %s. Un sangrado tan pronto no suele ser un ciclo nuevo. Fecha de finalización: %s.",
     cycleStartShortGapAccept: "Marcar de todos modos",
     cycleStartConfirmationRequired:
       "Confirma marcar un inicio de ciclo con un intervalo corto.",
@@ -519,6 +544,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "Le previsioni del ciclo sono sospese dopo un test di gravidanza positivo. Registra un nuovo ciclo per riattivarle.",
     pregnancyConcludedPausedHint:
       "Le previsioni del ciclo restano in pausa fino al prossimo ciclo. Registralo quando inizia per riattivarle.",
+    postpartumCycleHint:
+      "Il primo ciclo dopo il parto può arrivare dopo settimane o mesi, spesso più tardi durante l'allattamento. Registralo quando inizia per riattivare le previsioni del ciclo.",
     predictionDisclaimer:
       "Queste sono stime, non consigli medici né un metodo contraccettivo.",
     cycleHeroDayLabel: "Giorno",
@@ -527,6 +554,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleHeroFactsOnly: "Previsioni disattivate",
     cycleHeroWaiting: "Aggiungi un inizio del ciclo",
     cycleHeroPaused: "Previsioni in pausa",
+    cycleHeroPostpartum: "In attesa del primo ciclo dopo il parto",
     cycleHeroStale:
       "I dati del ciclo potrebbero essere obsoleti. Registra il ciclo quando inizia.",
     cycleHeroPhaseCards: {
@@ -581,6 +609,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "Conferma la sostituzione dell'inizio ciclo già segnato.",
     cycleStartShortGapMessage:
       "⚠️ Sono passati solo %s giorni dal ciclo precedente. Potrebbe non trattarsi di un nuovo ciclo. Data precedente: %s.",
+    cycleStartPregnancyEndGapMessage:
+      "⚠️ Giorni dalla fine della gravidanza: %s. Un sanguinamento così presto di solito non è un nuovo ciclo. Data di fine: %s.",
     cycleStartShortGapAccept: "Segna comunque",
     cycleStartConfirmationRequired:
       "Conferma la marcatura di un inizio ciclo con un intervallo breve.",

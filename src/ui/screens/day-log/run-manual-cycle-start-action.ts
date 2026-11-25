@@ -2,6 +2,8 @@ import type { DayLogRecord } from "../../../models/day-log";
 import type { ProfileRecord } from "../../../models/profile";
 import {
   applyManualCycleStart,
+  buildManualCycleStartViewData,
+  listManualCycleStartPregnancyEndDates,
   type ManualCycleStartViewData,
 } from "../../../services/manual-cycle-start-service";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
@@ -42,7 +44,16 @@ export async function runManualCycleStartAction({
   let replaceExisting = false;
   let markUncertain = false;
 
-  for (const prompt of manualCycleStart.prompts) {
+  // The screen's view data is built without pregnancy end dates (a screen
+  // load never reads the pregnancy tables), so the prompts are rebuilt here
+  // with them, and apply checks the same input.
+  const pregnancyEndDates = await listManualCycleStartPregnancyEndDates(storage);
+  const prompts =
+    buildManualCycleStartViewData(profile, records, record, now, locale, {
+      pregnancyEndDates,
+    })?.prompts ?? manualCycleStart.prompts;
+
+  for (const prompt of prompts) {
     const confirmed = await confirmPrompt(
       prompt.message,
       prompt.acceptLabel,
@@ -69,6 +80,7 @@ export async function runManualCycleStartAction({
     locale,
     {
       markUncertain,
+      pregnancyEndDates,
       replaceExisting,
     },
   );

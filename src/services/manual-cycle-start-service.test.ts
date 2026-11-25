@@ -1,10 +1,13 @@
 import { getDashboardCopy } from "../i18n/dashboard-copy";
 import { createEmptyDayLogRecord } from "../models/day-log";
+import { createPostpartumRecord } from "../models/postpartum";
+import { createPregnancyRecord } from "../models/pregnancy";
 import type { ProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   applyManualCycleStart,
   buildManualCycleStartViewData,
+  listManualCycleStartPregnancyEndDates,
 } from "./manual-cycle-start-service";
 
 function createProfileRecord(
@@ -687,5 +690,164 @@ describe("early-bleeding notice structure (medical safety)", () => {
     );
 
     expect(viewData?.notices.implantation).toBeUndefined();
+  });
+});
+
+describe("short-gap check after a pregnancy ends", () => {
+  const profile = createProfileRecord({ lastPeriodStart: "2025-09-01" });
+  const preStartRecords = [
+    { ...createEmptyDayLogRecord("2025-09-01"), isPeriod: true, cycleStart: true },
+  ];
+  const now = new Date(2026, 5, 20);
+
+  function endedPregnancy(endedAt: string) {
+    return {
+      ...createPregnancyRecord({ edd: "2026-06-08", eddBasis: "lmp", startedAt: "2025-09-15" }),
+      status: "ended" as const,
+      endedAt,
+      endReason: "birth" as const,
+    };
+  }
+
+  it("measures the gap from a birth that came after the previous cycle start", () => {
+    const copy = getDashboardCopy("en");
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      preStartRecords,
+      { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true },
+      now,
+      "en",
+      { pregnancyEndDates: ["2026-06-01"] },
+    );
+
+    expect(viewData?.prompts).toEqual([
+      {
+        acceptLabel: copy.cycleStartShortGapAccept,
+        kind: "short_gap",
+        message: copy.cycleStartPregnancyEndGapMessage
+          .replace("%s", "10")
+          .replace("%s", "Jun 1, 2026"),
+      },
+    ]);
+  });
+
+  it("warns on a mark dated the birth day itself", () => {
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      preStartRecords,
+      { ...createEmptyDayLogRecord("2026-06-01"), isPeriod: true },
+      now,
+      "en",
+      { pregnancyEndDates: ["2026-06-01"] },
+    );
+
+    expect(viewData?.prompts.map((prompt) => prompt.kind)).toEqual(["short_gap"]);
+  });
+
+  it("does not warn once the birth is 15 or more days back", () => {
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      preStartRecords,
+      { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true },
+      now,
+      "en",
+      { pregnancyEndDates: ["2026-05-20"] },
+    );
+
+    expect(viewData?.prompts).toEqual([]);
+  });
+
+  it("keeps the cycle-start reference when a cycle start came after the pregnancy end", () => {
+    const recentPreStart = [
+      { ...createEmptyDayLogRecord("2026-06-10"), isPeriod: true, cycleStart: true },
+    ];
+    const viewData = buildManualCycleStartViewData(
+      createProfileRecord({ lastPeriodStart: "2026-06-10" }),
+      recentPreStart,
+      { ...createEmptyDayLogRecord("2026-06-16"), isPeriod: true },
+      now,
+      "en",
+      { pregnancyEndDates: ["2026-05-01"] },
+    );
+
+    expect(viewData?.prompts.map((prompt) => prompt.kind)).toEqual(["short_gap"]);
+    expect(viewData?.prompts[0]?.message).toBe(
+      getDashboardCopy("en")
+        .cycleStartShortGapMessage.replace("%s", "6")
+        .replace("%s", "Jun 10, 2026"),
+    );
+  });
+
+  it("ignores a pregnancy end dated after the marked day", () => {
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      preStartRecords,
+      { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true },
+      now,
+      "en",
+      { pregnancyEndDates: ["2026-06-15"] },
+    );
+
+    expect(viewData?.prompts).toEqual([]);
+  });
+
+  it("requires and stores the uncertain flag on apply when the gap counts from the birth", async () => {
+    const storage = createLocalAppStorageMock();
+    const draftRecord = { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true };
+
+    const refused = await applyManualCycleStart(
+      storage,
+      profile,
+      preStartRecords,
+      draftRecord,
+      now,
+      "en",
+      { markUncertain: false, pregnancyEndDates: ["2026-06-01"], replaceExisting: false },
+    );
+    expect(refused).toEqual({
+      ok: false,
+      errorMessage: "Confirm marking a cycle start with a short gap.",
+    });
+
+    const applied = await applyManualCycleStart(
+      storage,
+      profile,
+      preStartRecords,
+      draftRecord,
+      now,
+      "en",
+      { markUncertain: true, pregnancyEndDates: ["2026-06-01"], replaceExisting: false },
+    );
+    expect(applied).toEqual(
+      expect.objectContaining({
+        ok: true,
+        record: expect.objectContaining({ date: "2026-06-11", isUncertain: true }),
+      }),
+    );
+  });
+
+  it("lists ended pregnancy ends and the active postpartum birth date", async () => {
+    const storage = createLocalAppStorageMock({
+      listPregnancyRecords: jest.fn().mockResolvedValue([
+        endedPregnancy("2026-06-01"),
+        createPregnancyRecord({ edd: "2027-01-01", eddBasis: "lmp", startedAt: "2026-04-01" }),
+      ]),
+      readActivePostpartum: jest
+        .fn()
+        .mockResolvedValue(createPostpartumRecord({ startedAt: "2026-06-02" })),
+    });
+
+    await expect(listManualCycleStartPregnancyEndDates(storage)).resolves.toEqual([
+      "2026-06-01",
+      "2026-06-02",
+    ]);
+  });
+
+  it("falls back to no pregnancy end dates when the read fails", async () => {
+    const storage = createLocalAppStorageMock({
+      listPregnancyRecords: jest.fn().mockRejectedValue(new Error("locked")),
+    });
+
+    await expect(listManualCycleStartPregnancyEndDates(storage)).resolves.toEqual([]);
   });
 });
