@@ -45,7 +45,7 @@
     "version": "1.0.0",
     "android": {
       "package": "app.ovumcy.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "allowBackup": false,
       "permissions": [
         "com.android.vending.BILLING"
