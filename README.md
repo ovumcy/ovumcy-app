@@ -291,7 +291,7 @@ Period and fertile-window predictions in particular are statistical estimates de
 
 - every free owner flow works as a local-first slice on-device: onboarding, dashboard, calendar, day logging, statistics, custom symptoms, reminders, settings, export, and offline import;
 - Ovumcy Cloud premium surfaces are wired client-side: without an active plan they show as cleanly locked (never a silent hide, never an error), and they render fully when the managed billing snapshot reports premium features active;
-- community and managed sync have encrypted round-trip integration suites; those live suites run only against a configured server (`OVUMCY_SYNC_LIVE_BASE_URL` / `OVUMCY_MANAGED_LIVE_BASE_URL`) and are skipped by default; CI runs the community suite against a server built from the pinned `ovumcy-sync-community` commit, while the managed suite stays opt-in;
+- community and managed sync have encrypted round-trip integration suites; those live suites run only against a configured server (`OVUMCY_SYNC_LIVE_BASE_URL` / `OVUMCY_MANAGED_LIVE_BASE_URL`) and are skipped by default; CI runs the community suite against a server built from the pinned `ovumcy-sync-community` commit and, on a schedule, the managed suite against pinned managed + community servers;
 - the pregnancy, postpartum, and mood check-in module is implemented and tested end to end, including backup, sync, and export of its records.
 
 What the repository does **not** claim yet:
@@ -368,7 +368,7 @@ The automated baseline:
 - `lint`, `typecheck`, and `expo-doctor`;
 - Jest screen, service, and storage tests, with reference tests that check the worked examples in [docs/cycle-prediction.md](docs/cycle-prediction.md);
 - `fast-check` property tests for the payload and partner-share crypto (`src/security/*.property.test.ts`);
-- live sync round-trips (`src/sync/*.live.test.ts`), skipped unless a live server is configured; the community suite runs in CI against the pinned `ovumcy-sync-community` commit;
+- live sync round-trips (`src/sync/*.live.test.ts`), skipped unless a live server is configured; CI runs the community suite against its pinned commit, and the managed suite on a schedule;
 - the Playwright web smoke for onboarding and the app shell;
 - a production dependency audit, Trivy filesystem scanning, CodeQL, and Dependabot updates for `npm` and `github-actions`.
 

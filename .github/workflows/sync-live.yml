@@ -5,8 +5,7 @@ name: Sync live contract
 # cross-repo-manifest.json, so an app-side transport-contract change fails here
 # instead of passing a mocked suite; peer-side drift surfaces when the pin is
 # refreshed. The peer is public, so no secret is
-# needed. The managed live suite stays opt-in (TESTING.md): it needs the private
-# ovumcy-managed repo and an admin token.
+# needed. The managed live suite runs in managed-live.yml.
 
 on:
   push:

@@ -1,0 +1,156 @@
+name: Managed live contract
+
+# Runs the managed live suite (src/sync/sync-client-service.managed.live.test.ts)
+# against a real ovumcy-managed server bridged to a real ovumcy-sync-community
+# server, both built from the commits pinned in cross-repo-manifest.json.
+# ovumcy-managed is private, so its checkout reads through CROSS_REPO_READ_TOKEN
+# (Contents: Read, see docs/cross-repo-contracts.md). The admin token, bridge
+# token and every server key are generated per run and die with the runner; no
+# other secret is stored. Not a required check: it runs on a schedule, on
+# demand, and on a same-repository pull request that edits this file.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/managed-live.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: managed-live-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  managed-live:
+    # A fork pull request receives no secrets, and its code must never run
+    # beside a token that reads the private repository.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read pinned peer commits
+        id: pin
+        run: |
+          echo "sync=$(node -p 'require("./cross-repo-manifest.json").repos["ovumcy-sync-community"].commit')" >> "$GITHUB_OUTPUT"
+          echo "managed=$(node -p 'require("./cross-repo-manifest.json").repos["ovumcy-managed"].commit')" >> "$GITHUB_OUTPUT"
+
+      - name: Generate per-run tokens
+        run: |
+          for name in ADMIN_TOKEN BRIDGE_TOKEN; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+
+      # No Go or npm cache: the pins come from a file a pull request can change,
+      # and a poisoned entry could otherwise reach scheduled runs.
+      - name: Checkout ovumcy-sync-community at the pin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ovumcy/ovumcy-sync-community
+          ref: ${{ steps.pin.outputs.sync }}
+          path: .sync-community
+          persist-credentials: false
+
+      - name: Checkout ovumcy-managed at the pin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ovumcy/ovumcy-managed
+          ref: ${{ steps.pin.outputs.managed }}
+          path: .managed
+          token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup Go for ovumcy-sync-community
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .sync-community/go.mod
+          cache: false
+
+      - name: Start ovumcy-sync-community
+        working-directory: .sync-community
+        env:
+          BIND_ADDR: 127.0.0.1:8080
+          DB_PATH: ${{ runner.temp }}/sync-live.sqlite
+          AUTH_RATE_LIMIT_COUNT: "1000"
+          SYNC_RATE_LIMIT_COUNT: "1000"
+        run: |
+          FIELD_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+          MANAGED_BRIDGE_TOKEN="$BRIDGE_TOKEN"
+          export FIELD_ENCRYPTION_KEY MANAGED_BRIDGE_TOKEN
+          go build -trimpath -o "$RUNNER_TEMP/ovumcy-sync-community" ./cmd/ovumcy-sync-community
+          "$RUNNER_TEMP/ovumcy-sync-community" migrate
+          nohup "$RUNNER_TEMP/ovumcy-sync-community" serve > "$RUNNER_TEMP/sync-server.log" 2>&1 &
+          timeout 60 sh -c 'until curl -sf http://127.0.0.1:8080/healthz > /dev/null; do sleep 1; done'
+
+      - name: Setup Go for ovumcy-managed
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .managed/go.mod
+          cache: false
+
+      - name: Start ovumcy-managed
+        working-directory: .managed
+        env:
+          BIND_ADDR: 127.0.0.1:8090
+          DB_PATH: ${{ runner.temp }}/managed-live.sqlite
+          SYNC_BASE_URL: http://127.0.0.1:8080
+        run: |
+          # The three keys must differ; TRIAL_EMAIL_HASH_KEY unset would answer
+          # signup with 503 trial_unavailable.
+          FIELD_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+          ENTITLEMENT_SIGNING_KEY="$(openssl rand -hex 32)"
+          TRIAL_EMAIL_HASH_KEY="$(openssl rand -hex 32)"
+          SYNC_BRIDGE_TOKEN="$BRIDGE_TOKEN"
+          export FIELD_ENCRYPTION_KEY ENTITLEMENT_SIGNING_KEY TRIAL_EMAIL_HASH_KEY SYNC_BRIDGE_TOKEN
+          go build -trimpath -o "$RUNNER_TEMP/ovumcy-managed" ./cmd/ovumcy-managed
+          nohup "$RUNNER_TEMP/ovumcy-managed" > "$RUNNER_TEMP/managed-server.log" 2>&1 &
+          timeout 60 sh -c 'until curl -sf http://127.0.0.1:8090/readyz > /dev/null; do sleep 1; done'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Live managed suite
+        env:
+          OVUMCY_MANAGED_LIVE_BASE_URL: http://127.0.0.1:8090
+          OVUMCY_SYNC_LIVE_BASE_URL: http://127.0.0.1:8080
+        run: |
+          OVUMCY_MANAGED_LIVE_ADMIN_TOKEN="$ADMIN_TOKEN" \
+            npm run test:live:managed -- --json --outputFile="$RUNNER_TEMP/managed-live.json"
+
+      # The suite is env-gated with describe.skip, so a renamed variable would
+      # turn this job green with nothing run.
+      - name: Assert the suite ran
+        run: |
+          node -e '
+            const r = require(process.env.RUNNER_TEMP + "/managed-live.json");
+            if (r.numPassedTests === 0 || r.numPendingTests > 0) {
+              console.error(`live suite did not run: passed=${r.numPassedTests} pending=${r.numPendingTests}`);
+              process.exit(1);
+            }'
+
+      - name: Server logs
+        if: ${{ failure() }}
+        run: |
+          echo "--- ovumcy-managed"; cat "$RUNNER_TEMP/managed-server.log" || true
+          echo "--- ovumcy-sync-community"; cat "$RUNNER_TEMP/sync-server.log" || true
