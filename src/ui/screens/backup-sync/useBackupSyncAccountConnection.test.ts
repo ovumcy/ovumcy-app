@@ -344,10 +344,31 @@ describe("useBackupSyncAccountConnection", () => {
       expect(core.setGeneratedRecoveryCode).toHaveBeenCalledWith(
         "abcd1234abcd1234abcd1234abcd1234",
       );
+      expect(core.setGeneratedAccountLogin).toHaveBeenCalledWith("");
       expect(core.setErrorState).toHaveBeenCalledWith({
         code: "network_failed",
         scope: "account",
       });
+    });
+
+    it("surfaces the Account ID with the recovery code when a managed register's later steps fail", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockConnectBackupSyncAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "sync_not_prepared",
+        recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+        accountLogin: "a3f9-0c12-77be-4d01",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("register");
+      });
+
+      expect(core.setGeneratedRecoveryCode).toHaveBeenCalledWith(
+        "abcd1234abcd1234abcd1234abcd1234",
+      );
+      expect(core.setGeneratedAccountLogin).toHaveBeenCalledWith("a3f9-0c12-77be-4d01");
     });
   });
 

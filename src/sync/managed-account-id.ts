@@ -12,6 +12,7 @@ const ACCOUNT_ID_PATTERN = /^[0-9a-f]{16}$/;
  * exactly 16 hexadecimal characters.
  */
 export function normalizeManagedAccountId(input: string): string | null {
-  const canonical = input.toLowerCase().replace(/[-\s]+/g, "");
+  // Typographic dashes arrive from smart punctuation and pasted notes.
+  const canonical = input.toLowerCase().replace(/[-‐-―−\s]+/g, "");
   return ACCOUNT_ID_PATTERN.test(canonical) ? canonical : null;
 }
