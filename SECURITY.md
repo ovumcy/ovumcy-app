@@ -832,6 +832,28 @@ pregnancy never sets it, so neither signal ever covers the other.
   explicit non-goal recorded in the Accepted-Residual note above, reviewed by
   humans. The token is treated as a hardened UX control over the
   user's own local data, not a DRM trust boundary.
+- **Store purchases (planned, no code yet).** The two purchase flows are modeled
+  in `docs/sync-trust-model.md` (*Purchase flows*). Each claim below becomes a
+  matrix row, with its test, in the change that implements it; none is enforced
+  today.
+  - The pregnancy module is owned only for a `pregnancy_module` purchase in the
+    purchased state; a pending purchase, another product, a subscription alone,
+    or a store error resolves to not owned.
+  - The one-time purchase is acknowledged and never consumed; the store contract
+    has no consume operation.
+  - A locked pregnancy surface routes to the one-time purchase screen, never to
+    the subscription screen (this replaces the informational-only lock card row
+    under the pregnancy module).
+  - Premium turns on only from the billing snapshot the managed cloud returns
+    for a handed-over purchase token; a local purchase record unlocks no premium
+    surface and never writes the offline-grace cache.
+  - A purchase token is never written to app storage, logged, or carried in a
+    route parameter or URL.
+  - The app never acknowledges a subscription purchase.
+  - A server-described store offer whose product or base plan is not on the
+    app's allowlist is dropped.
+  - The two entitlements are independent: neither purchase grants or revokes
+    the other.
 - **Secure-storage backing for keys/secrets.** Keys and sync/partner secrets are
   placed in `expo-secure-store` with device-only accessibility; the OS keystore
   itself is not exercised by Jest (it is mocked), so this is a code-review
