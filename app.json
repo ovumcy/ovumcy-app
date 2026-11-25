@@ -23,6 +23,15 @@
       "./plugins/withIosExcludeDataFromICloudBackup",
       "expo-font",
       [
+        "expo-iap",
+        {
+          "module": "expo-iap",
+          "android": {
+            "store": "play"
+          }
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/branding/ovumcy-splash.png",
