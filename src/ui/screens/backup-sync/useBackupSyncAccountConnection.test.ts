@@ -882,6 +882,27 @@ describe("useBackupSyncAccountConnection", () => {
       );
     });
 
+    it("still completes the disconnect when withdrawing the consent fails", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      jest
+        .mocked(core.storage.readSyncPreferencesRecord)
+        .mockRejectedValue(new Error("storage unavailable"));
+      const disconnectedState = createLoadedSettingsStateFixture({ hasSyncSession: false });
+      mockDisconnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        state: disconnectedState,
+        remoteSignOut: "confirmed",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleDisconnectSync();
+      });
+
+      expect(core.setState).toHaveBeenCalledWith(disconnectedState);
+      expect(core.storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    });
+
     it("tells the owner the server did not confirm the sign-out when the remote revoke failed", async () => {
       const disconnectedState = createLoadedSettingsStateFixture({
         hasSyncSession: false,
