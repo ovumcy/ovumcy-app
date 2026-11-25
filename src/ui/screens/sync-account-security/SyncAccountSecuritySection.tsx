@@ -116,6 +116,8 @@ export type SyncAccountSecuritySectionProps = {
   onTOTPDisablePasswordChange: (value: string) => void;
   totpDisableCode: string;
   onTOTPDisableCodeChange: (value: string) => void;
+  accountLogin: string | null;
+  isManaged: boolean;
   twoFactorEnabled: boolean | null;
   totpStatus: SyncAccountSecurityStatus;
   totpErrorCode: TOTPErrorCode | null;
@@ -194,6 +196,8 @@ export function SyncAccountSecuritySection({
   onTOTPDisablePasswordChange,
   totpDisableCode,
   onTOTPDisableCodeChange,
+  accountLogin,
+  isManaged,
   twoFactorEnabled,
   totpStatus,
   totpErrorCode,
@@ -204,9 +208,24 @@ export function SyncAccountSecuritySection({
 }: SyncAccountSecuritySectionProps) {
   const styles = useThemedStyles(createStyles);
   const isRevealVisible = revealedRecoveryCode.length > 0;
+  const forgotLoginLabel = isManaged
+    ? copy.forgotPassword.managedLoginLabel
+    : copy.forgotPassword.loginLabel;
 
   return (
     <View style={styles.stack}>
+      {accountLogin !== null ? (
+        <FeatureCard title={copy.accountId.title}>
+          <Text style={styles.helperText}>{copy.accountId.hint}</Text>
+          <Text
+            selectable
+            style={styles.fieldLabel}
+            testID="account-security-account-id"
+          >
+            {accountLogin}
+          </Text>
+        </FeatureCard>
+      ) : null}
       <FeatureCard title={copy.changePassword.title}>
         <Text style={styles.helperText}>{copy.changePassword.hint}</Text>
         <Text style={styles.fieldLabel}>
@@ -276,14 +295,12 @@ export function SyncAccountSecuritySection({
         {forgotStage === "credentials" ? (
           <>
             <Text style={styles.helperText}>{copy.forgotPassword.hint}</Text>
-            <Text style={styles.fieldLabel}>
-              {copy.forgotPassword.loginLabel}
-            </Text>
+            <Text style={styles.fieldLabel}>{forgotLoginLabel}</Text>
             <AppTextInput
-              accessibilityLabel={copy.forgotPassword.loginLabel}
+              accessibilityLabel={forgotLoginLabel}
               autoCapitalize="none"
               autoCorrect={false}
-              keyboardType="email-address"
+              keyboardType={isManaged ? "default" : "email-address"}
               onChangeText={onForgotLoginChange}
               style={styles.input}
               testID="account-security-forgot-login"
@@ -776,6 +793,8 @@ function resolveErrorMessage(
       return copy.errors.networkFailed;
     case "login_required":
       return copy.errors.loginRequired;
+    case "account_id_invalid":
+      return copy.errors.accountIdInvalid;
     case "recovery_code_required":
       return copy.errors.recoveryCodeRequired;
     case "reset_token_required":

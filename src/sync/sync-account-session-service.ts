@@ -19,6 +19,9 @@ type ManagedCloudAPIClientFactory = (baseURL: string) => ManagedCloudAPIClient;
  * show a live status instead of inferring it from a login challenge. It routes
  * to the managed or self-hosted server the same way the TOTP operations do.
  *
+ * For a managed account the same read also returns the Account ID the
+ * session reports, so the security screen can show it.
+ *
  * Returns null when the answer is unknown — not connected, no session token, a
  * bad endpoint, or a failed/legacy response — and the caller treats null as
  * "don't claim a 2FA state" rather than guessing.
@@ -28,7 +31,7 @@ export async function describeSyncAccountTwoFactor(
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
-): Promise<{ twoFactorEnabled: boolean } | null> {
+): Promise<{ twoFactorEnabled: boolean; accountLogin: string | null } | null> {
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets) {
     return null;
@@ -40,8 +43,13 @@ export async function describeSyncAccountTwoFactor(
     }
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const result = await client.getSession(secrets.managedAuthSessionToken);
+    // The managed Account ID is read live from the session and held in screen
+    // memory only; it is never written to a store.
     return result.ok
-      ? { twoFactorEnabled: result.session.twoFactorEnabled }
+      ? {
+          twoFactorEnabled: result.session.twoFactorEnabled,
+          accountLogin: result.session.login.length > 0 ? result.session.login : null,
+        }
       : null;
   }
 
@@ -58,6 +66,6 @@ export async function describeSyncAccountTwoFactor(
   const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
   const result = await client.getSession(secrets.authSessionToken);
   return result.ok
-    ? { twoFactorEnabled: result.session.twoFactorEnabled }
+    ? { twoFactorEnabled: result.session.twoFactorEnabled, accountLogin: null }
     : null;
 }

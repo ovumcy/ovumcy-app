@@ -270,6 +270,8 @@ export type SettingsViewData = {
     encryptionMissing: string;
     loginLabel: string;
     loginPlaceholder: string;
+    managedLoginLabel: string;
+    managedLoginPlaceholder: string;
     passwordLabel: string;
     passwordPlaceholder: string;
     recoveryImportTitle: string;
@@ -315,6 +317,9 @@ export type SettingsViewData = {
     recoveryExportLabel: string;
     recoveryCodeTitle: string;
     recoveryCodeHint: string;
+    recoveryKitTitle: string;
+    recoveryKitHint: string;
+    recoveryKitAccountIdLabel: string;
     prepareLabel: string;
     regenerateLabel: string;
     regeneratePrompt: string;
@@ -339,6 +344,7 @@ export type SettingsViewData = {
     };
     errors: {
       loginRequired: string;
+      accountIdInvalid: string;
       passwordRequired: string;
       passwordTooShort: string;
       deviceLabelRequired: string;
@@ -848,6 +854,8 @@ export function buildSettingsViewData(
       encryptionMissing: settingsCopy.account.encryptionMissing,
       loginLabel: settingsCopy.account.loginLabel,
       loginPlaceholder: settingsCopy.account.loginPlaceholder,
+      managedLoginLabel: settingsCopy.account.managedLoginLabel,
+      managedLoginPlaceholder: settingsCopy.account.managedLoginPlaceholder,
       passwordLabel: settingsCopy.account.passwordLabel,
       passwordPlaceholder: settingsCopy.account.passwordPlaceholder,
       recoveryImportTitle: settingsCopy.account.recoveryImportTitle,
@@ -899,6 +907,9 @@ export function buildSettingsViewData(
       recoveryExportLabel: settingsCopy.account.recoveryExportLabel,
       recoveryCodeTitle: settingsCopy.account.recoveryCodeTitle,
       recoveryCodeHint: settingsCopy.account.recoveryCodeHint,
+      recoveryKitTitle: settingsCopy.account.recoveryKitTitle,
+      recoveryKitHint: settingsCopy.account.recoveryKitHint,
+      recoveryKitAccountIdLabel: settingsCopy.account.recoveryKitAccountIdLabel,
       prepareLabel: settingsCopy.account.prepareLabel,
       regenerateLabel: settingsCopy.account.regenerateLabel,
       regeneratePrompt: settingsCopy.account.regeneratePrompt,
@@ -923,6 +934,7 @@ export function buildSettingsViewData(
       },
       errors: {
         loginRequired: settingsCopy.account.errors.loginRequired,
+        accountIdInvalid: settingsCopy.account.errors.accountIdInvalid,
         passwordRequired: settingsCopy.account.errors.passwordRequired,
         passwordTooShort: settingsCopy.account.errors.passwordTooShort,
         deviceLabelRequired: settingsCopy.account.errors.deviceLabelRequired,

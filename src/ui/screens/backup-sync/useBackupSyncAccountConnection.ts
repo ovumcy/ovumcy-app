@@ -106,6 +106,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     if (!result.ok) {
       if (result.recoveryCode) {
         core.setGeneratedRecoveryCode(result.recoveryCode);
+        core.setGeneratedAccountLogin(result.accountLogin ?? "");
       }
       setErrorState({
         code: result.errorCode,
@@ -137,6 +138,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     setState(result.state);
     if (result.recoveryCode) {
       core.setGeneratedRecoveryCode(result.recoveryCode);
+      core.setGeneratedAccountLogin(result.accountLogin ?? "");
     }
     await reloadPartnerAccess(result.state);
     setAccountPasswordValue("");

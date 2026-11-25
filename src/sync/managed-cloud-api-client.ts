@@ -103,7 +103,8 @@ export type ManagedCloudEntitlement = {
 
 export type ManagedCloudSessionView = {
   accountID: string;
-  email: string;
+  // Account ID in the server's grouped display form (xxxx-xxxx-xxxx-xxxx).
+  login: string;
   sessionExpiresAt: string;
   entitlement: ManagedCloudEntitlement;
   twoFactorEnabled: boolean;
@@ -241,7 +242,7 @@ export type ManagedCloudPartnerProjection = {
 
 export type ManagedCloudAuthResult = {
   accountID: string;
-  email: string;
+  login: string;
   sessionToken: string;
   sessionExpiresAt: string;
   entitlement: ManagedCloudEntitlement;
@@ -263,8 +264,8 @@ export type ManagedCloudAuthResult = {
 
 // ManagedCloudGuestPartnerAcceptResult is the response shape of the
 // unauthenticated guest-partner-accept endpoint. It deliberately does NOT
-// mirror ManagedCloudAuthResult: a guest account has no email/password, so
-// the server returns no `email`, no `sync_entitlement` (guest accounts carry
+// mirror ManagedCloudAuthResult: a guest account has no login/password, so
+// the server returns no `login`, no `sync_entitlement` (guest accounts carry
 // none — see PartnerService.AcceptInviteAsGuest in the managed cloud), and no
 // TOTP challenge (a brand-new guest account can never have TOTP enabled).
 export type ManagedCloudGuestPartnerAcceptResult = {
@@ -303,7 +304,7 @@ export type ManagedCloudRegenerateRecoveryCodeResult = {
 // re-fetchable (mirrors the register-flow recovery code contract).
 export type ManagedCloudAccountUpgradeResult = {
   accountID: string;
-  email: string;
+  login: string;
   recoveryCode: string;
 };
 
@@ -351,7 +352,7 @@ export type ManagedCloudAPIClient = {
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
   login(
-    input: { email: string; password: string },
+    input: { login: string; password: string },
   ): Promise<{ ok: true; auth: ManagedCloudAuthResult } | ManagedCloudAuthFailure>;
   // DELETE /auth/session revokes the refresh family under either credential:
   // a live bearer or the refresh token in the body. Send every one held.
@@ -378,14 +379,14 @@ export type ManagedCloudAPIClient = {
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
   register(
-    input: { email: string; password: string },
+    input: { password: string },
   ): Promise<{ ok: true; auth: ManagedCloudAuthResult } | ManagedCloudAuthFailure>;
   changePassword(
     sessionToken: string,
     input: { currentPassword: string; newPassword: string },
   ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
   forgotPassword(
-    input: { email: string; recoveryCode: string },
+    input: { login: string; recoveryCode: string },
   ): Promise<
     | { ok: true; result: ManagedCloudForgotPasswordResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
@@ -486,7 +487,7 @@ export type ManagedCloudAPIClient = {
   // hides the upgrade affordance when it sees that code.
   upgradeGuestAccount(
     sessionToken: string,
-    input: { email: string; password: string },
+    input: { password: string },
   ): Promise<
     | { ok: true; result: ManagedCloudAccountUpgradeResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
@@ -550,7 +551,7 @@ type RawManagedCloudEntitlement = {
 };
 
 type RawManagedCloudAuthResult = RawSyncAuthResult & {
-  email: string;
+  login: string;
   sync_entitlement: RawManagedCloudEntitlement;
   recovery_code?: string;
   totp_challenge?: RawManagedCloudTOTPChallenge;
@@ -587,7 +588,7 @@ type RawManagedCloudChangePasswordResult = {
 
 type RawManagedCloudSessionView = {
   account_id: string;
-  email: string;
+  login: string;
   session_expires_at: string;
   sync_entitlement: RawManagedCloudEntitlement;
   // Optional so an older server that does not yet send it still validates;
@@ -689,7 +690,7 @@ type RawManagedCloudGuestPartnerAcceptResult = {
 
 type RawManagedCloudAccountUpgradeResult = {
   account_id: string;
-  email: string;
+  login: string;
   recovery_code: string;
 };
 
@@ -719,11 +720,16 @@ export function createManagedCloudAPIClient(
 
   return {
     async register(input) {
-      return requestAuthResult(fetchImpl, normalizedBaseURL, "/auth/register", input);
+      return requestAuthResult(fetchImpl, normalizedBaseURL, "/auth/register", {
+        password: input.password,
+      });
     },
 
     async login(input) {
-      return requestAuthResult(fetchImpl, normalizedBaseURL, "/auth/login", input);
+      return requestAuthResult(fetchImpl, normalizedBaseURL, "/auth/login", {
+        login: input.login,
+        password: input.password,
+      });
     },
 
     async logout({ sessionToken, refreshToken }) {
@@ -776,7 +782,7 @@ export function createManagedCloudAPIClient(
         {
           method: "POST",
           body: {
-            email: input.email,
+            login: input.login,
             recovery_code: input.recoveryCode,
           },
         },
@@ -1167,10 +1173,7 @@ export function createManagedCloudAPIClient(
         {
           method: "POST",
           sessionToken,
-          body: {
-            email: input.email,
-            password: input.password,
-          },
+          body: { password: input.password },
         },
         isRawManagedCloudAccountUpgradeResult,
       ).then((result) =>
@@ -1179,7 +1182,7 @@ export function createManagedCloudAPIClient(
               ok: true,
               result: {
                 accountID: result.payload.account_id,
-                email: result.payload.email,
+                login: result.payload.login,
                 recoveryCode: result.payload.recovery_code,
               },
             }
@@ -1274,7 +1277,7 @@ async function requestAuthResult(
   fetchImpl: FetchLike,
   baseURL: string,
   path: string,
-  input: { email: string; password: string },
+  input: { login?: string; password: string },
 ): Promise<{ ok: true; auth: ManagedCloudAuthResult } | ManagedCloudAuthFailure> {
   const result = await requestJSON<RawManagedCloudAuthResult>(
     fetchImpl,
@@ -1588,7 +1591,7 @@ function isRawManagedCloudAuthResult(
   return (
     isObject(value) &&
     typeof value.account_id === "string" &&
-    typeof value.email === "string" &&
+    typeof value.login === "string" &&
     typeof value.session_token === "string" &&
     typeof value.session_expires_at === "string" &&
     isRawManagedCloudEntitlement(value.sync_entitlement) &&
@@ -1654,7 +1657,7 @@ function isRawManagedCloudSessionView(
   return (
     isObject(value) &&
     typeof value.account_id === "string" &&
-    typeof value.email === "string" &&
+    typeof value.login === "string" &&
     typeof value.session_expires_at === "string" &&
     isRawManagedCloudEntitlement(value.sync_entitlement) &&
     (value.totp_enabled === undefined ||
@@ -1835,7 +1838,7 @@ function isRawManagedCloudAccountUpgradeResult(
   return (
     isObject(value) &&
     typeof value.account_id === "string" &&
-    typeof value.email === "string" &&
+    typeof value.login === "string" &&
     typeof value.recovery_code === "string"
   );
 }
@@ -1864,7 +1867,7 @@ function mapEntitlement(
 function mapAuthResult(raw: RawManagedCloudAuthResult): ManagedCloudAuthResult {
   const result: ManagedCloudAuthResult = {
     accountID: raw.account_id,
-    email: raw.email,
+    login: raw.login,
     sessionToken: raw.session_token,
     sessionExpiresAt: raw.session_expires_at,
     entitlement: mapEntitlement(raw.sync_entitlement),
@@ -1895,7 +1898,7 @@ function mapAuthResult(raw: RawManagedCloudAuthResult): ManagedCloudAuthResult {
 function mapSessionView(raw: RawManagedCloudSessionView): ManagedCloudSessionView {
   return {
     accountID: raw.account_id,
-    email: raw.email,
+    login: raw.login,
     sessionExpiresAt: raw.session_expires_at,
     entitlement: mapEntitlement(raw.sync_entitlement),
     twoFactorEnabled: raw.totp_enabled ?? false,

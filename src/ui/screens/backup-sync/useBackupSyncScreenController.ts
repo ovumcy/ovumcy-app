@@ -70,6 +70,7 @@ export function useBackupSyncScreenController(
     dismissedOfferIDs,
     effectiveNow,
     errorState,
+    generatedAccountLogin,
     generatedRecoveryCode,
     generatedRecoveryPhrase,
     isLoading,
@@ -233,6 +234,7 @@ export function useBackupSyncScreenController(
       deviceListItems: deviceManagement.deviceListItems,
       deviceStatusMessage: deviceManagement.deviceStatusMessage,
       errorPresentation,
+      generatedAccountLogin,
       generatedRecoveryCode,
       generatedRecoveryPhrase,
       hasStoredSyncSecrets: state.hasStoredSyncSecrets,
@@ -380,7 +382,6 @@ export function useBackupSyncScreenController(
       onGuestUpgradeAcknowledgeRecoveryCode:
         guestUpgrade.handleAcknowledgeUpgradeRecoveryCode,
       onGuestUpgradeCancelForm: guestUpgrade.handleCancelForm,
-      onGuestUpgradeEmailChange: guestUpgrade.setEmailValue,
       onGuestUpgradePasswordChange: guestUpgrade.setPasswordValue,
       onGuestUpgradeSubmitForm: () => {
         void guestUpgrade.handleSubmitUpgrade();
@@ -400,8 +401,8 @@ export function useBackupSyncScreenController(
       isPartnerInviteReplaced,
       presentation,
       preferences: state.syncPreferences,
-      guestUpgradeEmailValue: guestUpgrade.emailValue,
       guestUpgradeFormErrorMessage: guestUpgrade.formErrorMessage,
+      guestUpgradeGeneratedAccountLogin: guestUpgrade.generatedAccountLogin,
       guestUpgradeGeneratedRecoveryCode: guestUpgrade.generatedRecoveryCode,
       guestUpgradeIsFormOpen: guestUpgrade.isFormOpen,
       guestUpgradeIsSubmitting: guestUpgrade.isSubmitting,
