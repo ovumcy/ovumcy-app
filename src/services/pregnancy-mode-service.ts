@@ -26,7 +26,11 @@ import {
   resolveOutOfWindowReason,
   type PregnancyMilestoneID,
 } from "./pregnancy-timeline-service";
-import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import {
+  addDays,
+  formatLocalDate,
+  parseLocalDate,
+} from "./profile-settings-policy";
 
 // Pregnancy-mode product logic: starting a pregnancy (with a typed validation
 // result), the wizard prefill + live preview, and the pregnancy-dashboard
@@ -210,12 +214,15 @@ export type PregnancyEndDateErrorCode =
   | "before_start";
 
 // Validates a user-entered pregnancy end (birth) date: it must be a real
-// YYYY-MM-DD calendar date, not after today, and not before the day the
-// pregnancy record began. Pure so the screen and the postpartum birth-details
-// edit apply the identical rule. Returns null for an acceptable date.
+// YYYY-MM-DD calendar date, not after today, and not before the pregnancy's
+// estimated start (the LMP, else EDD minus 280 days). The record's startedAt is
+// not the bound: it is the day tracking began, and a record created after the
+// event must still accept the real date. Pure so the screen and the postpartum
+// birth-details edit apply the identical rule. Returns null for an acceptable
+// date.
 export function validatePregnancyEndDate(
   value: string,
-  pregnancy: Pick<PregnancyRecord, "startedAt"> | null,
+  pregnancy: Pick<PregnancyRecord, "edd" | "lmpDate"> | null,
   now: Date,
 ): PregnancyEndDateErrorCode | null {
   const trimmed = value.trim();
@@ -229,10 +236,23 @@ export function validatePregnancyEndDate(
   if (trimmed > formatLocalDate(now)) {
     return "future";
   }
-  if (pregnancy && trimmed < pregnancy.startedAt) {
+  const estimatedStart = pregnancy
+    ? resolveEstimatedPregnancyStart(pregnancy)
+    : null;
+  if (estimatedStart !== null && trimmed < estimatedStart) {
     return "before_start";
   }
   return null;
+}
+
+function resolveEstimatedPregnancyStart(
+  pregnancy: Pick<PregnancyRecord, "edd" | "lmpDate">,
+): LocalDateISO | null {
+  if (pregnancy.lmpDate) {
+    return pregnancy.lmpDate;
+  }
+  const edd = parseLocalDate(pregnancy.edd);
+  return edd ? formatLocalDate(addDays(edd, -GESTATION_DAYS)) : null;
 }
 
 export type EndPregnancyErrorCode =

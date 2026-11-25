@@ -1246,7 +1246,7 @@ describe("endPregnancy explicit endedAt", () => {
 
   it.each([
     ["a future date", "2026-06-11"],
-    ["a date before the record began", "2026-02-28"],
+    ["a date before the estimated pregnancy start", "2025-12-31"],
   ])("rejects %s instead of storing it", async (_label, endedAt) => {
     const storage = createLocalAppStorageMock({
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
@@ -1260,6 +1260,23 @@ describe("endPregnancy explicit endedAt", () => {
 
     expect(result).toEqual({ ok: false, errorCode: "invalid_end_date" });
     expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
+  });
+
+  it("stores a date before the record's tracking start but after the LMP", async () => {
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
+    });
+
+    const result = await endPregnancy(
+      storage,
+      { reason: "loss", endedAt: "2026-02-15" },
+      new Date(2026, 5, 10, 12),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ endedAt: "2026-02-15" }),
+    );
   });
 
   it("stores a padded explicit date trimmed", async () => {

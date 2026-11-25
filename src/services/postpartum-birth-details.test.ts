@@ -37,7 +37,7 @@ function activePostpartum(
 }
 
 describe("validatePregnancyEndDate", () => {
-  const pregnancy = { startedAt: "2026-01-10" };
+  const pregnancy = { edd: "2026-10-17", lmpDate: "2026-01-10" };
 
   it.each([
     ["", "missing_date"],
@@ -58,6 +58,20 @@ describe("validatePregnancyEndDate", () => {
 
   it("skips the lower bound when there is no pregnancy record", () => {
     expect(validatePregnancyEndDate("1999-01-01", null, NOW)).toBeNull();
+  });
+
+  it("bounds by EDD minus 280 days when no LMP is recorded", () => {
+    const scanDated = { edd: "2026-06-05", lmpDate: null };
+    expect(validatePregnancyEndDate("2025-08-28", scanDated, NOW)).toBe(
+      "before_start",
+    );
+    expect(validatePregnancyEndDate("2025-08-29", scanDated, NOW)).toBeNull();
+  });
+
+  it("skips the lower bound when neither LMP nor EDD parses", () => {
+    expect(
+      validatePregnancyEndDate("1999-01-01", { edd: "junk", lmpDate: null }, NOW),
+    ).toBeNull();
   });
 });
 
@@ -151,7 +165,7 @@ describe("updatePostpartumBirthDetails", () => {
     ["", "missing_date"],
     ["junk", "invalid_date"],
     ["2026-06-11", "future"],
-    ["2025-08-31", "before_start"],
+    ["2025-08-28", "before_start"],
   ])("rejects %j as %s without writing", async (startedAt, errorCode) => {
     const { storage } = setup();
 

@@ -1546,7 +1546,7 @@ describe("PregnancyEndScreen end date", () => {
     ["", endCopy.endDate.errors.missingDate],
     ["15/06/2026", endCopy.endDate.errors.invalidDate],
     ["2026-06-16", endCopy.endDate.errors.future],
-    ["2026-02-28", endCopy.endDate.errors.beforeStart],
+    ["2025-12-31", endCopy.endDate.errors.beforeStart],
   ])("blocks the confirm dialog for %j and shows the message", async (value, message) => {
     mockOpenConfirmation.mockResolvedValue(true);
     const storage = activeStorage();
@@ -1707,7 +1707,7 @@ describe("PregnancyEndScreen postpartum birth details edit", () => {
     ["", endCopy.endDate.errors.missingDate],
     ["junk", endCopy.endDate.errors.invalidDate],
     ["2026-06-16", endCopy.endDate.errors.future],
-    ["2026-02-28", endCopy.endDate.errors.beforeStart],
+    ["2025-12-31", endCopy.endDate.errors.beforeStart],
   ])("shows the message for %j and writes nothing", async (value, message) => {
     const storage = editStorage();
     const view = await openForm(storage);
