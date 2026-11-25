@@ -176,6 +176,51 @@ describe("PregnancyUnlockScreen", () => {
     expect(screen.queryByTestId("pregnancy-unlock-buy-button")).toBeNull();
   });
 
+  it("drops a store answer that arrives after the screen has closed", async () => {
+    // Closed while the offer is still loading.
+    let finishLoad: (offer: PregnancyUnlockOffer) => void = () => undefined;
+    const loading = await render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyUnlockScreen
+          loadOffer={() =>
+            new Promise<PregnancyUnlockOffer>((resolve) => {
+              finishLoad = resolve;
+            })
+          }
+        />
+      </AppPreferencesTestProvider>,
+    );
+    await loading.unmount();
+    finishLoad(available);
+    await Promise.resolve();
+
+    // Closed while the purchase sheet, then a restore, is still open: the
+    // store call itself closes the screen before it answers.
+    for (const press of [
+      "pregnancy-unlock-buy-button",
+      "pregnancy-unlock-restore-button",
+    ]) {
+      const closeThenAnswer = jest.fn(async () => {
+        await view.unmount();
+        return "owned" as const;
+      });
+      const view = await render(
+        <AppPreferencesTestProvider languageOverride="en">
+          <PregnancyUnlockScreen
+            loadOffer={async () => available}
+            purchase={closeThenAnswer}
+            restore={closeThenAnswer}
+          />
+        </AppPreferencesTestProvider>,
+      );
+      await fireEvent.press(await screen.findByTestId(press));
+
+      expect(closeThenAnswer).toHaveBeenCalledTimes(1);
+    }
+
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
   it("renders with the default services, which find no store under Jest", async () => {
     await render(
       <AppPreferencesTestProvider languageOverride="en">
