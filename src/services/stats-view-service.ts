@@ -410,8 +410,8 @@ export function buildStatsViewData(
     suppressPredictions?: boolean;
     // Ended pregnancies (a postpartum record as its birth date): a paused
     // projection whose positive test one of them concludes gets the neutral
-    // post-pregnancy hint instead of the positive-test one. Wording only --
-    // suppression above never reads this.
+    // post-pregnancy hint instead of the positive-test one. Suppression reads
+    // it only through the postpartum gate below, which can only widen it.
     endedPregnancies?: readonly Pick<PregnancyRecord, "endedAt">[];
     // The active postpartum record's birth date. With no cycle start logged
     // after it, suppression widens as on the dashboard; never narrows it.
@@ -470,8 +470,9 @@ export function buildStatsViewData(
   // cycleAnchorDate, so the anchor-driven sections (BBT trend/coverline,
   // mucus peak-fertility card, advanced-fertility current-cycle signals)
   // would keep rendering without this OR. predictionExplanation is the one
-  // deliberate exception: it stays keyed on hasActivePregnancy so the plain
-  // pause keeps its own pregnancyPausedHint (same split as the dashboard).
+  // deliberate exception: it is blanked only for an active pregnancy, so the
+  // plain pause keeps its own pregnancyPausedHint and the postpartum gate its
+  // postpartumCycleHint (same split as the dashboard).
   const pausedTestConcluded =
     !hasActivePregnancy &&
     projection.isPregnancyPaused &&
