@@ -2,6 +2,7 @@ import { getDashboardCopy } from "../i18n/dashboard-copy";
 import { getDayLogCopy } from "../i18n/day-log-copy";
 import { getStatsCopy } from "../i18n/stats-copy";
 import type { DayCycleFactorKey, DayLogRecord } from "../models/day-log";
+import type { PregnancyRecord } from "../models/pregnancy";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import {
@@ -32,7 +33,10 @@ import {
   shouldShowLongCycleNotice,
   shouldShowShortCycleNotice,
 } from "./cycle-history-service";
-import { buildPredictionExplanation } from "./prediction-explanation-service";
+import {
+  buildPredictionExplanation,
+  isPausedTestConcluded,
+} from "./prediction-explanation-service";
 import type { ManagedCloudPremiumFeatures } from "../sync/managed-cloud-api-client";
 import {
   buildLastCycleSymptomFrequency,
@@ -316,12 +320,34 @@ export async function loadStatsScreenState(
     reminders: false,
   },
 ): Promise<LoadedStatsState> {
-  const [profile, records, symptomRecords, activePregnancy] = await Promise.all([
-    storage.readProfileRecord(),
-    listCycleHistoryRecords(storage, now),
-    storage.listSymptomRecords(),
-    storage.readActivePregnancy(),
-  ]);
+  const [profile, records, symptomRecords, activePregnancy, activePostpartum] =
+    await Promise.all([
+      storage.readProfileRecord(),
+      listCycleHistoryRecords(storage, now),
+      storage.listSymptomRecords(),
+      storage.readActivePregnancy(),
+      storage.readActivePostpartum(),
+    ]);
+  // Ended pregnancies only reword the pause hint, so the record list is read
+  // only in the state the dashboard reads it in: paused, with no active
+  // pregnancy or postpartum record. An active postpartum record stands in with
+  // its birth date.
+  let endedPregnancies: Pick<PregnancyRecord, "endedAt">[] = [];
+  if (activePostpartum) {
+    endedPregnancies = [{ endedAt: activePostpartum.startedAt }];
+  } else if (
+    !activePregnancy &&
+    buildCurrentCycleProjection(
+      profile,
+      buildCycleHistorySummary(profile, records, now),
+      records,
+      now,
+    ).isPregnancyPaused
+  ) {
+    endedPregnancies = (await storage.listPregnancyRecords()).filter(
+      (record) => record.status === "ended",
+    );
+  }
 
   return {
     profile,
@@ -342,6 +368,7 @@ export async function loadStatsScreenState(
         // being tracked. Same flag, same meaning, same storage read as
         // loadCalendarScreenState.
         suppressPredictions: activePregnancy !== null,
+        endedPregnancies,
       },
     ),
   };
@@ -377,6 +404,11 @@ export function buildStatsViewData(
     // false, so a caller without the record still gets pause-driven
     // suppression, never less.
     suppressPredictions?: boolean;
+    // Ended pregnancies (a postpartum record as its birth date): a paused
+    // projection whose positive test one of them concludes gets the neutral
+    // post-pregnancy hint instead of the positive-test one. Wording only --
+    // suppression above never reads this.
+    endedPregnancies?: readonly Pick<PregnancyRecord, "endedAt">[];
   } = {},
 ): StatsViewData {
   const hasActivePregnancy = options.suppressPredictions ?? false;
@@ -650,7 +682,9 @@ export function buildStatsViewData(
     // itself. Dedicated pregnancy-mode notice copy is still open.
     predictionExplanation: hasActivePregnancy
       ? ""
-      : buildPredictionExplanation(profile, projection, locale),
+      : isPausedTestConcluded(projection, options.endedPregnancies ?? [])
+        ? dashboardCopy.pregnancyConcludedPausedHint
+        : buildPredictionExplanation(profile, projection, locale),
     notices: buildStatsNotices(profile, history, statsCopy),
     trendChart: {
       title: statsCopy.cycleTrend,

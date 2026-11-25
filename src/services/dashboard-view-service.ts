@@ -31,7 +31,10 @@ import {
 } from "./cycle-history-service";
 import { listCycleHistoryRecords } from "./cycle-history-records";
 import { calcOvulationDay, predictCycleWindow } from "./cycle-prediction-policy";
-import { buildPredictionExplanation } from "./prediction-explanation-service";
+import {
+  buildPredictionExplanation,
+  isPausedTestConcluded,
+} from "./prediction-explanation-service";
 import { filterKnownSymptomIDs } from "./symptom-policy";
 import {
   diffLocalDays,
@@ -542,21 +545,6 @@ export function buildDashboardViewData(
   };
 }
 
-// True when the paused projection's positive test belongs to an ended
-// pregnancy: an ended record's endedAt on/after that test date. A positive
-// test dated after the latest ended pregnancy is a new event.
-function isPausedTestConcluded(
-  projection: ReturnType<typeof buildCurrentCycleProjection>,
-  endedPregnancyRecords: readonly Pick<PregnancyRecord, "endedAt">[],
-): boolean {
-  const pregnancyTestDate = projection.pregnancyTestDate;
-  return (
-    pregnancyTestDate !== null &&
-    endedPregnancyRecords.some(
-      (record) => record.endedAt !== null && record.endedAt >= pregnancyTestDate,
-    )
-  );
-}
 
 // The single pregnancy/postpartum-mode branching point (architecture
 // invariant: screens never branch on domain state). Precedence: an active,

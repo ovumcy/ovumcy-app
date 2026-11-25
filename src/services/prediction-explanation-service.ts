@@ -1,4 +1,5 @@
 import { getDashboardCopy } from "../i18n/dashboard-copy";
+import type { PregnancyRecord } from "../models/pregnancy";
 import type { ProfileRecord } from "../models/profile";
 import type { StatsCycleProjection } from "../models/stats";
 
@@ -60,6 +61,24 @@ export function buildPredictionExplanationText(
     default:
       return "";
   }
+}
+
+// True when the paused projection's positive test belongs to an ended
+// pregnancy: an ended record's endedAt on/after that test date (a postpartum
+// record passes its birth date as endedAt). A positive test dated after the
+// latest ended pregnancy is a new event. Only the pause's wording reads this;
+// the pause itself stays owned by cycle-history-service.
+export function isPausedTestConcluded(
+  projection: StatsCycleProjection,
+  endedPregnancies: readonly Pick<PregnancyRecord, "endedAt">[],
+): boolean {
+  const pregnancyTestDate = projection.pregnancyTestDate;
+  return (
+    pregnancyTestDate !== null &&
+    endedPregnancies.some(
+      (record) => record.endedAt !== null && record.endedAt >= pregnancyTestDate,
+    )
+  );
 }
 
 export function buildPredictionExplanation(
