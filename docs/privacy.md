@@ -22,7 +22,7 @@ Every table keeps its real values in an `encrypted_payload` column, sealed with 
 | `profile_settings` | cycle and period lengths, last period start, age group, usage goal, tracking toggles, language and theme override, notification and screen-capture preferences, optional crisis-support contact | yes | defaults only |
 | `day_logs` | period, flow, mood, sex activity, basal temperature, cervical mucus, LH and pregnancy tests, cycle factors, symptom references, notes | yes | opaque lookup key |
 | `symptoms` | symptom catalog (labels, icon, colour, archive flag) | yes (custom labels are free text) | opaque lookup key; label, icon and colour columns hold placeholders |
-| `sync_preferences` | sync mode, endpoint, device label, setup status, last sync time and generation | no | defaults only |
+| `sync_preferences` | sync mode, endpoint, device label, setup status, last sync time and generation; the data-sharing consent record (purpose, consent-text revision, date accepted) | no | defaults only |
 | `managed_billing_cache` | bounded offline-grace copy of the managed billing snapshot | no | none |
 | `pregnancy_records`, `kick_sessions`, `contraction_sessions`, `postpartum_records`, `screening_responses` | pregnancy, postpartum and mood-screening data (screening answers are the most sensitive class) | yes | `status` enum (records) or `day` (sessions, check-ins) only |
 
@@ -55,6 +55,8 @@ Local reminders are scheduled with `expo-notifications`. The visible text is gen
 ## Egress
 
 The app ships no analytics, advertising, crash-reporting, attribution or other third-party SDK, and no over-the-air update channel; the code never requests a push token. This was checked against `package.json` (no such dependency, no `expo-updates`) and the source (the only `fetch` callers are the sync, managed-cloud and PDF-font code below; `expo-linking`'s `openURL` is used for the privacy policy only). Nothing is sent unless an owner action below runs.
+
+Explicit consent comes first. Before a connect, phrase recovery or upload to a sync server (Ovumcy Cloud and a self-hosted server are separate purposes) and before issuing a partner invite, the app checks for a stored consent at the current consent-text revision (`DATA_SHARING_CONSENT_REVISION`, `src/services/data-sharing-consent-service.ts`). Without one it shows a dialog that lists what leaves the device, says it is end-to-end encrypted, names the recipient and how to withdraw, and links the privacy policy (six-locale copy in `src/i18n/data-sharing-consent-copy.ts`). Only the explicit "I agree" button proceeds; the decline button, Back or leaving the screen sends nothing. The acceptance is recorded locally (purpose, revision, date) inside the encrypted `sync_preferences` payload before the first request; a new revision asks again, a disconnect withdraws the sync consent (a managed disconnect also the partner-share consent), and the local-data wipe deletes it. A partner grant that is already active keeps refreshing its projection until it is revoked.
 
 | Call | When | Carries |
 |---|---|---|

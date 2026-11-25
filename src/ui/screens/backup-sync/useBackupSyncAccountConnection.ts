@@ -11,6 +11,11 @@ import {
   disconnectBackupSyncAccount,
   recoverBackupSyncAccess,
 } from "../../../services/backup-sync-screen-service";
+import {
+  resolveDisconnectConsentPurposes,
+  resolveSyncConsentPurpose,
+  withdrawDataSharingConsent,
+} from "../../../services/data-sharing-consent-service";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import { clearManagedPartnerInviteToken } from "../../../security/managed-partner-invite-token-buffer";
 import { openConfirmation } from "../../confirm/open-confirmation";
@@ -26,6 +31,7 @@ import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
 export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
   const {
     effectiveNow,
+    ensureDataSharingConsent,
     language,
     reloadPartnerAccess,
     resetFeedbackMessages,
@@ -68,6 +74,13 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     }
 
     resetFeedbackMessages();
+    if (
+      !(await ensureDataSharingConsent(
+        resolveSyncConsentPurpose(state.syncPreferences.mode),
+      ))
+    ) {
+      return;
+    }
     setIsAuthenticatingSync(true);
 
     const syncReadyState = await saveSyncDraftIfNeeded("account");
@@ -254,6 +267,13 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     }
 
     resetFeedbackMessages();
+    if (
+      !(await ensureDataSharingConsent(
+        resolveSyncConsentPurpose(state.syncPreferences.mode),
+      ))
+    ) {
+      return;
+    }
     setIsRecoveringSync(true);
 
     const syncReadyState = await saveSyncDraftIfNeeded("account");
@@ -368,6 +388,12 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     // can't be redeemed under a different managed account after re-login.
     clearManagedPartnerInviteToken();
     setPendingPartnerInviteToken("");
+    // Disconnecting withdraws the consent, so a later connect asks again. A
+    // failed clear leaves the disconnect itself in place.
+    await withdrawDataSharingConsent(
+      storage,
+      resolveDisconnectConsentPurposes(currentState.savedSyncPreferences.mode),
+    ).catch(() => undefined);
     setErrorState(null);
     setState(result.state);
     await reloadPartnerAccess(result.state);

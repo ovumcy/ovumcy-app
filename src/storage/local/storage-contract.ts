@@ -8,7 +8,10 @@ import type {
 } from "../../models/pregnancy";
 import type { PostpartumRecord } from "../../models/postpartum";
 import type { ScreeningResponse } from "../../models/screening";
-import type { SyncPreferencesRecord } from "../../sync/sync-contract";
+import type {
+  DataSharingConsentRecord,
+  SyncPreferencesRecord,
+} from "../../sync/sync-contract";
 import type { SymptomRecord } from "../../models/symptom";
 
 // ManagedBillingCachedSnapshot is the last-known-good managed billing state
@@ -161,6 +164,7 @@ export type DayLogChangeSet = {
 
 export type SyncPreferencesWriteOptions = {
   restoreInProgress?: boolean;
+  dataSharingConsent?: DataSharingConsentRecord;
 };
 
 export interface LocalAppStorage {
@@ -172,6 +176,8 @@ export interface LocalAppStorage {
   readSyncPreferencesRecord(): Promise<SyncPreferencesRecord>;
   // Keeps the stored `restoreInProgress` and ignores the record's copy unless
   // `options.restoreInProgress` is given; only the sync restore passes it.
+  // `dataSharingConsent` is kept the same way: only the consent service passes
+  // `options.dataSharingConsent`.
   writeSyncPreferencesRecord(
     record: SyncPreferencesRecord,
     options?: SyncPreferencesWriteOptions,

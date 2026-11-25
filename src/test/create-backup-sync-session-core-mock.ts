@@ -108,6 +108,10 @@ export function createBackupSyncSessionCoreMock(
       push: jest.fn(),
       replace: jest.fn(),
     } as unknown as BackupSyncSessionCore["router"],
+    // Consent: granted unless a test overrides it
+    pendingDataSharingConsent: null,
+    ensureDataSharingConsent: jest.fn().mockResolvedValue(true),
+    answerDataSharingConsent: jest.fn(),
     // Root state
     effectiveNow,
     isLoading: false,

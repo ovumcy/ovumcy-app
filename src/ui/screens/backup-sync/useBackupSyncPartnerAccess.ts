@@ -94,6 +94,9 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     }
 
     resetPartnerFeedback();
+    if (!(await core.ensureDataSharingConsent("partner_share"))) {
+      return;
+    }
     setIsPartnerBusy(true);
 
     const clearEpoch = partnerShareSecretStore.readPartnerShareClearEpoch();

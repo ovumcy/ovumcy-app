@@ -46,6 +46,7 @@ import {
   createDefaultSyncPreferencesRecord,
   normalizeSyncMode,
   normalizeSyncSetupStatus,
+  withDataSharingConsent,
   type SyncPreferencesRecord,
 } from "../../sync/sync-contract";
 import {
@@ -464,12 +465,19 @@ export function createSQLiteAppStorage(
   ): Promise<void> {
     const database = await getHydratedDatabase();
     const localDataKey = await getLocalDataKey(database);
+    const stored =
+      options?.restoreInProgress === undefined ||
+      options.dataSharingConsent === undefined
+        ? await readStoredSyncPreferencesRecord(database, localDataKey)
+        : null;
     const restoreInProgress =
-      options?.restoreInProgress ??
-      (await readStoredSyncRestoreInProgress(database, localDataKey));
+      options?.restoreInProgress ?? stored?.restoreInProgress === true;
     await upsertSyncPreferencesRecord(
       database,
-      { ...record, restoreInProgress },
+      withDataSharingConsent(
+        { ...record, restoreInProgress },
+        options?.dataSharingConsent ?? stored?.dataSharingConsent,
+      ),
       localDataKey,
     );
   }
@@ -1586,15 +1594,15 @@ async function upsertProfileRecord(
   );
 }
 
-async function readStoredSyncRestoreInProgress(
+async function readStoredSyncPreferencesRecord(
   database: LocalAppDatabase,
   localDataKey: string,
-): Promise<boolean> {
+): Promise<SyncPreferencesRecord | null> {
   const row = await database.getFirstAsync<
     Pick<SyncPreferencesRow, "encrypted_payload">
   >("SELECT encrypted_payload FROM sync_preferences WHERE id = 1;");
 
-  return (row && mapSyncPreferencesRow(row, localDataKey))?.restoreInProgress === true;
+  return (row && mapSyncPreferencesRow(row, localDataKey)) || null;
 }
 
 async function upsertSyncPreferencesRecord(
@@ -2322,7 +2330,7 @@ function mapNormalizedSyncPreferencesRecord(
 ): SyncPreferencesRecord {
   const defaults = createDefaultSyncPreferencesRecord();
 
-  return {
+  return withDataSharingConsent({
     ...defaults,
     ...record,
     mode: normalizeSyncMode(record.mode),
@@ -2354,7 +2362,7 @@ function mapNormalizedSyncPreferencesRecord(
         : null,
     // A row written before this field existed reads as false.
     restoreInProgress: record.restoreInProgress === true,
-  };
+  }, record.dataSharingConsent);
 }
 
 function buildOpaqueLookupKey(

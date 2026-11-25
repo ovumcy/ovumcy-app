@@ -1,6 +1,6 @@
 import * as Linking from "expo-linking";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigation } from "expo-router/react-navigation";
 
 import { getShellCopy } from "../../../i18n/shell-copy";
@@ -11,7 +11,12 @@ import {
   revertBackupSyncDraftState,
   type BackupSyncErrorScope,
 } from "../../../services/backup-sync-view-service";
+import {
+  hasCurrentDataSharingConsent,
+  recordDataSharingConsent,
+} from "../../../services/data-sharing-consent-service";
 import { loadManagedPartnerAccess } from "../../../services/managed-partner-access-service";
+import type { DataSharingConsentPurpose } from "../../../sync/sync-contract";
 import {
   listManagedPartnerGrantsNeedingReshare,
   reconcileManagedPartnerShareKeys,
@@ -154,6 +159,19 @@ export function useBackupSyncSessionCore({
   const [showPartnerOwnerControls, setShowPartnerOwnerControls] = useState(false);
   const [isSavingSyncDraft, setIsSavingSyncDraft] = useState(false);
   const [dismissedOfferIDs, setDismissedOfferIDs] = useState<string[]>([]);
+  const [pendingDataSharingConsent, setPendingDataSharingConsent] =
+    useState<DataSharingConsentPurpose | null>(null);
+  const dataSharingConsentResolverRef = useRef<
+    ((accepted: boolean) => void) | null
+  >(null);
+  useEffect(
+    () => () => {
+      const resolve = dataSharingConsentResolverRef.current;
+      dataSharingConsentResolverRef.current = null;
+      resolve?.(false);
+    },
+    [],
+  );
   const shellCopy = getShellCopy(language);
   const partnerCopy = getPartnerCopy(language);
   const viewData = buildSettingsViewData(effectiveNow, language);
@@ -455,6 +473,44 @@ export function useBackupSyncSessionCore({
     setPartnerErrorMessage(partnerState.errorMessage);
   }
 
+  // Resolves true only when consent for `purpose` at the current revision is
+  // stored, or the user accepts the consent dialog now and the acceptance is
+  // recorded. Any other outcome resolves false, and the caller sends nothing.
+  async function ensureDataSharingConsent(
+    purpose: DataSharingConsentPurpose,
+  ): Promise<boolean> {
+    try {
+      if (await hasCurrentDataSharingConsent(storage, purpose)) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+    if (dataSharingConsentResolverRef.current) {
+      return false;
+    }
+    const accepted = await new Promise<boolean>((resolve) => {
+      dataSharingConsentResolverRef.current = resolve;
+      setPendingDataSharingConsent(purpose);
+    });
+    if (!accepted) {
+      return false;
+    }
+    try {
+      await recordDataSharingConsent(storage, purpose, now ?? new Date());
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function answerDataSharingConsent(accepted: boolean) {
+    const resolve = dataSharingConsentResolverRef.current;
+    dataSharingConsentResolverRef.current = null;
+    setPendingDataSharingConsent(null);
+    resolve?.(accepted);
+  }
+
   async function saveSyncDraftIfNeeded(scope: BackupSyncErrorScope) {
     if (!state) {
       return null;
@@ -501,6 +557,10 @@ export function useBackupSyncSessionCore({
     // Navigation
     navigation,
     router,
+    // Consent before health data leaves the device
+    pendingDataSharingConsent,
+    ensureDataSharingConsent,
+    answerDataSharingConsent,
     // Root state
     effectiveNow,
     isLoading,
