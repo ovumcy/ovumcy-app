@@ -128,46 +128,112 @@ What the app may and may not infer:
 
 Decision (2026-07-23): the paid offer is three doors, each answering a different
 need and each backed by its own trust anchor. There is deliberately no
-subscription-without-sync SKU (it would be dominated by the one-time unlock) and
+subscription-without-sync SKU (sync adds ~0 marginal cost to the subscription) and
 no expensive lifetime tier.
 
 | Door | Grants | Account | Trust anchor |
 | --- | --- | --- | --- |
 | **Free** | Core tracking, predictions, stats, local CSV/JSON export | none | none — data lives only on the device and dies with it |
-| **One-time premium unlock** (store non-consumable, **target**) | Premium features; no sync, no account, no server round-trip | none | Store receipt verified on-device (StoreKit 2 / Play Billing); restored through the store account |
-| **Monthly + yearly subscription** | Premium features + sync included | needed only for sync — subscribing without enabling sync or connecting the account is allowed | Managed billing snapshot under a managed session (the shipped premium authority) |
+| **One-time pregnancy-module unlock** (store non-consumable `pregnancy_module`, **target**) | The pregnancy / postpartum / check-in module only — no premium feature, no sync, no account, no server round-trip | none | The store's own purchase record read on-device (Play Billing first, StoreKit 2 later); restored through the store account |
+| **Monthly + yearly subscription** (`ovumcy_cloud`, base plans `monthly` / `yearly`; the store purchase is **target**) | Premium features + sync included | none to pay — the purchase may precede the account; premium turns on only after sign-in or registration, and enabling sync stays a separate choice | Managed billing snapshot under a managed session (the shipped premium authority) |
 
 Door rules:
 
-- The one-time unlock is positioned as "unlock features", not "forever": it
+- The one-time unlock is positioned as "unlock the module", not "forever": it
   lives as long as the installed app plus the store account's restore path, and
   is priced below the yearly subscription (exact price points are an open
-  product item, not code).
-- The subscription includes sync because sync's marginal cost is ~0; its account
-  exists for sync, not as a premium license anchor.
-- Premium is not welded to an account: the one-time door must work with no
-  account at all. Signed EdDSA entitlement tokens (the implemented-but-dormant
-  overlay documented in `SECURITY.md`) back **only portable / gifted premium
-  grants** — they are not the primary premium path, and the signing key is not
-  activated yet, so no production token verifies today.
-- Store-native mechanics stay store-native: discounts, intro pricing,
-  month→year upsell, renewal, cancellation, refunds. The app never implements
-  billing logic; app-side involvement is UI hints only.
-- Server-to-server store notifications (churn analytics) are out of scope in
-  v1; access truth is the store plus on-device verification.
+  product item, not code). It unlocks no premium feature, and the subscription
+  neither grants nor revokes it.
+- The subscription includes sync because sync's marginal cost is ~0. Premium
+  features come only from the subscription, and its entitlement is read under a
+  managed session: paying needs no account, turning premium on does.
+- The pregnancy module is not welded to an account: the one-time door must work
+  with no account at all. Signed EdDSA entitlement tokens (the
+  implemented-but-dormant overlay documented in `SECURITY.md`) back **only
+  portable / gifted premium grants** — they are not the primary premium path,
+  and the signing key is not activated yet, so no production token verifies
+  today.
+- Store-native mechanics stay store-native: discounts, intro pricing and the
+  free trial (a store intro offer, enforced once per store account by the
+  store), month→year upsell, renewal, cancellation, refunds. The app never
+  implements billing logic; app-side involvement is launching the store's
+  purchase sheet, handing the result over, and UI hints.
+- Server-to-server store notifications are in scope for the subscription
+  (**target**): Google Play Real-time Developer Notifications reach the managed
+  cloud and only prompt it to re-read the purchase from Google — a notification
+  is never itself the access truth, and the app receives none. The one-time
+  door has no server at all: its access truth is the store's record on the
+  device.
 - The self-hosted Community Sync tier is unchanged and outside the storefront:
   bring-your-own-server, no store SKU, orthogonal to these doors.
 
 Current state vs target: today every premium surface reads the managed billing
-snapshot and the token overlay is dormant (`SECURITY.md`, Accepted Residual
-Risks). The store-receipt on-device path and the device-anchored `sub` class are
-the target work this section models ahead of implementation.
+snapshot, the token overlay is dormant (`SECURITY.md`, Accepted Residual
+Risks), nothing in the app can buy either product, and a release build cannot
+unlock the pregnancy module. The two purchase flows below are the target work
+this section models ahead of implementation. The device-anchored `sub` class
+stays a target of its own; neither purchase flow depends on it.
+
+### Purchase flows (target)
+
+Both products are bought through the platform store, Google Play first. The
+store library is imported in exactly one adapter under `src/billing`; services
+and screens see a transport-free contract, and that contract has no consume
+operation at all.
+
+**One-time door — `pregnancy_module`, decided on the device.**
+
+- The module is owned only while the store reports a purchase of
+  `pregnancy_module` in the purchased state. A pending purchase, another
+  product, a subscription, or any error reading the store all resolve to not
+  owned (fail-closed, as `loadPregnancyModuleOwned` already is).
+- The app acknowledges the purchase — an unacknowledged Play purchase is
+  refunded by Google after three days — and never consumes it.
+- Ownership is not written to app storage: the store's own cache answers
+  offline, and "Restore purchases" re-reads it. The app verifies no receipt
+  signature and sends the purchase nowhere; this is a UX control over the
+  user's own device, not DRM.
+- The source imports nothing from managed billing, a sync session, or the
+  billing snapshot. A refunded or revoked purchase locks only the entry of new
+  pregnancy data; data already logged stays readable and exportable.
+- A locked surface points at the one-time purchase screen, never at the
+  subscription screen.
+
+**Subscription door — `ovumcy_cloud`, decided by the managed cloud.**
+
+- The app launches the store purchase for a server-described offer only when
+  its product and base plan are on the app's own allowlist; any other offer is
+  dropped.
+- The purchase token goes to the managed cloud under the managed session:
+  `POST /account/billing/play/purchases` with the product id and the token.
+  The base plan and the period are read from Google by the server, never taken
+  from the client. The answer is the billing snapshot, and premium turns on
+  only from that snapshot. A local purchase record never unlocks a premium
+  surface and never writes the offline-grace cache.
+- The app never acknowledges a subscription. The managed cloud acknowledges it
+  after the entitlement is recorded, so a purchase that never reaches an
+  account is refunded by Google on its own.
+- The purchase token is never written to app storage, logged, or carried in a
+  route parameter or URL. The retry queue is the store itself: at launch, at
+  sign-in, and on a manual plan check the app re-reads unacknowledged purchases
+  and hands them over again; the handoff is idempotent by token.
+- Paying before an account exists is allowed. The step after payment asks the
+  user to create an account or sign in; premium stays off until the handoff
+  succeeds under that session. A token binds to the first account that presents
+  it, and the same token from another account is refused.
+- When a session already exists at purchase time, the app passes the store an
+  opaque per-account reference issued by the managed cloud. It is never the
+  login or the internal account id, and the app never derives it.
+- Any server refusal or outage leaves premium off; nothing on the device
+  substitutes for the server's answer. The bounded offline-grace cache
+  (`SECURITY.md`) is unchanged and is filled only from a billing snapshot.
+- "Manage subscription" opens the store's own subscription page; it is not an
+  external checkout.
 
 ### Out of scope in v1 (decided)
 
 - Browser/web client for sync and partner sharing (in-browser decryption is a
   separate future feature).
-- Server-to-server store notifications (churn analytics).
 - A doctor-facing export-snapshot share flow (distinct from the existing
   on-device doctor PDF, which stays).
 - Seamless deferred deep-linking for invites — v1 uses the explicit "press the

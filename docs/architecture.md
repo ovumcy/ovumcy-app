@@ -274,12 +274,18 @@ are in [`SECURITY.md`](../SECURITY.md) and
   path but is inert until the managed cloud issues tokens, so today the snapshot
   values stand. Baseline
   tracking, local analytics, CSV/JSON export and local reminders are never gated.
+  Nothing in the app buys a plan today; the store subscription and its
+  purchase-token handoff to the managed cloud are modeled, not implemented, in
+  `docs/sync-trust-model.md` (*Purchase flows*).
 - **Pregnancy module.** Ownership is a one-time on-device unlock resolved by
   `loadPregnancyModuleOwned` in `src/services/pregnancy-entitlement-service.ts`.
   It fails closed: a source error or any non-`true` answer reads as not owned.
   The only source today is a build flag honored in development builds only; a
   release build resolves to not owned. It gates starting new pregnancy data and
   rendering pregnancy-mode surfaces, not reads or exports of data already logged.
+  The store source — a one-time store purchase read on-device, with no server
+  and no billing snapshot in the chain — is modeled in the same *Purchase flows*
+  section and not implemented yet.
 
 ## Optional sync
 
