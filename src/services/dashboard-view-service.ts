@@ -174,9 +174,16 @@ export function resolveDaySaveMessageKey(
   // during a tracked pregnancy could claim "you are in your fertile window".
   hasActivePregnancy = false,
   pausedTestConcluded = false,
+  // An active postpartum record with no cycle start after the birth: the
+  // projection may still run from a pre-pregnancy start (an LMP-dated
+  // pregnancy sets no day-log pause), so no cycle-phase message applies.
+  postpartumAwaitingCycle = false,
 ): DaySaveMessageKey {
   if (hasActivePregnancy) {
     return "pregnancy_active";
+  }
+  if (postpartumAwaitingCycle) {
+    return "pregnancy_concluded";
   }
   if (projection.isPregnancyPaused) {
     return pausedTestConcluded ? "pregnancy_concluded" : "pregnancy_paused";
@@ -213,6 +220,7 @@ export function resolveDaySaveMessage(
   locale = "en",
   hasActivePregnancy = false,
   pausedTestConcluded = false,
+  postpartumAwaitingCycle = false,
 ): string {
   const dashboardCopy = getDashboardCopy(locale);
   switch (
@@ -222,6 +230,7 @@ export function resolveDaySaveMessage(
       projection,
       hasActivePregnancy,
       pausedTestConcluded,
+      postpartumAwaitingCycle,
     )
   ) {
     case "pregnancy_active":
@@ -445,6 +454,16 @@ export function buildDashboardViewData(
       // A postpartum record's startedAt is the birth date.
       ...(activePostpartumRecord ? [{ endedAt: activePostpartumRecord.startedAt }] : []),
     ]);
+  // Postpartum with no cycle start logged after the birth: the cycle hero,
+  // explanation and fertility summary read nothing from the projection, which
+  // may still be anchored before the pregnancy. Widens suppression only. A
+  // positive test logged after the birth is a new event and keeps its own
+  // pause wording.
+  const postpartumAwaitingCycle =
+    activePostpartumRecord !== null &&
+    !hasNewCycleStart &&
+    !hasActivePregnancy &&
+    !(projectedCycle.isPregnancyPaused && !pausedTestConcluded);
   const advancedFertilitySummary =
     options.showAdvancedFertilitySummary === true
       ? buildCurrentCycleAdvancedFertilitySummary(
@@ -453,7 +472,9 @@ export function buildDashboardViewData(
           // A null anchor drops the current-cycle fertility signals (thermal
           // shift, LH peak, ovulation confirmation) while suppression holds --
           // the same lever stats-view-service pulls for its equivalent card.
-          suppressPredictions ? null : projectedCycle.cycleAnchorDate,
+          suppressPredictions || postpartumAwaitingCycle
+            ? null
+            : projectedCycle.cycleAnchorDate,
           profile.temperatureUnit,
           locale,
         )
@@ -480,6 +501,7 @@ export function buildDashboardViewData(
       history,
       locale,
       suppressPredictions,
+      postpartumAwaitingCycle,
     ),
     // Blanked for an active record only: the day-log pause keeps its own
     // pregnancyPausedHint, whose "log a new period to resume" instruction is
@@ -487,9 +509,11 @@ export function buildDashboardViewData(
     // as stats-view-service).
     predictionExplanation: hasActivePregnancy
       ? ""
-      : pausedTestConcluded
-        ? dashboardCopy.pregnancyConcludedPausedHint
-        : buildPredictionExplanation(profile, projectedCycle, locale),
+      : postpartumAwaitingCycle
+        ? dashboardCopy.postpartumCycleHint
+        : pausedTestConcluded
+          ? dashboardCopy.pregnancyConcludedPausedHint
+          : buildPredictionExplanation(profile, projectedCycle, locale),
     predictionDisclaimer: dashboardCopy.predictionDisclaimer,
     ...(advancedFertilitySummary ? { advancedFertilitySummary } : {}),
     quickActionsTitle: dashboardCopy.quickActionsTitle,
@@ -513,6 +537,7 @@ export function buildDashboardViewData(
       locale,
       hasActivePregnancy,
       pausedTestConcluded,
+      postpartumAwaitingCycle,
     ),
   };
 }
@@ -658,6 +683,7 @@ function buildDashboardCycleHero(
   locale: string,
   // Active pregnancy record OR the day-log pause — see buildDashboardViewData.
   suppressPredictions: boolean,
+  postpartumAwaitingCycle: boolean,
 ): DashboardCycleHeroViewData {
   const dashboardCopy = getDashboardCopy(locale);
   const statsCopy = getStatsCopy(locale);
@@ -672,7 +698,7 @@ function buildDashboardCycleHero(
     locale,
   );
 
-  if (suppressPredictions) {
+  if (suppressPredictions || postpartumAwaitingCycle) {
     // Checked BEFORE the stale branch below, which deliberately still surfaces
     // the running cycle's overdue next-period date, and before the anchor/cycle-day check
     // an active pregnancy would otherwise walk straight past. Reuses the blank
@@ -685,7 +711,11 @@ function buildDashboardCycleHero(
       state: "unknown",
       title: heroTitle,
       value: statsCopy.phaseLabels.unknown,
-      detail: dashboardCopy.cycleHeroPaused,
+      // After a birth the first period is the expected next event, so the
+      // block says that rather than a bare pause.
+      detail: postpartumAwaitingCycle
+        ? dashboardCopy.cycleHeroPostpartum
+        : dashboardCopy.cycleHeroPaused,
       caption: "",
       upcomingOvulationLabel: null,
       progressPercent: null,

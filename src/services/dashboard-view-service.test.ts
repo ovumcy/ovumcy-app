@@ -1205,7 +1205,7 @@ describe("dashboard-view-service pregnancy mode", () => {
     }
   });
 
-  it("words the pause without the positive test while postpartum tracking is active", () => {
+  it("frames the pause around the first period after birth while postpartum tracking is active", () => {
     const copy = getDashboardCopy("en");
     const viewData = buildDashboardViewData(
       pausedProfile,
@@ -1219,7 +1219,9 @@ describe("dashboard-view-service pregnancy mode", () => {
       },
     );
 
-    expect(viewData.predictionExplanation).toBe(copy.pregnancyConcludedPausedHint);
+    expect(viewData.predictionExplanation).toBe(copy.postpartumCycleHint);
+    expect(viewData.predictionExplanation).not.toMatch(/positive pregnancy test/);
+    expect(viewData.cycleHero.detail).toBe(copy.cycleHeroPostpartum);
     expect(viewData.daySaveMessage).toBe(copy.saveMessagePregnancyConcluded);
   });
 
@@ -1758,6 +1760,50 @@ describe("dashboard-view-service postpartum cycle-return offer", () => {
     expect(viewData.mode).toBe("postpartum");
     expect(viewData.postpartumDashboard?.cycleReturnOffer.visible).toBe(false);
     expect(viewData.postpartumDashboard?.lamCard).not.toBeNull();
+  });
+
+  it("shows the postpartum cycle block, not a projection from the pre-pregnancy start, when no day-log pause exists", () => {
+    // An LMP-dated pregnancy sets no day-log pause, so the projection still
+    // runs from the pre-pregnancy start.
+    const copy = getDashboardCopy("en");
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: "2025-09-01" };
+    const now = new Date(2026, 5, 20);
+    const records = [periodStartRecord("2025-09-01")];
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    const viewData = buildDashboardViewData(profile, records, history, now, "en", {
+      activePostpartum: createPostpartumRecord({ startedAt: "2026-06-01" }),
+      showAdvancedFertilitySummary: true,
+    });
+
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "unknown",
+        detail: copy.cycleHeroPostpartum,
+        caption: "",
+        upcomingOvulationLabel: null,
+        progressPercent: null,
+        phaseSegments: [],
+        phaseCards: [],
+      }),
+    );
+    expect(viewData.predictionExplanation).toBe(copy.postpartumCycleHint);
+    expect(viewData.daySaveMessage).toBe(copy.saveMessagePregnancyConcluded);
+  });
+
+  it("drops the postpartum cycle block once a cycle start is logged after the birth", () => {
+    const copy = getDashboardCopy("en");
+    const profile = createDefaultProfileRecord();
+    const now = new Date(2026, 5, 20);
+    const records = [periodStartRecord("2026-06-15")];
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    const viewData = buildDashboardViewData(profile, records, history, now, "en", {
+      activePostpartum: createPostpartumRecord({ startedAt: "2026-06-01" }),
+    });
+
+    expect(viewData.cycleHero.detail).not.toBe(copy.cycleHeroPostpartum);
+    expect(viewData.predictionExplanation).not.toBe(copy.postpartumCycleHint);
   });
 
   it("never builds a postpartum section (offer or LAM card) with no active postpartum record", () => {
