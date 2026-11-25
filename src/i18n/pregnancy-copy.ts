@@ -27,6 +27,29 @@ const pregnancyCopyEn = {
       "Pregnancy mode is unlocked with a single purchase — no subscription needed. Everything you have already logged stays available on this device either way.",
     lockedCta: "Unlock pregnancy mode",
   },
+  unlock: {
+    title: "Unlock pregnancy mode",
+    subtitle:
+      "A single purchase through your app store — no subscription and no Ovumcy account. It stays with your store account, so you can restore it after reinstalling.",
+    priceLabel: "One-time price",
+    buyCta: "Buy",
+    restoreCta: "Restore purchases",
+    dataNote:
+      "Everything you have already logged stays available on this device either way.",
+    ownedTitle: "Pregnancy mode is unlocked",
+    ownedBody: "The purchase is on your store account. You can set up pregnancy mode now.",
+    pendingTitle: "Payment is pending",
+    pendingBody:
+      "The store has not confirmed this payment yet. Pregnancy mode unlocks once it goes through — you can close this screen and check again later.",
+    checkAgainCta: "Check again",
+    cancelledNotice: "The purchase was cancelled. Nothing was charged.",
+    restoreNotFoundNotice:
+      "No earlier purchase was found for this store account.",
+    unavailableTitle: "The store is not available",
+    unavailableBody:
+      "We could not reach the store on this device right now. Check your connection and your store account, then try again.",
+    retryCta: "Try again",
+  },
   wizard: {
     title: "Set up pregnancy mode",
     subtitle:
@@ -201,6 +224,30 @@ const pregnancyCopyRu: PregnancyCopy = {
       "Режим беременности разблокируется разовой покупкой — подписка не нужна. Всё, что уже записано, в любом случае остаётся доступным на этом устройстве.",
     lockedCta: "Разблокировать режим беременности",
   },
+  unlock: {
+    title: "Разблокировать режим беременности",
+    subtitle:
+      "Разовая покупка через магазин приложений — без подписки и без аккаунта Ovumcy. Она привязана к вашему аккаунту магазина, поэтому после переустановки её можно восстановить.",
+    priceLabel: "Разовая цена",
+    buyCta: "Купить",
+    restoreCta: "Восстановить покупки",
+    dataNote:
+      "Всё, что уже записано, в любом случае остаётся доступным на этом устройстве.",
+    ownedTitle: "Режим беременности разблокирован",
+    ownedBody:
+      "Покупка сохранена в вашем аккаунте магазина. Режим беременности можно настроить прямо сейчас.",
+    pendingTitle: "Оплата ожидает подтверждения",
+    pendingBody:
+      "Магазин ещё не подтвердил этот платёж. Режим беременности откроется, как только оплата пройдёт — можно закрыть этот экран и проверить позже.",
+    checkAgainCta: "Проверить снова",
+    cancelledNotice: "Покупка отменена. Деньги не списаны.",
+    restoreNotFoundNotice:
+      "Для этого аккаунта магазина прежних покупок не найдено.",
+    unavailableTitle: "Магазин недоступен",
+    unavailableBody:
+      "Сейчас не удалось связаться с магазином на этом устройстве. Проверьте подключение и аккаунт магазина, затем попробуйте снова.",
+    retryCta: "Повторить",
+  },
   wizard: {
     title: "Настройка режима беременности",
     subtitle:
@@ -356,6 +403,30 @@ const pregnancyCopyDe: PregnancyCopy = {
     lockedBody:
       "Der Schwangerschaftsmodus wird mit einem einmaligen Kauf freigeschaltet — ohne Abo. Alles, was Sie bereits erfasst haben, bleibt so oder so auf diesem Gerät verfügbar.",
     lockedCta: "Schwangerschaftsmodus freischalten",
+  },
+  unlock: {
+    title: "Schwangerschaftsmodus freischalten",
+    subtitle:
+      "Ein einmaliger Kauf über Ihren App-Store — ohne Abo und ohne Ovumcy-Konto. Er bleibt mit Ihrem Store-Konto verknüpft, sodass Sie ihn nach einer Neuinstallation wiederherstellen können.",
+    priceLabel: "Einmaliger Preis",
+    buyCta: "Kaufen",
+    restoreCta: "Käufe wiederherstellen",
+    dataNote:
+      "Alles, was Sie bereits erfasst haben, bleibt in jedem Fall auf diesem Gerät verfügbar.",
+    ownedTitle: "Der Schwangerschaftsmodus ist freigeschaltet",
+    ownedBody:
+      "Der Kauf ist in Ihrem Store-Konto hinterlegt. Sie können den Schwangerschaftsmodus jetzt einrichten.",
+    pendingTitle: "Zahlung ausstehend",
+    pendingBody:
+      "Der Store hat diese Zahlung noch nicht bestätigt. Der Schwangerschaftsmodus wird freigeschaltet, sobald sie eingeht — Sie können diesen Bildschirm schließen und später erneut prüfen.",
+    checkAgainCta: "Erneut prüfen",
+    cancelledNotice: "Der Kauf wurde abgebrochen. Es wurde nichts berechnet.",
+    restoreNotFoundNotice:
+      "Für dieses Store-Konto wurde kein früherer Kauf gefunden.",
+    unavailableTitle: "Der Store ist nicht verfügbar",
+    unavailableBody:
+      "Der Store war auf diesem Gerät gerade nicht erreichbar. Prüfen Sie Ihre Verbindung und Ihr Store-Konto und versuchen Sie es dann erneut.",
+    retryCta: "Erneut versuchen",
   },
   wizard: {
     title: "Schwangerschaftsmodus einrichten",
@@ -514,6 +585,30 @@ const pregnancyCopyFr: PregnancyCopy = {
       "Le mode grossesse se débloque en un seul achat — sans abonnement. Tout ce que vous avez déjà enregistré reste disponible sur cet appareil dans tous les cas.",
     lockedCta: "Débloquer le mode grossesse",
   },
+  unlock: {
+    title: "Débloquer le mode grossesse",
+    subtitle:
+      "Un achat unique via votre boutique d'applications — sans abonnement et sans compte Ovumcy. Il reste lié à votre compte de la boutique, vous pouvez donc le restaurer après une réinstallation.",
+    priceLabel: "Prix unique",
+    buyCta: "Acheter",
+    restoreCta: "Restaurer les achats",
+    dataNote:
+      "Tout ce que vous avez déjà saisi reste disponible sur cet appareil dans tous les cas.",
+    ownedTitle: "Le mode grossesse est débloqué",
+    ownedBody:
+      "L'achat est enregistré sur votre compte de la boutique. Vous pouvez configurer le mode grossesse dès maintenant.",
+    pendingTitle: "Paiement en attente",
+    pendingBody:
+      "La boutique n'a pas encore confirmé ce paiement. Le mode grossesse se débloque dès qu'il est validé — vous pouvez fermer cet écran et vérifier plus tard.",
+    checkAgainCta: "Vérifier à nouveau",
+    cancelledNotice: "L'achat a été annulé. Rien n'a été débité.",
+    restoreNotFoundNotice:
+      "Aucun achat antérieur n'a été trouvé pour ce compte de la boutique.",
+    unavailableTitle: "La boutique n'est pas disponible",
+    unavailableBody:
+      "Impossible de joindre la boutique sur cet appareil pour le moment. Vérifiez votre connexion et votre compte de la boutique, puis réessayez.",
+    retryCta: "Réessayer",
+  },
   wizard: {
     title: "Configurer le mode grossesse",
     subtitle:
@@ -671,6 +766,30 @@ const pregnancyCopyEs: PregnancyCopy = {
       "El modo embarazo se desbloquea con una sola compra — sin suscripción. Todo lo que ya registraste sigue disponible en este dispositivo de todos modos.",
     lockedCta: "Desbloquear el modo embarazo",
   },
+  unlock: {
+    title: "Desbloquear el modo embarazo",
+    subtitle:
+      "Una sola compra a través de tu tienda de aplicaciones — sin suscripción y sin cuenta de Ovumcy. Queda vinculada a tu cuenta de la tienda, así que puedes restaurarla después de reinstalar.",
+    priceLabel: "Precio único",
+    buyCta: "Comprar",
+    restoreCta: "Restaurar compras",
+    dataNote:
+      "Todo lo que ya has registrado sigue disponible en este dispositivo en cualquier caso.",
+    ownedTitle: "El modo embarazo está desbloqueado",
+    ownedBody:
+      "La compra está en tu cuenta de la tienda. Ya puedes configurar el modo embarazo.",
+    pendingTitle: "Pago pendiente",
+    pendingBody:
+      "La tienda aún no ha confirmado este pago. El modo embarazo se desbloquea en cuanto se complete — puedes cerrar esta pantalla y comprobarlo más tarde.",
+    checkAgainCta: "Comprobar de nuevo",
+    cancelledNotice: "La compra se canceló. No se ha cobrado nada.",
+    restoreNotFoundNotice:
+      "No se encontró ninguna compra anterior para esta cuenta de la tienda.",
+    unavailableTitle: "La tienda no está disponible",
+    unavailableBody:
+      "No hemos podido conectar con la tienda en este dispositivo ahora mismo. Comprueba tu conexión y tu cuenta de la tienda y vuelve a intentarlo.",
+    retryCta: "Reintentar",
+  },
   wizard: {
     title: "Configurar el modo embarazo",
     subtitle:
@@ -827,6 +946,30 @@ const pregnancyCopyIt: PregnancyCopy = {
     lockedBody:
       "La modalità gravidanza si sblocca con un unico acquisto — nessun abbonamento necessario. Tutto ciò che hai già registrato resta comunque disponibile su questo dispositivo.",
     lockedCta: "Sblocca la modalità gravidanza",
+  },
+  unlock: {
+    title: "Sblocca la modalità gravidanza",
+    subtitle:
+      "Un unico acquisto tramite il tuo store di app — senza abbonamento e senza account Ovumcy. Resta legato al tuo account dello store, quindi puoi ripristinarlo dopo una reinstallazione.",
+    priceLabel: "Prezzo una tantum",
+    buyCta: "Acquista",
+    restoreCta: "Ripristina acquisti",
+    dataNote:
+      "Tutto ciò che hai già registrato resta disponibile su questo dispositivo in ogni caso.",
+    ownedTitle: "La modalità gravidanza è sbloccata",
+    ownedBody:
+      "L'acquisto è sul tuo account dello store. Puoi configurare subito la modalità gravidanza.",
+    pendingTitle: "Pagamento in sospeso",
+    pendingBody:
+      "Lo store non ha ancora confermato questo pagamento. La modalità gravidanza si sblocca appena va a buon fine — puoi chiudere questa schermata e ricontrollare più tardi.",
+    checkAgainCta: "Ricontrolla",
+    cancelledNotice: "L'acquisto è stato annullato. Non è stato addebitato nulla.",
+    restoreNotFoundNotice:
+      "Non è stato trovato alcun acquisto precedente per questo account dello store.",
+    unavailableTitle: "Lo store non è disponibile",
+    unavailableBody:
+      "Al momento non è stato possibile contattare lo store su questo dispositivo. Controlla la connessione e il tuo account dello store, poi riprova.",
+    retryCta: "Riprova",
   },
   wizard: {
     title: "Configura la modalità gravidanza",

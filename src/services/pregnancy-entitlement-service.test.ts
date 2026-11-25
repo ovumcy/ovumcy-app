@@ -1,4 +1,5 @@
 import {
+  createDefaultPregnancyEntitlementSource,
   createDevFlagPregnancyEntitlementSource,
   loadPregnancyModuleOwned,
   type PregnancyEntitlementSource,
@@ -45,18 +46,95 @@ describe("loadPregnancyModuleOwned", () => {
     await expect(loadPregnancyModuleOwned(garbage)).resolves.toBe(false);
   });
 
-  it("defaults to the dev-flag source: unset flag means not owned even in dev", async () => {
+  it("defaults to the store source: no store purchase and no flag means not owned", async () => {
+    // Jest has no store, so the default store source rejects and the resolver
+    // fails closed.
     delete process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK;
 
     await expect(loadPregnancyModuleOwned()).resolves.toBe(false);
   });
 
-  it("defaults to the dev-flag source: a set flag unlocks a dev build", async () => {
+  it("keeps the development flag as an override on top of the default source", async () => {
     // Jest runs with __DEV__ === true, so the default source is on its
     // development path here; the release path is pinned separately below.
     process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK = "1";
 
     await expect(loadPregnancyModuleOwned()).resolves.toBe(true);
+  });
+});
+
+describe("createDefaultPregnancyEntitlementSource", () => {
+  const owned: PregnancyEntitlementSource = {
+    loadOwnsPregnancyModule: async () => true,
+  };
+  const notOwned: PregnancyEntitlementSource = {
+    loadOwnsPregnancyModule: async () => false,
+  };
+  const broken: PregnancyEntitlementSource = {
+    loadOwnsPregnancyModule: async () => {
+      throw new Error("unavailable");
+    },
+  };
+  const releaseFlag = createDevFlagPregnancyEntitlementSource({
+    isDevelopment: false,
+    flagValue: "1",
+  });
+
+  it("owns the module from the store purchase alone in a release build", async () => {
+    const source = createDefaultPregnancyEntitlementSource({
+      devFlagSource: releaseFlag,
+      storeSource: owned,
+    });
+
+    await expect(loadPregnancyModuleOwned(source)).resolves.toBe(true);
+  });
+
+  it("ignores the development flag in a release build: without a store purchase the module is not owned", async () => {
+    for (const storeSource of [notOwned, broken]) {
+      const source = createDefaultPregnancyEntitlementSource({
+        devFlagSource: releaseFlag,
+        storeSource,
+      });
+
+      await expect(loadPregnancyModuleOwned(source)).resolves.toBe(false);
+    }
+  });
+
+  it("lets the development flag add ownership without asking the store", async () => {
+    const storeSource = { loadOwnsPregnancyModule: jest.fn(async () => false) };
+    const source = createDefaultPregnancyEntitlementSource({
+      devFlagSource: createDevFlagPregnancyEntitlementSource({
+        isDevelopment: true,
+        flagValue: "1",
+      }),
+      storeSource,
+    });
+
+    await expect(loadPregnancyModuleOwned(source)).resolves.toBe(true);
+    expect(storeSource.loadOwnsPregnancyModule).not.toHaveBeenCalled();
+  });
+
+  it("never lets a failing or truthy-but-not-true flag hide or fake a store answer", async () => {
+    const truthy = {
+      loadOwnsPregnancyModule: async () => 1 as unknown as boolean,
+    };
+
+    await expect(
+      loadPregnancyModuleOwned(
+        createDefaultPregnancyEntitlementSource({
+          devFlagSource: broken,
+          storeSource: owned,
+        }),
+      ),
+    ).resolves.toBe(true);
+    await expect(
+      loadPregnancyModuleOwned(
+        createDefaultPregnancyEntitlementSource({
+          devFlagSource: truthy,
+          storeSource: notOwned,
+        }),
+      ),
+    ).resolves.toBe(false);
   });
 });
 

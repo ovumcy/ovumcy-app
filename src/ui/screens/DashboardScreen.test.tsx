@@ -1310,7 +1310,7 @@ describe("DashboardScreen", () => {
     expect(phaseCard.props.accessible).toBe(true);
   });
 
-  it("renders the locked pregnancy entry card as information only, with no subscription route", async () => {
+  it("routes the locked pregnancy entry card to the one-time purchase screen, never the subscription screen", async () => {
     mockLoadPregnancyModuleOwned.mockResolvedValue(false);
     await renderDashboard(
       createStorageMock({
@@ -1328,17 +1328,15 @@ describe("DashboardScreen", () => {
         .children,
     ).toBe(getPregnancyCopy("en").entryCard.lockedBody);
 
-    // The module is a one-time on-device unlock, so the card names it and
-    // stops there: no call-to-action, nothing to press, and no navigation to
-    // the cloud-subscription surface.
+    // The module is a one-time on-device unlock: the card opens the one-time
+    // purchase screen and nothing else — never the cloud-subscription surface.
     expect(
-      screen.queryByTestId("dashboard-pregnancy-entry-card-cta"),
-    ).toBeNull();
-    expect(
-      screen.getByTestId("dashboard-pregnancy-entry-card").props
-        .accessibilityRole,
-    ).toBeUndefined();
+      screen.getByTestId("dashboard-pregnancy-entry-card-cta").props.children,
+    ).toBe(getPregnancyCopy("en").entryCard.lockedCta);
     expect(mockPush).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId("dashboard-pregnancy-entry-card"));
+    expect(mockPush.mock.calls).toEqual([["/pregnancy-unlock"]]);
   });
 
   it("navigates to pregnancy setup from the unlocked entry card", async () => {
