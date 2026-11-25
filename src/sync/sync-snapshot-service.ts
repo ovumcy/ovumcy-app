@@ -45,35 +45,6 @@ export const SYNC_SNAPSHOT_SCHEMA_VERSION = 3;
 const SYNC_SNAPSHOT_SCHEMA_VERSION_V1 = 1;
 const SYNC_SNAPSHOT_SCHEMA_VERSION_V2 = 2;
 
-// Retained explicitly for the decode path: the shape of a snapshot written by
-// a pre-pregnancy-mode client. Never produced on encode (buildSyncSnapshot
-// always emits the current version).
-export type SyncSnapshotV1 = {
-  schemaVersion: typeof SYNC_SNAPSHOT_SCHEMA_VERSION_V1;
-  createdAt: string;
-  bootstrapState: LocalBootstrapState;
-  profile: ProfileRecord;
-  symptomRecords: SymptomRecord[];
-  dayLogs: DayLogRecord[];
-};
-
-// Retained explicitly for the decode path: the shape of a snapshot written by
-// a pregnancy-mode client that predates postpartum + screening (postpartum + screening). Never
-// produced on encode.
-export type SyncSnapshotV2 = {
-  schemaVersion: typeof SYNC_SNAPSHOT_SCHEMA_VERSION_V2;
-  createdAt: string;
-  bootstrapState: LocalBootstrapState;
-  profile: ProfileRecord;
-  symptomRecords: SymptomRecord[];
-  dayLogs: DayLogRecord[];
-  // Pregnancy-mode collections. Always present on a v2 encode (possibly
-  // empty). A legacy v1 snapshot decodes with these defaulted to [].
-  pregnancies: PregnancyRecord[];
-  kickSessions: KickCountSession[];
-  contractionSessions: ContractionSession[];
-};
-
 export type SyncSnapshotV3 = {
   schemaVersion: typeof SYNC_SNAPSHOT_SCHEMA_VERSION;
   createdAt: string;
