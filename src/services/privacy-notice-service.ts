@@ -11,12 +11,13 @@ import type { InterfaceLanguage } from "../models/profile";
 export const PRIVACY_POLICY_URL = "https://ovumcy.com/privacy";
 
 /** Bumped whenever the notice text below changes in a user-relevant way. */
-export const PRIVACY_NOTICE_REVISION = "2026-07-28";
+export const PRIVACY_NOTICE_REVISION = "2026-11-25";
 
 export type PrivacyNoticeSectionID =
   | "on-device"
   | "no-tracking"
   | "leaves-device"
+  | "store-purchase"
   | "exports"
   | "rights"
   | "retention"
@@ -58,6 +59,7 @@ export function buildPrivacyNoticeViewData(
       { id: "on-device", ...copy.sections.onDevice },
       { id: "no-tracking", ...copy.sections.noTracking },
       { id: "leaves-device", ...copy.sections.leavesDevice },
+      { id: "store-purchase", ...copy.sections.storePurchase },
       { id: "exports", ...copy.sections.exports },
       { id: "rights", ...copy.sections.rights },
       { id: "retention", ...copy.sections.retention },

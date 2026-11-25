@@ -49,6 +49,9 @@ const pregnancyCopyEn = {
     unavailableBody:
       "We could not reach the store on this device right now. Check your connection and your store account, then try again.",
     retryCta: "Try again",
+    unsupportedTitle: "Purchases are not available here",
+    unsupportedBody:
+      "This version of the app has no store connection, so pregnancy mode cannot be unlocked from it. Everything you have already logged stays available.",
   },
   wizard: {
     title: "Set up pregnancy mode",
@@ -247,6 +250,9 @@ const pregnancyCopyRu: PregnancyCopy = {
     unavailableBody:
       "Сейчас не удалось связаться с магазином на этом устройстве. Проверьте подключение и аккаунт магазина, затем попробуйте снова.",
     retryCta: "Повторить",
+    unsupportedTitle: "Покупки здесь недоступны",
+    unsupportedBody:
+      "В этой версии приложения нет связи с магазином, поэтому разблокировать режим беременности из неё нельзя. Всё, что уже записано, остаётся доступным.",
   },
   wizard: {
     title: "Настройка режима беременности",
@@ -427,6 +433,9 @@ const pregnancyCopyDe: PregnancyCopy = {
     unavailableBody:
       "Der Store war auf diesem Gerät gerade nicht erreichbar. Prüfen Sie Ihre Verbindung und Ihr Store-Konto und versuchen Sie es dann erneut.",
     retryCta: "Erneut versuchen",
+    unsupportedTitle: "Käufe sind hier nicht verfügbar",
+    unsupportedBody:
+      "Diese Version der App hat keine Store-Anbindung, daher lässt sich der Schwangerschaftsmodus hier nicht freischalten. Alles, was Sie bereits erfasst haben, bleibt verfügbar.",
   },
   wizard: {
     title: "Schwangerschaftsmodus einrichten",
@@ -608,6 +617,9 @@ const pregnancyCopyFr: PregnancyCopy = {
     unavailableBody:
       "Impossible de joindre la boutique sur cet appareil pour le moment. Vérifiez votre connexion et votre compte de la boutique, puis réessayez.",
     retryCta: "Réessayer",
+    unsupportedTitle: "Les achats ne sont pas disponibles ici",
+    unsupportedBody:
+      "Cette version de l'application n'est reliée à aucune boutique : le mode grossesse ne peut donc pas y être débloqué. Tout ce que vous avez déjà saisi reste disponible.",
   },
   wizard: {
     title: "Configurer le mode grossesse",
@@ -789,6 +801,9 @@ const pregnancyCopyEs: PregnancyCopy = {
     unavailableBody:
       "No hemos podido conectar con la tienda en este dispositivo ahora mismo. Comprueba tu conexión y tu cuenta de la tienda y vuelve a intentarlo.",
     retryCta: "Reintentar",
+    unsupportedTitle: "Las compras no están disponibles aquí",
+    unsupportedBody:
+      "Esta versión de la app no tiene conexión con ninguna tienda, así que el modo embarazo no se puede desbloquear desde ella. Todo lo que ya has registrado sigue disponible.",
   },
   wizard: {
     title: "Configurar el modo embarazo",
@@ -970,6 +985,9 @@ const pregnancyCopyIt: PregnancyCopy = {
     unavailableBody:
       "Al momento non è stato possibile contattare lo store su questo dispositivo. Controlla la connessione e il tuo account dello store, poi riprova.",
     retryCta: "Riprova",
+    unsupportedTitle: "Gli acquisti non sono disponibili qui",
+    unsupportedBody:
+      "Questa versione dell'app non è collegata a nessuno store, quindi la modalità gravidanza non può essere sbloccata da qui. Tutto ciò che hai già registrato resta disponibile.",
   },
   wizard: {
     title: "Configura la modalità gravidanza",

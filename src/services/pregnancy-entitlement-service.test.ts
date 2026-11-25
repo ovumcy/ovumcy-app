@@ -54,6 +54,35 @@ describe("loadPregnancyModuleOwned", () => {
     await expect(loadPregnancyModuleOwned()).resolves.toBe(false);
   });
 
+  it("owns the module through the default wiring once the platform store reports the purchase", async () => {
+    delete process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK;
+    const listPurchases = jest.fn(async () => [
+      { productId: "pregnancy_module", state: "purchased", acknowledged: true },
+    ]);
+
+    jest.resetModules();
+    jest.doMock("../billing/store-client", () => ({
+      storeClient: { supported: true, listPurchases },
+    }));
+    try {
+      const wired = jest.requireActual<
+        typeof import("./pregnancy-entitlement-service")
+      >("./pregnancy-entitlement-service");
+
+      await expect(wired.loadPregnancyModuleOwned()).resolves.toBe(true);
+
+      listPurchases.mockResolvedValue([
+        { productId: "pregnancy_module", state: "pending", acknowledged: false },
+      ]);
+      await expect(wired.loadPregnancyModuleOwned()).resolves.toBe(false);
+    } finally {
+      jest.dontMock("../billing/store-client");
+      jest.resetModules();
+    }
+
+    expect(listPurchases).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps the development flag as an override on top of the default source", async () => {
     // Jest runs with __DEV__ === true, so the default source is on its
     // development path here; the release path is pinned separately below.
@@ -168,6 +197,24 @@ describe("createDevFlagPregnancyEntitlementSource", () => {
         ...(flagValue === undefined ? {} : { flagValue }),
       });
       await expect(source.loadOwnsPregnancyModule()).resolves.toBe(false);
+    }
+  });
+
+  it("never unlocks from the flag when __DEV__ is false and nothing is injected", async () => {
+    // The release path through the default, not through an injected
+    // isDevelopment: a default that stopped following __DEV__ fails here.
+    const globals = globalThis as unknown as { __DEV__: boolean };
+    const saved = globals.__DEV__;
+    globals.__DEV__ = false;
+    try {
+      const source = createDevFlagPregnancyEntitlementSource({ flagValue: "1" });
+      await expect(source.loadOwnsPregnancyModule()).resolves.toBe(false);
+
+      process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK = "1";
+      await expect(loadPregnancyModuleOwned()).resolves.toBe(false);
+    } finally {
+      globals.__DEV__ = saved;
+      delete process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK;
     }
   });
 

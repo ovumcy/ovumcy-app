@@ -221,13 +221,18 @@ describe("PregnancyUnlockScreen", () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it("renders with the default services, which find no store under Jest", async () => {
+  it("offers nothing to buy, restore or retry where the build has no store", async () => {
+    // The default services run as iOS under Jest, where no store is wired.
     await render(
       <AppPreferencesTestProvider languageOverride="en">
         <PregnancyUnlockScreen />
       </AppPreferencesTestProvider>,
     );
 
-    expect(await screen.findByTestId("pregnancy-unlock-unavailable")).toBeTruthy();
+    expect(await screen.findByTestId("pregnancy-unlock-unsupported")).toBeTruthy();
+    expect(screen.getByText(copy.unsupportedTitle)).toBeTruthy();
+    for (const action of ["buy", "restore", "retry", "continue", "check-again"]) {
+      expect(screen.queryByTestId(`pregnancy-unlock-${action}-button`)).toBeNull();
+    }
   });
 });

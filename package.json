@@ -8,6 +8,15 @@
   },
   "packageManager": "npm@11.13.0",
   "main": "./index.js",
+  "expo": {
+    "autolinking": {
+      "ios": {
+        "exclude": [
+          "expo-iap"
+        ]
+      }
+    }
+  },
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",

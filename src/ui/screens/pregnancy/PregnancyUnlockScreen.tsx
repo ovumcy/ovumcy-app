@@ -188,6 +188,14 @@ export function PregnancyUnlockScreen({
         </FeatureCard>
       ) : null}
 
+      {offer?.status === "unsupported" ? (
+        <FeatureCard
+          description={copy.unlock.unsupportedBody}
+          testID="pregnancy-unlock-unsupported"
+          title={copy.unlock.unsupportedTitle}
+        />
+      ) : null}
+
       {offer?.status === "unavailable" ? (
         <FeatureCard
           description={copy.unlock.unavailableBody}

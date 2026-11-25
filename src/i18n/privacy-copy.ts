@@ -14,6 +14,7 @@ export type PrivacyNoticeCopy = {
     onDevice: PrivacyNoticeSectionCopy;
     noTracking: PrivacyNoticeSectionCopy;
     leavesDevice: PrivacyNoticeSectionCopy;
+    storePurchase: PrivacyNoticeSectionCopy;
     exports: PrivacyNoticeSectionCopy;
     rights: PrivacyNoticeSectionCopy;
     retention: PrivacyNoticeSectionCopy;
@@ -41,11 +42,15 @@ const privacyCopyEn: PrivacyNoticeCopy = {
     },
     noTracking: {
       title: "No tracking, no ads, no profiling",
-      body: "Ovumcy contains no analytics, no advertising components, and no hidden telemetry. Nothing about how you use the app is reported anywhere, and your health data is never sold or shared for advertising.",
+      body: "Ovumcy contains no analytics, no advertising components, and no hidden telemetry. Ovumcy reports nothing about how you use the app, and your health data is never sold or shared for advertising. One third-party component is disclosed separately: Google Play's billing, described under “Buying through Google Play”.",
     },
     leavesDevice: {
       title: "When data leaves this device",
       body: "Only through an optional feature you turn on yourself, and only after this device has encrypted it. Encrypted backup and sync uploads records the server cannot read. An Ovumcy Cloud account holds your login, two-factor settings, subscription state, and partner invitations — never readable health data. Partner sharing creates an encrypted extract for the person you invite, at the access level you choose, and you can revoke it at any time.",
+    },
+    storePurchase: {
+      title: "Buying through Google Play",
+      body: "Pregnancy mode is bought through Google Play. To show the price and to complete or restore a purchase, Google's billing component runs inside the app. It starts only when the app needs to know whether pregnancy mode is unlocked — after you log a positive pregnancy test, or when you open pregnancy mode or its purchase screen on Android. If you never do, it never runs. It is Google's code: it exchanges purchase details with Google Play and may send Google technical diagnostics about its own operation. Ovumcy passes it none of your health data and keeps no record of the purchase itself.",
     },
     exports: {
       title: "Exports and files you create",
@@ -90,11 +95,15 @@ const privacyCopyDe: PrivacyNoticeCopy = {
     },
     noTracking: {
       title: "Kein Tracking, keine Werbung, kein Profiling",
-      body: "Ovumcy enthält keine Analyse-Werkzeuge, keine Werbekomponenten und keine verdeckte Telemetrie. Ihre Nutzung der App wird nirgendwohin gemeldet, und Ihre Gesundheitsdaten werden niemals verkauft oder für Werbung weitergegeben.",
+      body: "Ovumcy enthält keine Analyse-Werkzeuge, keine Werbekomponenten und keine verdeckte Telemetrie. Ovumcy meldet nichts über Ihre Nutzung der App, und Ihre Gesundheitsdaten werden niemals verkauft oder für Werbung weitergegeben. Eine Komponente eines Drittanbieters wird gesondert offengelegt: die Abrechnung von Google Play, beschrieben unter „Kauf über Google Play“.",
     },
     leavesDevice: {
       title: "Wann Daten dieses Gerät verlassen",
       body: "Nur über eine optionale Funktion, die Sie selbst einschalten, und erst nachdem dieses Gerät die Daten verschlüsselt hat. Verschlüsselte Sicherung und Synchronisierung lädt Einträge hoch, die der Server nicht lesen kann. Ein Ovumcy-Cloud-Konto enthält Ihren Login, die Zwei-Faktor-Einstellungen, den Abostatus und Partner-Einladungen — nie lesbare Gesundheitsdaten. Die Partnerfreigabe erzeugt einen verschlüsselten Auszug für die eingeladene Person, auf der von Ihnen gewählten Zugriffsstufe, und Sie können sie jederzeit widerrufen.",
+    },
+    storePurchase: {
+      title: "Kauf über Google Play",
+      body: "Der Schwangerschaftsmodus wird über Google Play gekauft. Um den Preis anzuzeigen und einen Kauf abzuschließen oder wiederherzustellen, läuft in der App die Abrechnungskomponente von Google. Sie startet nur, wenn die App wissen muss, ob der Schwangerschaftsmodus freigeschaltet ist — nachdem Sie einen positiven Schwangerschaftstest eingetragen haben oder wenn Sie auf Android den Schwangerschaftsmodus oder dessen Kaufbildschirm öffnen. Tun Sie das nie, läuft sie nie. Es ist Code von Google: Er tauscht Kaufdaten mit Google Play aus und kann technische Diagnosedaten über seinen eigenen Betrieb an Google senden. Ovumcy übergibt ihm keine Ihrer Gesundheitsdaten und speichert selbst nichts über den Kauf.",
     },
     exports: {
       title: "Exporte und erzeugte Dateien",
@@ -139,11 +148,15 @@ const privacyCopyFr: PrivacyNoticeCopy = {
     },
     noTracking: {
       title: "Aucun pistage, aucune publicité, aucun profilage",
-      body: "Ovumcy ne contient ni outils d'analyse, ni composants publicitaires, ni télémétrie cachée. Rien de votre utilisation de l'application n'est transmis, et vos données de santé ne sont jamais vendues ni partagées à des fins publicitaires.",
+      body: "Ovumcy ne contient ni outils d'analyse, ni composants publicitaires, ni télémétrie cachée. Ovumcy ne transmet rien de votre utilisation de l'application, et vos données de santé ne sont jamais vendues ni partagées à des fins publicitaires. Un composant tiers est présenté à part : la facturation de Google Play, décrite dans « Achat via Google Play ».",
     },
     leavesDevice: {
       title: "Quand des données quittent cet appareil",
       body: "Uniquement via une fonction optionnelle que vous activez vous-même, et seulement après chiffrement par cet appareil. La sauvegarde et la synchronisation chiffrées envoient des enregistrements que le serveur ne peut pas lire. Un compte Ovumcy Cloud contient votre identifiant, vos réglages de double authentification, l'état de votre abonnement et les invitations de partenaire — jamais de données de santé lisibles. Le partage avec un partenaire crée un extrait chiffré pour la personne invitée, au niveau d'accès que vous choisissez, et vous pouvez le révoquer à tout moment.",
+    },
+    storePurchase: {
+      title: "Achat via Google Play",
+      body: "Le mode grossesse s'achète via Google Play. Pour afficher le prix et finaliser ou restaurer un achat, le composant de facturation de Google s'exécute dans l'application. Il ne démarre que lorsque l'application doit savoir si le mode grossesse est débloqué — après l'enregistrement d'un test de grossesse positif, ou quand vous ouvrez le mode grossesse ou son écran d'achat sur Android. Si vous ne le faites jamais, il ne s'exécute jamais. C'est du code de Google : il échange les détails de l'achat avec Google Play et peut envoyer à Google des diagnostics techniques sur son propre fonctionnement. Ovumcy ne lui transmet aucune de vos données de santé et ne conserve elle-même aucune trace de l'achat.",
     },
     exports: {
       title: "Exports et fichiers que vous créez",
@@ -188,11 +201,15 @@ const privacyCopyRu: PrivacyNoticeCopy = {
     },
     noTracking: {
       title: "Ни слежки, ни рекламы, ни профилирования",
-      body: "В Ovumcy нет аналитики, рекламных компонентов и скрытой телеметрии. Ничего о том, как вы пользуетесь приложением, никуда не отправляется, а данные о здоровье никогда не продаются и не передаются для рекламы.",
+      body: "В Ovumcy нет аналитики, рекламных компонентов и скрытой телеметрии. Ovumcy никуда не отправляет сведений о том, как вы пользуетесь приложением, а данные о здоровье никогда не продаются и не передаются для рекламы. Один сторонний компонент описан отдельно: платёжный компонент Google Play — см. раздел «Покупка через Google Play».",
     },
     leavesDevice: {
       title: "Когда данные покидают устройство",
       body: "Только через дополнительную функцию, которую вы включаете сами, и только после того, как устройство их зашифрует. Зашифрованные резервная копия и синхронизация выгружают записи, которые сервер прочитать не может. Аккаунт Ovumcy Cloud хранит логин, настройки двухфакторной защиты, состояние подписки и приглашения партнёра — но никогда читаемые данные о здоровье. Доступ для партнёра создаёт зашифрованную выборку для приглашённого человека на выбранном вами уровне доступа, и его можно отозвать в любой момент.",
+    },
+    storePurchase: {
+      title: "Покупка через Google Play",
+      body: "Режим беременности покупается через Google Play. Чтобы показать цену, провести или восстановить покупку, внутри приложения работает платёжный компонент Google. Он запускается только когда приложению нужно узнать, разблокирован ли режим беременности: после отметки положительного теста на беременность либо при открытии режима беременности или экрана покупки на Android. Если вы этого не делаете, он не запускается. Это код Google: он обменивается с Google Play данными о покупке и может отправлять в Google техническую диагностику собственной работы. Ovumcy не передаёт ему данных о здоровье и сама не хранит сведений о покупке.",
     },
     exports: {
       title: "Экспорт и созданные файлы",
@@ -237,11 +254,15 @@ const privacyCopyEs: PrivacyNoticeCopy = {
     },
     noTracking: {
       title: "Sin rastreo, sin anuncios, sin perfilado",
-      body: "Ovumcy no incluye analítica, ni componentes publicitarios, ni telemetría oculta. Nada sobre cómo usas la aplicación se envía a ninguna parte, y tus datos de salud nunca se venden ni se comparten con fines publicitarios.",
+      body: "Ovumcy no incluye analítica, ni componentes publicitarios, ni telemetría oculta. Ovumcy no envía a ninguna parte nada sobre cómo usas la aplicación, y tus datos de salud nunca se venden ni se comparten con fines publicitarios. Un componente de terceros se describe aparte: la facturación de Google Play, en «Compra a través de Google Play».",
     },
     leavesDevice: {
       title: "Cuándo salen datos de este dispositivo",
       body: "Solo mediante una función opcional que actives tú, y solo después de que este dispositivo los cifre. La copia de seguridad y la sincronización cifradas suben registros que el servidor no puede leer. Una cuenta de Ovumcy Cloud guarda tu acceso, la configuración de doble factor, el estado de la suscripción y las invitaciones de pareja, nunca datos de salud legibles. El acceso para tu pareja crea un extracto cifrado para la persona que invitas, con el nivel de acceso que elijas, y puedes revocarlo cuando quieras.",
+    },
+    storePurchase: {
+      title: "Compra a través de Google Play",
+      body: "El modo embarazo se compra a través de Google Play. Para mostrar el precio y completar o restaurar una compra, el componente de facturación de Google se ejecuta dentro de la aplicación. Solo se inicia cuando la aplicación necesita saber si el modo embarazo está desbloqueado: después de registrar una prueba de embarazo positiva, o al abrir el modo embarazo o su pantalla de compra en Android. Si nunca lo haces, nunca se ejecuta. Es código de Google: intercambia los datos de la compra con Google Play y puede enviar a Google diagnósticos técnicos sobre su propio funcionamiento. Ovumcy no le entrega ninguno de tus datos de salud ni guarda por su cuenta ningún registro de la compra.",
     },
     exports: {
       title: "Exportaciones y archivos que creas",
@@ -286,11 +307,15 @@ const privacyCopyIt: PrivacyNoticeCopy = {
     },
     noTracking: {
       title: "Nessun tracciamento, nessuna pubblicità, nessuna profilazione",
-      body: "Ovumcy non contiene strumenti di analisi, componenti pubblicitari o telemetria nascosta. Nulla di come usi l'app viene inviato altrove e i tuoi dati sanitari non sono mai venduti né condivisi a fini pubblicitari.",
+      body: "Ovumcy non contiene strumenti di analisi, componenti pubblicitari o telemetria nascosta. Ovumcy non invia altrove nulla di come usi l'app e i tuoi dati sanitari non sono mai venduti né condivisi a fini pubblicitari. Un componente di terze parti è descritto a parte: la fatturazione di Google Play, in «Acquisto tramite Google Play».",
     },
     leavesDevice: {
       title: "Quando i dati lasciano questo dispositivo",
       body: "Solo tramite una funzione opzionale che attivi tu e solo dopo che questo dispositivo li ha cifrati. Backup e sincronizzazione cifrati caricano dati che il server non può leggere. Un account Ovumcy Cloud contiene le credenziali, le impostazioni a due fattori, lo stato dell'abbonamento e gli inviti per il partner, mai dati sanitari leggibili. La condivisione con il partner crea un estratto cifrato per la persona che inviti, al livello di accesso che scegli, e puoi revocarla in qualsiasi momento.",
+    },
+    storePurchase: {
+      title: "Acquisto tramite Google Play",
+      body: "La modalità gravidanza si acquista tramite Google Play. Per mostrare il prezzo e completare o ripristinare un acquisto, il componente di fatturazione di Google viene eseguito all'interno dell'app. Si avvia solo quando l'app deve sapere se la modalità gravidanza è sbloccata: dopo aver registrato un test di gravidanza positivo, oppure quando apri la modalità gravidanza o la sua schermata di acquisto su Android. Se non lo fai mai, non viene mai eseguito. È codice di Google: scambia i dati dell'acquisto con Google Play e può inviare a Google diagnostica tecnica sul proprio funzionamento. Ovumcy non gli passa nessuno dei tuoi dati sanitari e non conserva alcuna traccia dell'acquisto.",
     },
     exports: {
       title: "Esportazioni e file che crei",

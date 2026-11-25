@@ -1,6 +1,5 @@
 import type { StoreClient, StorePurchase } from "../billing/store-contract";
 import {
-  acknowledgePregnancyModulePurchase,
   isPregnancyPurchaseSupported,
   loadPregnancyUnlockOffer,
   purchasePregnancyModule,
@@ -129,7 +128,7 @@ describe("purchasePregnancyModule", () => {
     );
   });
 
-  it("stays owned when the acknowledgment fails; the launch task retries it", async () => {
+  it("stays owned when the acknowledgment fails; the next store read retries it", async () => {
     const client = createClient({
       listPurchases: jest.fn().mockResolvedValue([purchase()]),
       acknowledge: jest.fn(unavailable),
@@ -144,8 +143,18 @@ describe("default store client", () => {
     await expect(purchasePregnancyModule()).resolves.toBe("unavailable");
     await expect(restorePregnancyModulePurchase()).resolves.toBe("unavailable");
     await expect(loadPregnancyUnlockOffer()).resolves.toEqual({
-      status: "unavailable",
+      status: "unsupported",
     });
+  });
+
+  it("reports a build with no store as unsupported without asking the store", async () => {
+    const client = createClient({ supported: false });
+
+    await expect(loadPregnancyUnlockOffer(client)).resolves.toEqual({
+      status: "unsupported",
+    });
+    expect(client.listPurchases).not.toHaveBeenCalled();
+    expect(client.loadProduct).not.toHaveBeenCalled();
   });
 });
 
@@ -249,49 +258,24 @@ describe("loadPregnancyUnlockOffer", () => {
   });
 });
 
-describe("acknowledgePregnancyModulePurchase", () => {
-  it("acknowledges a purchased, unacknowledged module purchase", async () => {
-    const client = createClient({
-      listPurchases: jest.fn().mockResolvedValue([purchase()]),
-    });
-
-    await acknowledgePregnancyModulePurchase(client);
-
-    expect(client.acknowledge.mock.calls).toEqual([["pregnancy_module"]]);
-  });
-
-  it("leaves pending, acknowledged and foreign purchases alone", async () => {
-    const client = createClient({
+describe("acknowledgment across the purchase service", () => {
+  it("acknowledges only an owed module purchase, on every path that reads the store", async () => {
+    const settled = createClient({
       listPurchases: jest
         .fn()
         .mockResolvedValue([
-          purchase({ state: "pending" }),
           purchase({ acknowledged: true }),
           purchase({ productId: "ovumcy_cloud" }),
         ]),
     });
 
-    await acknowledgePregnancyModulePurchase(client);
+    await expect(purchasePregnancyModule(settled)).resolves.toBe("owned");
+    await expect(restorePregnancyModulePurchase(settled)).resolves.toBe("owned");
+    await expect(loadPregnancyUnlockOffer(settled)).resolves.toEqual({
+      status: "owned",
+    });
 
-    expect(client.acknowledge).not.toHaveBeenCalled();
-    expect(client.purchase).not.toHaveBeenCalled();
-  });
-
-  it("never rejects, whatever the store does", async () => {
-    await expect(
-      acknowledgePregnancyModulePurchase(
-        createClient({ listPurchases: jest.fn(unavailable) }),
-      ),
-    ).resolves.toBeUndefined();
-    await expect(
-      acknowledgePregnancyModulePurchase(
-        createClient({
-          listPurchases: jest.fn().mockResolvedValue([purchase()]),
-          acknowledge: jest.fn(unavailable),
-        }),
-      ),
-    ).resolves.toBeUndefined();
-    // The default client has no store under Jest.
-    await expect(acknowledgePregnancyModulePurchase()).resolves.toBeUndefined();
+    // Already acknowledged, and the subscription is not the app's to settle.
+    expect(settled.acknowledge).not.toHaveBeenCalled();
   });
 });

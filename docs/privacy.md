@@ -6,7 +6,7 @@ This document describes what the app stores, what can leave the device, and how 
 
 ## Scope
 
-Core tracking, predictions, statistics, local CSV/JSON export and offline JSON import work with no account, no sync and no network. Every network path below is opt-in and is triggered by an explicit owner action (connecting an account, uploading a backup, sharing with a partner, opening the privacy policy link).
+Core tracking, predictions, statistics, local CSV/JSON export and offline JSON import work with no account, no sync and no network. Every network path below is opt-in and is triggered by an explicit owner action (connecting an account, uploading a backup, sharing with a partner, opening the privacy policy link). One path is not the app's own: on Android the store's billing library runs when the app checks or sells the pregnancy module (see *Store purchase* under Egress).
 
 ## Data Inventory
 
@@ -54,7 +54,7 @@ Local reminders are scheduled with `expo-notifications`. The visible text is gen
 
 ## Egress
 
-The app ships no analytics, advertising, crash-reporting, attribution or other third-party SDK, and no over-the-air update channel; the code never requests a push token. This was checked against `package.json` (no such dependency, no `expo-updates`) and the source (the only `fetch` callers are the sync, managed-cloud and PDF-font code below; `expo-linking`'s `openURL` is used for the privacy policy only). Nothing is sent unless an owner action below runs.
+Apart from the store's billing library described under *Store purchase* below, the app ships no analytics, advertising, crash-reporting, attribution or other third-party SDK, and no over-the-air update channel; the code never requests a push token. This was checked against `package.json` (no such dependency, no `expo-updates`) and the source (the only `fetch` callers are the sync, managed-cloud and PDF-font code below; `expo-linking`'s `openURL` is used for the privacy policy only). Nothing is sent unless an owner action below runs.
 
 Explicit consent comes first. Before a connect, phrase recovery or upload to a sync server (Ovumcy Cloud and a self-hosted server are separate purposes) and before issuing a partner invite, the app checks for a stored consent at the current consent-text revision (`DATA_SHARING_CONSENT_REVISION`, `src/services/data-sharing-consent-service.ts`). Without one it shows a dialog that lists what leaves the device, says it is end-to-end encrypted, names the recipient and how to withdraw, and links the privacy policy (six-locale copy in `src/i18n/data-sharing-consent-copy.ts`). Only the explicit "I agree" button proceeds; the decline button, Back or leaving the screen sends nothing. The acceptance is recorded locally (purpose, revision, date) inside the encrypted `sync_preferences` payload before the first request; a new revision asks again, a disconnect or a saved change of sync mode or server address withdraws the old destination's sync consent (for Ovumcy Cloud also the partner-share consent), revoking a partner invite or grant withdraws the partner-share consent, and the local-data wipe deletes it. The consent is asked after the sync draft is saved, so it always names the destination the request goes to. A partner grant that is already active keeps refreshing its projection until it is revoked.
 
@@ -67,6 +67,12 @@ Explicit consent comes first. Before a connect, phrase recovery or upload to a s
 | Managed cloud partner endpoints (`/account/partner/access`, `/invites`, `/invites/accept`, `/grants/<id>`, `/grants/<id>/projection`) and `/auth/partner/invites/accept` | owner invites, revokes or refreshes a partner share; partner accepts or reads | invite and grant IDs, access level, and the partner projection as ciphertext under a per-grant key |
 | PDF font asset | building the doctor PDF from a non-`file:` asset URI (web, Metro dev builds) | nothing from the owner; a request for the app's own bundled font. Release native builds read it from a local file |
 | `openURL` to `https://ovumcy.com/privacy` | owner opens the privacy notice | a fixed URL with no account, health or invite context |
+
+### Store purchase (Android)
+
+The pregnancy module is sold through Google Play, and any Google Play purchase requires Google's Play Billing Library (9.1.0, brought in by `expo-iap`). The app starts it only when it needs to know whether the module is owned or when it sells it: on the dashboard after a positive pregnancy test with no pregnancy record, on the pregnancy start screen, on the postpartum start check, and on the purchase screen (`src/billing/store-client.native.ts`). It is never started at launch, and never on iOS or web, where no store is wired.
+
+Once started, the library talks to the Play Store app on the device about the product's price and the purchase. It is Google's code and declares Google's log uploader as a dependency, so it may also send Google diagnostics about its own operation; the app cannot switch that off. What it sends has not been captured and is not asserted here. The app hands it the product id `pregnancy_module` and nothing else — no health data and no account identifier — and stores neither the purchase, nor its token, nor its state.
 
 Default hosts: `https://sync.ovumcy.cloud` (self-hosted protocol default) and `https://managed.ovumcy.cloud` (managed cloud); a build can override them with `EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL` and `EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL`, and the owner can point sync at their own server.
 

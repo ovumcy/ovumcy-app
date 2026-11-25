@@ -4,7 +4,8 @@
 
 ### Security
 
-- **The purchase is decided on the device and stored nowhere by the app.** Ownership is read from Google Play each time it matters; a pending, cancelled or failed purchase unlocks nothing. The store library is used for billing calls only — none of its verification or reporting features is reachable from the app.
+- **The purchase is decided on the device and stored nowhere by the app.** Ownership is read from Google Play each time it matters; a pending, cancelled or failed purchase unlocks nothing. The store library is used for billing calls only — none of its verification features is reachable from the app.
+- **Google's billing component is disclosed, and kept off the launch path.** Buying through Google Play requires Google's own billing library inside the Android app; it can send Google diagnostics about its own operation. Ovumcy starts it only when the app checks or sells pregnancy mode — never at launch — and gives it no health data. The privacy notice has a new section, "Buying through Google Play", and its date is updated.
 
 ### Dependencies
 

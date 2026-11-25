@@ -191,7 +191,13 @@ operation at all.
   product, a subscription, or any error reading the store all resolve to not
   owned (fail-closed, as `loadPregnancyModuleOwned` already is).
 - The app acknowledges the purchase — an unacknowledged Play purchase is
-  refunded by Google after three days — and never consumes it.
+  refunded by Google after three days — and never consumes it. The
+  acknowledgment an owned purchase still owes is started on every read of the
+  store, never awaited.
+- The store is asked only from the pregnancy surfaces, never at launch:
+  starting its billing client also starts the store vendor's own diagnostics,
+  the one accepted exception to the no-telemetry posture (`SECURITY.md`,
+  `docs/privacy.md`).
 - Ownership is not written to app storage: the store's own cache answers
   offline, and "Restore purchases" re-reads it. The app verifies no receipt
   signature and sends the purchase nowhere; this is a UX control over the

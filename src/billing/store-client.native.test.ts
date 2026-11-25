@@ -6,7 +6,11 @@ import {
   requestPurchase,
 } from "expo-iap";
 
-import { createStoreClient, storeClient } from "./store-client.native";
+import {
+  STORE_CALL_TIMEOUT_MS,
+  createStoreClient,
+  storeClient,
+} from "./store-client.native";
 
 const mockInit = jest.mocked(initConnection);
 const mockFetchProducts = jest.mocked(fetchProducts);
@@ -139,6 +143,42 @@ describe("store client (native adapter)", () => {
     }
   });
 
+  it("rejects with a bare store_unavailable error whatever the library threw", async () => {
+    const leak = Object.assign(new Error(`debug text with ${TOKEN}`), {
+      code: "service-error",
+      purchaseToken: TOKEN,
+    });
+    mockGetPurchases.mockRejectedValue(leak);
+    mockFetchProducts.mockRejectedValue(leak);
+    mockRequestPurchase.mockRejectedValue(leak);
+    const client = androidClient();
+    const settle = (call: Promise<unknown>) =>
+      call.then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+    const failures = [
+      await settle(client.listPurchases()),
+      await settle(client.loadProduct("pregnancy_module")),
+      await settle(client.acknowledge("pregnancy_module")),
+      await settle(client.purchase("pregnancy_module")),
+    ];
+
+    // The acknowledge call itself failing, after a successful purchase read.
+    mockGetPurchases.mockResolvedValue([rawPurchase()]);
+    mockFinish.mockRejectedValue(leak);
+    failures.push(await settle(client.acknowledge("pregnancy_module")));
+
+    for (const failure of failures) {
+      expect(failure).toBeInstanceOf(Error);
+      const error = failure as Error & { cause?: unknown };
+      expect(error.message).toBe("store_unavailable");
+      expect(error.cause).toBeUndefined();
+      expect(Object.keys(error)).toEqual([]);
+    }
+  });
+
   it("connects again after a purchase that failed to connect", async () => {
     mockInit.mockResolvedValueOnce(false).mockResolvedValue(true);
     const client = androidClient();
@@ -211,6 +251,8 @@ describe("store client (native adapter)", () => {
     );
     // A timeout is not retried.
     expect(mockGetPurchases).toHaveBeenCalledTimes(1);
+    // The limit a screen can wait on a cached read in the shipped client.
+    expect(STORE_CALL_TIMEOUT_MS).toBe(5_000);
   });
 
   it("gives the product lookup longer than the cached purchase read", async () => {
@@ -247,6 +289,15 @@ describe("store client (native adapter)", () => {
     expect(mockInit).not.toHaveBeenCalled();
     expect(mockRequestPurchase).not.toHaveBeenCalled();
     expect(mockFinish).not.toHaveBeenCalled();
+  });
+
+  it("loads the real store library without its native module, as where it is not linked", async () => {
+    // iOS excludes the library's native module from autolinking, so importing
+    // it must not reach for native code; only a call may fail.
+    const actual = jest.requireActual<typeof import("expo-iap")>("expo-iap");
+
+    expect(typeof actual.requestPurchase).toBe("function");
+    await expect(actual.initConnection()).rejects.toBeDefined();
   });
 
   it("exports a default client bound to the running platform", async () => {

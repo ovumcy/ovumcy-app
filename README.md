@@ -38,7 +38,7 @@ Ovumcy App is a menstrual cycle tracker for iOS and Android that keeps your heal
 
 - **No account.** Install, go through a two-step onboarding, and start logging. Tracking, predictions, statistics, reminders, and export all work with no sign-up and no network.
 - **Your device is the storage.** Native SQLite with encrypted-at-rest health records and a device-local key in the platform secure store.
-- **No strings.** No analytics, no ad trackers, no telemetry. CSV and JSON export whenever you like, and an offline JSON import to bring it back.
+- **No strings.** No analytics, no ad trackers, no telemetry of Ovumcy's own ([one third-party exception](#does-ovumcy-app-use-telemetry-or-ad-trackers)). CSV and JSON export whenever you like, and an offline JSON import to bring it back.
 
 > ⭐ **If Ovumcy is useful to you, star the repository.** Stars are how people looking for a private cycle tracker find it. More ways to help: [Support the Project](#support-the-project).
 
@@ -267,7 +267,9 @@ Yes. Export to CSV or JSON from Settings at any time, with no account. A JSON ex
 
 ### Does Ovumcy App use telemetry or ad trackers?
 
-No. There is no analytics, crash-reporting, or advertising SDK in the app.
+No. There is no analytics, crash-reporting, or advertising SDK in the app, and Ovumcy reports nothing about how you use it.
+
+One third-party component is worth knowing about. The pregnancy module is sold through Google Play, and that requires Google's own billing library inside the Android app. It starts only when the app checks or sells that module — never at launch, and never if you do not use pregnancy mode — and, being Google's code, it can send Google diagnostics about its own operation. Ovumcy gives it no health data. The detail is in [docs/privacy.md](docs/privacy.md).
 
 ### Is there a free trial of Ovumcy Cloud?
 
@@ -293,7 +295,7 @@ Period and fertile-window predictions in particular are statistical estimates de
 - Ovumcy Cloud premium surfaces are wired client-side: without an active plan they show as cleanly locked (never a silent hide, never an error), and they render fully when the managed billing snapshot reports premium features active;
 - community and managed sync have encrypted round-trip integration suites; those live suites run only against a configured server (`OVUMCY_SYNC_LIVE_BASE_URL` / `OVUMCY_MANAGED_LIVE_BASE_URL`) and are skipped by default; CI runs the community suite against a server built from the pinned `ovumcy-sync-community` commit and, on a schedule, the managed suite against pinned managed + community servers;
 - the pregnancy, postpartum, and mood check-in module is implemented and tested end to end, including backup, sync, and export of its records;
-- the module's one-time unlock is a Google Play purchase read on the device: no account, no server, and nothing about it stored by the app. The store library is confined to one adapter and never asked to verify, report, or send anything.
+- the module's one-time unlock is a Google Play purchase read on the device: no account, no server, and nothing about it stored by the app. The store library is confined to one adapter and started only from the pregnancy screens; what Google's billing code does on its own is described in the [FAQ](#does-ovumcy-app-use-telemetry-or-ad-trackers).
 
 What the repository does **not** claim yet:
 
