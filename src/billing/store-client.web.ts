@@ -7,6 +7,7 @@ function unavailable(): Promise<never> {
 }
 
 export const storeClient: StoreClient = {
+  supported: false,
   loadProduct: unavailable,
   listPurchases: unavailable,
   purchase: unavailable,

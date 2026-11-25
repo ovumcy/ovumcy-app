@@ -9,6 +9,7 @@ import type { LocalReminderScheduler } from "../../../services/local-reminder-sc
 import { rebuildLocalReminderScheduleFromStorage } from "../../../services/local-reminder-sync-service";
 import { createPlatformLocalReminderScheduler } from "../../../services/platform-local-reminder-scheduler";
 import { loadPregnancyModuleOwned } from "../../../services/pregnancy-entitlement-service";
+import { isPregnancyPurchaseSupported } from "../../../services/pregnancy-purchase-service";
 import {
   buildPregnancyStartPreview,
   loadPregnancyStartDefaults,
@@ -238,8 +239,12 @@ export function PregnancyStartScreen({
       // upsell: the card opens the one-time purchase screen, not plan options.
       // `replace` drops this locked screen from the stack — it reads ownership
       // once on mount, so returning to it after a purchase would still show
-      // the lock.
-      onPremiumCTAPress={() => router.replace("/pregnancy-unlock")}
+      // the lock. A build with no store keeps the card informational.
+      onPremiumCTAPress={
+        isPregnancyPurchaseSupported()
+          ? () => router.replace("/pregnancy-unlock")
+          : undefined
+      }
       preview={preview}
       step={step}
     />

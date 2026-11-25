@@ -37,6 +37,11 @@ export type StorePurchaseOutcome = "completed" | "cancelled";
  * error; callers treat any rejection as "store unavailable" and fail closed.
  */
 export type StoreClient = {
+  /**
+   * Whether this build has a store wired at all. Where it has none, a
+   * purchase affordance stays absent instead of leading to a dead end.
+   */
+  readonly supported: boolean;
   /** Resolves `null` when the store does not sell this product here. */
   loadProduct(productId: string): Promise<StoreProduct | null>;
   /** The store account's current one-time purchases, pending ones included. */

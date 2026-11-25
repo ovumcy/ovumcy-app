@@ -141,6 +141,8 @@ export function createStoreClient(
   const networkTimeoutMs = timeoutMs * NETWORK_CALL_TIMEOUT_FACTOR;
 
   return {
+    supported,
+
     async loadProduct(productId: string): Promise<StoreProduct | null> {
       const products = await call(
         () => fetchProducts({ skus: [productId], type: "in-app" }),

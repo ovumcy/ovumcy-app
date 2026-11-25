@@ -232,8 +232,11 @@ describe("store client (native adapter)", () => {
   });
 
   it("rejects every call off Google Play without touching the store library", async () => {
+    expect(androidClient().supported).toBe(true);
+
     for (const platformOS of ["ios", "web", "windows"]) {
       const client = createStoreClient({ platformOS });
+      expect(client.supported).toBe(false);
 
       await expect(client.listPurchases()).rejects.toThrow(/^store_unavailable$/);
       await expect(client.loadProduct("pregnancy_module")).rejects.toThrow();

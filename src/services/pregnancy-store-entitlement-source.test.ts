@@ -7,8 +7,9 @@ import {
 
 function clientWith(
   listPurchases: StoreClient["listPurchases"],
-): StoreClient & { [K in keyof StoreClient]: jest.Mock } {
+): StoreClient & { [K in keyof Omit<StoreClient, "supported">]: jest.Mock } {
   return {
+    supported: true,
     loadProduct: jest.fn(),
     listPurchases: jest.fn(listPurchases),
     purchase: jest.fn(),

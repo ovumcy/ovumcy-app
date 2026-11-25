@@ -171,8 +171,8 @@ Current state vs target: today every premium surface reads the managed billing
 snapshot, the token overlay is dormant (`SECURITY.md`, Accepted Residual
 Risks), and nothing in the app can buy the subscription. The one-time door is
 implemented for Google Play (`src/billing`, `pregnancy-purchase-service`, the
-`/pregnancy-unlock` screen; claims pinned in `SECURITY.md`); on iOS and web the
-store reads as unavailable and the module stays locked. The subscription flow
+`/pregnancy-unlock` screen; claims pinned in `SECURITY.md`); on iOS and web no
+store is wired, so the module stays locked and its lock card informational. The subscription flow
 below is the target work this section models ahead of implementation. The
 device-anchored `sub` class stays a target of its own; neither purchase flow
 depends on it.

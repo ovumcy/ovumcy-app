@@ -27,6 +27,7 @@ import {
   buildManualCycleStartViewData,
 } from "../../services/manual-cycle-start-service";
 import { endPostpartum } from "../../services/postpartum-mode-service";
+import { isPregnancyPurchaseSupported } from "../../services/pregnancy-purchase-service";
 import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
 import { hasDayLogData } from "../../models/day-log";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
@@ -415,8 +416,13 @@ export function DashboardScreen({
       // the module is a one-time on-device unlock — not a tier of the cloud
       // subscription. It opens the one-time purchase screen; `Backup & sync`
       // is the wrong door: it would sell a plan that neither grants nor
-      // revokes this module.
-      onPremiumCTAPress={() => router.push("/pregnancy-unlock")}
+      // revokes this module. A build with no store keeps the card
+      // informational rather than offering an unlock that cannot succeed.
+      onPremiumCTAPress={
+        isPregnancyPurchaseSupported()
+          ? () => router.push("/pregnancy-unlock")
+          : undefined
+      }
       onBirthPress={() => router.push("/pregnancy-end?reason=birth")}
       onManagePregnancyPress={() => router.push("/pregnancy-end")}
       onManagePostpartumPress={() => router.push("/pregnancy-end")}
