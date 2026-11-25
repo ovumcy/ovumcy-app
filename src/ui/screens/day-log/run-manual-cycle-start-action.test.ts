@@ -191,9 +191,9 @@ describe("run-manual-cycle-start-action", () => {
 describe("run-manual-cycle-start-action after a pregnancy ends", () => {
   it("rebuilds the prompts with the stored birth date and marks the start uncertain", async () => {
     const storage = createLocalAppStorageMock({
-      readActivePostpartum: jest
+      listPostpartumRecords: jest
         .fn()
-        .mockResolvedValue(createPostpartumRecord({ startedAt: "2026-06-01" })),
+        .mockResolvedValue([createPostpartumRecord({ startedAt: "2026-06-01" })]),
     });
     const profile = {
       ...createDefaultProfileRecord(),
