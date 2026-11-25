@@ -19,10 +19,14 @@ import {
   parseLocalDate,
   sanitizeLocalDateInput,
 } from "../../../services/profile-settings-policy";
-import { loadSettingsScreenState } from "../../../services/settings-state-service";
+import {
+  loadHasPregnancyModuleData,
+  loadSettingsScreenState,
+} from "../../../services/settings-state-service";
 import {
   buildSettingsCycleGuidance,
   buildSettingsDirtyState,
+  buildSettingsPregnancyManageRow,
   buildSettingsSyncSummary,
   buildSettingsViewData,
   revertLoadedSettingsDraftValues,
@@ -193,6 +197,7 @@ export function useSettingsScreenController({
   const [rowSymptomStatusMessages, setRowSymptomStatusMessages] = useState<
     Record<string, string>
   >({});
+  const [hasPregnancyData, setHasPregnancyData] = useState(false);
   const shellCopy = useMemo(() => getShellCopy(language), [language]);
   const viewData = useMemo(
     () => buildSettingsViewData(effectiveNow, language),
@@ -226,6 +231,11 @@ export function useSettingsScreenController({
 
         setState(loadedState);
         setIsLoading(false);
+      });
+      void loadHasPregnancyModuleData(storage).then((hasData) => {
+        if (isMounted) {
+          setHasPregnancyData(hasData);
+        }
       });
 
       return () => {
@@ -789,6 +799,11 @@ export function useSettingsScreenController({
           void router.push("/privacy");
         });
       },
+      onOpenPregnancyManage: () => {
+        void confirmPendingSettingsThen(() => {
+          void router.push("/pregnancy-end");
+        });
+      },
       onOpenSettingsSection: (sectionKey) => {
         void confirmPendingSettingsThen(() => {
           void router.push(SETTINGS_SECTION_HREFS[sectionKey]);
@@ -861,6 +876,9 @@ export function useSettingsScreenController({
       onUsageGoalSelect: (value) => {
         applyCycleUpdates({ usageGoal: value });
       },
+      pregnancyManageRow: hasPregnancyData
+        ? buildSettingsPregnancyManageRow(language)
+        : null,
       rowSymptomDrafts,
       rowSymptomErrorMessages,
       rowSymptomStatusMessages,

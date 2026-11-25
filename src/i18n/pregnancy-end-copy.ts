@@ -21,7 +21,7 @@ const pregnancyEndCopyEn = {
   choice: {
     title: "What would you like to do?",
     birthLabel: "I gave birth",
-    birthHint: "Record the birth and switch back to cycle tracking.",
+    birthHint: "Record the birth and end pregnancy tracking.",
     lossLabel: "I experienced a loss",
     lossHint: "Switch back to cycle tracking, quietly.",
     otherLabel: "Something else",
@@ -31,12 +31,12 @@ const pregnancyEndCopyEn = {
   birth: {
     title: "Congratulations",
     congratulations:
-      "Congratulations on your new arrival. When you're ready, you can switch Ovumcy back to cycle tracking.",
+      "Congratulations on your new arrival. When you're ready, you can finish pregnancy tracking here.",
     // Multiples: plural variants used only when the ACTIVE record's
     // fetusCount >= 2 -- see PregnancyEndFlowScreen's isMultiples prop. Loss
     // and "other" copy is never plural-aware (kept untouched).
     congratulationsPlural:
-      "Congratulations on your new arrivals. When you're ready, you can switch Ovumcy back to cycle tracking.",
+      "Congratulations on your new arrivals. When you're ready, you can finish pregnancy tracking here.",
     modeQuestion: "How was your baby born?",
     modeQuestionPlural: "How were your babies born?",
     modeHint: "This is optional — you can skip it.",
@@ -49,7 +49,7 @@ const pregnancyEndCopyEn = {
     backCta: "Back",
     dialog: {
       title: "Finish pregnancy tracking?",
-      body: "Ovumcy will switch back to cycle tracking. Your pregnancy entries stay saved on this device.",
+      body: "Ovumcy will end pregnancy tracking. Your pregnancy entries stay saved on this device.",
       confirm: "Finish",
       cancel: "Keep tracking",
     },
@@ -86,6 +86,11 @@ const pregnancyEndCopyEn = {
       "You don't have an active pregnancy in Ovumcy. You can remove your saved pregnancy data below.",
     emptyBody: "You don't have any pregnancy data in Ovumcy.",
     backCta: "Back",
+    // Heading and blurb for the manage screen once postpartum tracking is
+    // active, and the title/description of the Settings entry row.
+    hubTitle: "Pregnancy and postpartum",
+    hubDescription:
+      "Manage or delete saved pregnancy, postpartum and check-in data.",
   },
   // Update due date: clinician re-dating, offered only while a
   // pregnancy is active. Basis labels, the date field, and the live preview
@@ -134,7 +139,7 @@ const pregnancyEndCopyRu: PregnancyEndCopy = {
   choice: {
     title: "Что вы хотите сделать?",
     birthLabel: "Я родила",
-    birthHint: "Отметить рождение и вернуться к отслеживанию цикла.",
+    birthHint: "Отметить рождение и завершить отслеживание беременности.",
     lossLabel: "Я потеряла беременность",
     lossHint: "Тихо вернуться к отслеживанию цикла.",
     otherLabel: "Другое",
@@ -144,9 +149,9 @@ const pregnancyEndCopyRu: PregnancyEndCopy = {
   birth: {
     title: "Поздравляем",
     congratulations:
-      "Поздравляем с рождением малыша. Когда будете готовы, можно вернуть Ovumcy к отслеживанию цикла.",
+      "Поздравляем с рождением малыша. Когда будете готовы, можно завершить отслеживание беременности здесь.",
     congratulationsPlural:
-      "Поздравляем с рождением малышей. Когда будете готовы, можно вернуть Ovumcy к отслеживанию цикла.",
+      "Поздравляем с рождением малышей. Когда будете готовы, можно завершить отслеживание беременности здесь.",
     modeQuestion: "Как прошли роды?",
     modeQuestionPlural: "Как появились на свет малыши?",
     modeHint: "Это необязательно — можно пропустить.",
@@ -159,7 +164,7 @@ const pregnancyEndCopyRu: PregnancyEndCopy = {
     backCta: "Назад",
     dialog: {
       title: "Завершить отслеживание беременности?",
-      body: "Ovumcy вернётся к отслеживанию цикла. Ваши записи о беременности останутся на этом устройстве.",
+      body: "Ovumcy завершит отслеживание беременности. Ваши записи о беременности останутся на этом устройстве.",
       confirm: "Завершить",
       cancel: "Продолжить отслеживание",
     },
@@ -197,6 +202,9 @@ const pregnancyEndCopyRu: PregnancyEndCopy = {
       "Сейчас в Ovumcy нет активной беременности. Вы можете удалить сохранённые данные о беременности ниже.",
     emptyBody: "В Ovumcy нет данных о беременности.",
     backCta: "Назад",
+    hubTitle: "Беременность и послеродовой период",
+    hubDescription:
+      "Управление сохранёнными данными о беременности, послеродовом периоде и опросах о самочувствии, а также их удаление.",
   },
   updateDueDate: {
     rowLabel: "Обновить дату родов",
@@ -240,7 +248,7 @@ const pregnancyEndCopyDe: PregnancyEndCopy = {
   choice: {
     title: "Was möchten Sie tun?",
     birthLabel: "Ich habe entbunden",
-    birthHint: "Die Geburt festhalten und zum Zyklus-Tracking zurückkehren.",
+    birthHint: "Die Geburt festhalten und das Schwangerschafts-Tracking beenden.",
     lossLabel: "Ich habe mein Kind verloren",
     lossHint: "Still zum Zyklus-Tracking zurückkehren.",
     otherLabel: "Etwas anderes",
@@ -251,9 +259,9 @@ const pregnancyEndCopyDe: PregnancyEndCopy = {
   birth: {
     title: "Herzlichen Glückwunsch",
     congratulations:
-      "Herzlichen Glückwunsch zu Ihrem Nachwuchs. Wenn Sie bereit sind, können Sie Ovumcy zum Zyklus-Tracking zurückstellen.",
+      "Herzlichen Glückwunsch zu Ihrem Nachwuchs. Wenn Sie bereit sind, können Sie das Schwangerschafts-Tracking hier beenden.",
     congratulationsPlural:
-      "Herzlichen Glückwunsch zu Ihren Neugeborenen. Wenn Sie bereit sind, können Sie Ovumcy zum Zyklus-Tracking zurückstellen.",
+      "Herzlichen Glückwunsch zu Ihren Neugeborenen. Wenn Sie bereit sind, können Sie das Schwangerschafts-Tracking hier beenden.",
     modeQuestion: "Wie kam Ihr Baby zur Welt?",
     modeQuestionPlural: "Wie kamen Ihre Babys zur Welt?",
     modeHint: "Das ist optional — Sie können es überspringen.",
@@ -266,7 +274,7 @@ const pregnancyEndCopyDe: PregnancyEndCopy = {
     backCta: "Zurück",
     dialog: {
       title: "Schwangerschafts-Tracking beenden?",
-      body: "Ovumcy wechselt zurück zum Zyklus-Tracking. Ihre Schwangerschaftseinträge bleiben auf diesem Gerät gespeichert.",
+      body: "Ovumcy beendet das Schwangerschafts-Tracking. Ihre Schwangerschaftseinträge bleiben auf diesem Gerät gespeichert.",
       confirm: "Beenden",
       cancel: "Weiter verfolgen",
     },
@@ -304,6 +312,9 @@ const pregnancyEndCopyDe: PregnancyEndCopy = {
       "Sie haben keine aktive Schwangerschaft in Ovumcy. Sie können Ihre gespeicherten Schwangerschaftsdaten unten entfernen.",
     emptyBody: "Sie haben keine Schwangerschaftsdaten in Ovumcy.",
     backCta: "Zurück",
+    hubTitle: "Schwangerschaft und Wochenbett",
+    hubDescription:
+      "Gespeicherte Daten zu Schwangerschaft, Wochenbett und Check-ins verwalten oder löschen.",
   },
   updateDueDate: {
     rowLabel: "Termin aktualisieren",
@@ -349,7 +360,7 @@ const pregnancyEndCopyFr: PregnancyEndCopy = {
   choice: {
     title: "Que souhaitez-vous faire ?",
     birthLabel: "J'ai accouché",
-    birthHint: "Enregistrer la naissance et revenir au suivi du cycle.",
+    birthHint: "Enregistrer la naissance et terminer le suivi de grossesse.",
     lossLabel: "J'ai vécu une perte",
     lossHint: "Revenir discrètement au suivi du cycle.",
     otherLabel: "Autre chose",
@@ -359,9 +370,9 @@ const pregnancyEndCopyFr: PregnancyEndCopy = {
   birth: {
     title: "Félicitations",
     congratulations:
-      "Félicitations pour l'arrivée de votre bébé. Quand vous serez prête, vous pourrez revenir au suivi du cycle dans Ovumcy.",
+      "Félicitations pour l'arrivée de votre bébé. Quand vous serez prête, vous pourrez terminer ici le suivi de grossesse.",
     congratulationsPlural:
-      "Félicitations pour l'arrivée de vos bébés. Quand vous serez prête, vous pourrez revenir au suivi du cycle dans Ovumcy.",
+      "Félicitations pour l'arrivée de vos bébés. Quand vous serez prête, vous pourrez terminer ici le suivi de grossesse.",
     modeQuestion: "Comment votre bébé est-il né ?",
     modeQuestionPlural: "Comment vos bébés sont-ils nés ?",
     modeHint: "C'est facultatif — vous pouvez passer cette étape.",
@@ -374,7 +385,7 @@ const pregnancyEndCopyFr: PregnancyEndCopy = {
     backCta: "Retour",
     dialog: {
       title: "Terminer le suivi de grossesse ?",
-      body: "Ovumcy reviendra au suivi du cycle. Vos entrées de grossesse restent enregistrées sur cet appareil.",
+      body: "Ovumcy mettra fin au suivi de grossesse. Vos entrées de grossesse restent enregistrées sur cet appareil.",
       confirm: "Terminer",
       cancel: "Continuer le suivi",
     },
@@ -412,6 +423,9 @@ const pregnancyEndCopyFr: PregnancyEndCopy = {
       "Vous n'avez pas de grossesse active dans Ovumcy. Vous pouvez supprimer vos données de grossesse enregistrées ci-dessous.",
     emptyBody: "Vous n'avez aucune donnée de grossesse dans Ovumcy.",
     backCta: "Retour",
+    hubTitle: "Grossesse et post-partum",
+    hubDescription:
+      "Gérer ou supprimer les données enregistrées de grossesse, de post-partum et de bilans.",
   },
   updateDueDate: {
     rowLabel: "Mettre à jour la date prévue",
@@ -457,7 +471,7 @@ const pregnancyEndCopyEs: PregnancyEndCopy = {
   choice: {
     title: "¿Qué te gustaría hacer?",
     birthLabel: "Di a luz",
-    birthHint: "Registrar el nacimiento y volver al seguimiento del ciclo.",
+    birthHint: "Registrar el nacimiento y terminar el seguimiento del embarazo.",
     lossLabel: "Tuve una pérdida",
     lossHint: "Volver al seguimiento del ciclo, de forma discreta.",
     otherLabel: "Otra cosa",
@@ -467,9 +481,9 @@ const pregnancyEndCopyEs: PregnancyEndCopy = {
   birth: {
     title: "Enhorabuena",
     congratulations:
-      "Enhorabuena por la llegada de tu bebé. Cuando quieras, puedes volver al seguimiento del ciclo en Ovumcy.",
+      "Enhorabuena por la llegada de tu bebé. Cuando quieras, puedes terminar aquí el seguimiento del embarazo.",
     congratulationsPlural:
-      "Enhorabuena por la llegada de tus bebés. Cuando quieras, puedes volver al seguimiento del ciclo en Ovumcy.",
+      "Enhorabuena por la llegada de tus bebés. Cuando quieras, puedes terminar aquí el seguimiento del embarazo.",
     modeQuestion: "¿Cómo nació tu bebé?",
     modeQuestionPlural: "¿Cómo nacieron tus bebés?",
     modeHint: "Es opcional; puedes omitirlo.",
@@ -482,7 +496,7 @@ const pregnancyEndCopyEs: PregnancyEndCopy = {
     backCta: "Atrás",
     dialog: {
       title: "¿Terminar el seguimiento del embarazo?",
-      body: "Ovumcy volverá al seguimiento del ciclo. Tus entradas del embarazo se mantienen guardadas en este dispositivo.",
+      body: "Ovumcy terminará el seguimiento del embarazo. Tus entradas del embarazo se mantienen guardadas en este dispositivo.",
       confirm: "Terminar",
       cancel: "Seguir con el seguimiento",
     },
@@ -520,6 +534,9 @@ const pregnancyEndCopyEs: PregnancyEndCopy = {
       "No tienes un embarazo activo en Ovumcy. Puedes eliminar tus datos de embarazo guardados abajo.",
     emptyBody: "No tienes datos de embarazo en Ovumcy.",
     backCta: "Atrás",
+    hubTitle: "Embarazo y posparto",
+    hubDescription:
+      "Gestiona o elimina los datos guardados de embarazo, posparto y chequeos.",
   },
   updateDueDate: {
     rowLabel: "Actualizar fecha de parto",
@@ -563,7 +580,7 @@ const pregnancyEndCopyIt: PregnancyEndCopy = {
   choice: {
     title: "Cosa vuoi fare?",
     birthLabel: "Ho partorito",
-    birthHint: "Registrare la nascita e tornare al monitoraggio del ciclo.",
+    birthHint: "Registrare la nascita e terminare il monitoraggio della gravidanza.",
     lossLabel: "Ho avuto una perdita",
     lossHint: "Tornare al monitoraggio del ciclo, con discrezione.",
     otherLabel: "Qualcos'altro",
@@ -574,9 +591,9 @@ const pregnancyEndCopyIt: PregnancyEndCopy = {
   birth: {
     title: "Congratulazioni",
     congratulations:
-      "Congratulazioni per l'arrivo del tuo bambino. Quando sei pronta, puoi riportare Ovumcy al monitoraggio del ciclo.",
+      "Congratulazioni per l'arrivo del tuo bambino. Quando sei pronta, puoi terminare qui il monitoraggio della gravidanza.",
     congratulationsPlural:
-      "Congratulazioni per l'arrivo dei tuoi bambini. Quando sei pronta, puoi riportare Ovumcy al monitoraggio del ciclo.",
+      "Congratulazioni per l'arrivo dei tuoi bambini. Quando sei pronta, puoi terminare qui il monitoraggio della gravidanza.",
     modeQuestion: "Come è nato il tuo bambino?",
     modeQuestionPlural: "Come sono nati i tuoi bambini?",
     modeHint: "È facoltativo — puoi saltarlo.",
@@ -589,7 +606,7 @@ const pregnancyEndCopyIt: PregnancyEndCopy = {
     backCta: "Indietro",
     dialog: {
       title: "Terminare il monitoraggio della gravidanza?",
-      body: "Ovumcy tornerà al monitoraggio del ciclo. Le tue voci sulla gravidanza restano salvate su questo dispositivo.",
+      body: "Ovumcy terminerà il monitoraggio della gravidanza. Le tue voci sulla gravidanza restano salvate su questo dispositivo.",
       confirm: "Termina",
       cancel: "Continua a monitorare",
     },
@@ -627,6 +644,9 @@ const pregnancyEndCopyIt: PregnancyEndCopy = {
       "Non hai una gravidanza attiva in Ovumcy. Puoi rimuovere i dati sulla gravidanza salvati qui sotto.",
     emptyBody: "Non hai dati sulla gravidanza in Ovumcy.",
     backCta: "Indietro",
+    hubTitle: "Gravidanza e post-partum",
+    hubDescription:
+      "Gestisci o elimina i dati salvati di gravidanza, post-partum e controlli.",
   },
   updateDueDate: {
     rowLabel: "Aggiorna la data del parto",

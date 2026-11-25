@@ -52,6 +52,27 @@ async function loadSettingsManagedPremiumAccess(
   };
 }
 
+// True when any pregnancy, postpartum or screening record exists on the
+// device. Drives the Settings entry to the manage screen; deliberately reads
+// no module entitlement, so saved data stays manageable and deletable after
+// a lapse. A failed read hides the row rather than failing the Settings load.
+export async function loadHasPregnancyModuleData(
+  storage: LocalAppStorage,
+): Promise<boolean> {
+  try {
+    const [pregnancies, postpartums, screenings] = await Promise.all([
+      storage.listPregnancyRecords(),
+      storage.listPostpartumRecords(),
+      storage.listScreeningResponses(),
+    ]);
+    return (
+      pregnancies.length > 0 || postpartums.length > 0 || screenings.length > 0
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function loadSettingsScreenState(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,

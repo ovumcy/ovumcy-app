@@ -80,6 +80,7 @@ export function CalendarMonthGrid({
                   accessibilityLabel={day.accessibilityLabel}
                   accessibilityRole="button"
                   accessibilityState={{ selected: day.isSelected }}
+                  aria-selected={day.isSelected}
                   onPress={() => onSelectDay(day)}
                   style={[
                     styles.cell,

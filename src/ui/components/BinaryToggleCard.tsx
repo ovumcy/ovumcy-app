@@ -37,6 +37,7 @@ export function BinaryToggleCard({
       <Pressable
         accessibilityRole="switch"
         accessibilityState={{ checked: value }}
+        aria-checked={value}
         onPress={() => onValueChange(!value)}
         style={({ pressed }) => [
           styles.shell,

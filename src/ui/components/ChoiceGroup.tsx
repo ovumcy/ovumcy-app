@@ -81,6 +81,7 @@ export function ChoiceGroup<T extends string | number>({
           key={option.value}
           accessibilityRole="radio"
           accessibilityState={{ checked: selectedValue === option.value }}
+          aria-checked={selectedValue === option.value}
           onPress={() => {
             if (selectedValue === option.value && onClearSelection) {
               onClearSelection();

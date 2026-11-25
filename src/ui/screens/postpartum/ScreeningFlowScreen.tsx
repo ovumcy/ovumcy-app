@@ -82,7 +82,7 @@ export function ScreeningFlowScreen({
   if (stage === "history") {
     return (
       <ScreenScaffold description={""} title={history?.title ?? screenTitle}>
-        <FeatureCard testID="screening-history-card" title={history?.title ?? ""}>
+        <FeatureCard testID="screening-history-card">
           {history && history.hasEntries ? (
             <View style={styles.historyList}>
               {history.rows.map((row) => (
@@ -212,7 +212,7 @@ export function ScreeningFlowScreen({
   // Default: intro stage.
   return (
     <ScreenScaffold description={intro.body} title={intro.title}>
-      <FeatureCard testID="screening-intro-card" title={intro.title}>
+      <FeatureCard testID="screening-intro-card">
         <Text style={styles.bodyText}>{intro.instruction}</Text>
         <Text style={styles.privacyNote} testID="screening-privacy-note">
           {intro.privacyNote}
