@@ -385,22 +385,22 @@ function resolveLatestPregnancyEndOnOrBefore(
 }
 
 // The dates the short-gap check measures from: every ended pregnancy's end,
-// plus the active postpartum record's birth date (it outlives a deleted
-// pregnancy record). Read on the mark action only, so a screen load never
-// touches the pregnancy tables. A failed read falls back to the cycle-start
-// reference rather than blocking the mark.
+// plus every postpartum record's birth date (it outlives a deleted pregnancy
+// record). Read on the mark action only, so a screen load never touches the
+// pregnancy tables. A failed read falls back to the cycle-start reference
+// rather than blocking the mark.
 export async function listManualCycleStartPregnancyEndDates(
   storage: LocalAppStorage,
 ): Promise<string[]> {
   try {
-    const [pregnancyRecords, activePostpartum] = await Promise.all([
+    const [pregnancyRecords, postpartumRecords] = await Promise.all([
       storage.listPregnancyRecords(),
-      storage.readActivePostpartum(),
+      storage.listPostpartumRecords(),
     ]);
     const endDates = pregnancyRecords.flatMap((pregnancy) =>
       pregnancy.status === "ended" && pregnancy.endedAt ? [pregnancy.endedAt] : [],
     );
-    return activePostpartum ? [...endDates, activePostpartum.startedAt] : endDates;
+    return [...endDates, ...postpartumRecords.map((postpartum) => postpartum.startedAt)];
   } catch {
     return [];
   }

@@ -744,17 +744,15 @@ describe("short-gap check after a pregnancy ends", () => {
     expect(viewData?.prompts.map((prompt) => prompt.kind)).toEqual(["short_gap"]);
   });
 
-  it("does not warn once the birth is 15 or more days back", () => {
-    const viewData = buildManualCycleStartViewData(
-      profile,
-      preStartRecords,
-      { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true },
-      now,
-      "en",
-      { pregnancyEndDates: ["2026-05-20"] },
-    );
+  it("warns 14 days after the birth and stops at 15", () => {
+    const draft = { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true };
+    const kinds = (endDate: string) =>
+      buildManualCycleStartViewData(profile, preStartRecords, draft, now, "en", {
+        pregnancyEndDates: [endDate],
+      })?.prompts.map((prompt) => prompt.kind);
 
-    expect(viewData?.prompts).toEqual([]);
+    expect(kinds("2026-05-28")).toEqual(["short_gap"]);
+    expect(kinds("2026-05-27")).toEqual([]);
   });
 
   it("keeps the cycle-start reference when a cycle start came after the pregnancy end", () => {
@@ -826,15 +824,15 @@ describe("short-gap check after a pregnancy ends", () => {
     );
   });
 
-  it("lists ended pregnancy ends and the active postpartum birth date", async () => {
+  it("lists ended pregnancy ends and postpartum birth dates", async () => {
     const storage = createLocalAppStorageMock({
       listPregnancyRecords: jest.fn().mockResolvedValue([
         endedPregnancy("2026-06-01"),
         createPregnancyRecord({ edd: "2027-01-01", eddBasis: "lmp", startedAt: "2026-04-01" }),
       ]),
-      readActivePostpartum: jest
+      listPostpartumRecords: jest
         .fn()
-        .mockResolvedValue(createPostpartumRecord({ startedAt: "2026-06-02" })),
+        .mockResolvedValue([createPostpartumRecord({ startedAt: "2026-06-02" })]),
     });
 
     await expect(listManualCycleStartPregnancyEndDates(storage)).resolves.toEqual([
