@@ -1481,3 +1481,286 @@ describe("resolveUpdateDueDatePrefill", () => {
 });
 
 });
+
+describe("PregnancyEndScreen end date", () => {
+  const endCopy = getPregnancyEndCopy("en");
+
+  afterEach(() => {
+    mockReplace.mockReset();
+    mockOpenConfirmation.mockReset();
+  });
+
+  it.each([
+    ["birth", endCopy.endDate.birthLabel],
+    ["loss", endCopy.endDate.label],
+    ["other", endCopy.endDate.label],
+  ])("prefills today on the %s step under its own label", async (reason, label) => {
+    const view = await renderEnd(activeStorage(), reason);
+
+    const input = await screen.findByTestId("pregnancy-end-date-input");
+    expect(input.props.value).toBe("2026-06-15");
+    expect(screen.getByText(label)).toBeTruthy();
+    await view.unmount();
+  });
+
+  it("passes a valid earlier date, trimmed, to the ended record", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const storage = activeStorage();
+    const view = await renderEnd(storage, "birth");
+
+    await fireEvent.changeText(
+      await screen.findByTestId("pregnancy-end-date-input"),
+      "2026-06-10 ",
+    );
+    await fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+
+    await waitFor(() =>
+      expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "ended", endedAt: "2026-06-10" }),
+      ),
+    );
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
+    await view.unmount();
+  });
+
+  it("passes the chosen date on a loss ending", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const storage = activeStorage();
+    const view = await renderEnd(storage, "loss");
+
+    await fireEvent.changeText(
+      await screen.findByTestId("pregnancy-end-date-input"),
+      "2026-06-01",
+    );
+    await fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+
+    await waitFor(() =>
+      expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ endReason: "loss", endedAt: "2026-06-01" }),
+      ),
+    );
+    await view.unmount();
+  });
+
+  it.each([
+    ["", endCopy.endDate.errors.missingDate],
+    ["15/06/2026", endCopy.endDate.errors.invalidDate],
+    ["2026-06-16", endCopy.endDate.errors.future],
+    ["2026-02-28", endCopy.endDate.errors.beforeStart],
+  ])("blocks the confirm dialog for %j and shows the message", async (value, message) => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const storage = activeStorage();
+    const view = await renderEnd(storage, "other");
+
+    await fireEvent.changeText(
+      await screen.findByTestId("pregnancy-end-date-input"),
+      value,
+    );
+    await fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(mockOpenConfirmation).not.toHaveBeenCalled();
+    expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
+
+    await fireEvent.changeText(
+      screen.getByTestId("pregnancy-end-date-input"),
+      "2026-06-15",
+    );
+    expect(screen.queryByTestId("pregnancy-end-error")).toBeNull();
+    await view.unmount();
+  });
+});
+
+describe("PregnancyEndScreen postpartum birth details edit", () => {
+  const postpartumCopy = getPostpartumCopy("en");
+  const endCopy = getPregnancyEndCopy("en");
+
+  function sourcePregnancy() {
+    return {
+      ...endedRecord(),
+      endedAt: "2026-06-01",
+      modeOfDelivery: "cesarean" as const,
+    };
+  }
+
+  function postpartum() {
+    return {
+      ...createPostpartumRecord({
+        startedAt: "2026-06-01",
+        modeOfDelivery: "cesarean",
+      }),
+      id: "pp_edit",
+    };
+  }
+
+  function editStorage(
+    readActivePostpartum = jest.fn().mockResolvedValue(postpartum()),
+  ) {
+    return createLocalAppStorageMock({
+      readActivePostpartum,
+      listPostpartumRecords: jest.fn().mockResolvedValue([postpartum()]),
+      listPregnancyRecords: jest.fn().mockResolvedValue([sourcePregnancy()]),
+    });
+  }
+
+  async function openForm(
+    storage: ReturnType<typeof createLocalAppStorageMock>,
+    scheduler = { sync: jest.fn().mockResolvedValue("scheduled") },
+    loadUnlocked: () => Promise<boolean> = jest.fn().mockResolvedValue(false),
+  ) {
+    const view = await render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyEndScreen
+          now={new Date(2026, 5, 15)}
+          reminderScheduler={scheduler}
+          storage={storage}
+          loadPostpartumUnlocked={loadUnlocked}
+        />
+      </AppPreferencesTestProvider>,
+    );
+    await fireEvent.press(
+      await screen.findByTestId("pregnancy-end-postpartum-edit-button"),
+    );
+    return view;
+  }
+
+  afterEach(() => {
+    mockReplace.mockReset();
+  });
+
+  it("opens prefilled with the stored birth date, and cancel closes it", async () => {
+    const view = await openForm(editStorage());
+
+    const input = await screen.findByTestId(
+      "pregnancy-end-postpartum-edit-date-input",
+    );
+    expect(input.props.value).toBe("2026-06-01");
+    expect(screen.getByText(endCopy.endDate.birthLabel)).toBeTruthy();
+
+    await fireEvent.press(
+      screen.getByTestId("pregnancy-end-postpartum-edit-cancel-button"),
+    );
+    expect(screen.queryByTestId("pregnancy-end-postpartum-edit-form")).toBeNull();
+    expect(screen.getByTestId("pregnancy-end-postpartum-edit-card")).toBeTruthy();
+    expect(screen.getByText(postpartumCopy.manage.editHint)).toBeTruthy();
+    await view.unmount();
+  });
+
+  it("saves both records, refreshes reminders and returns to the dashboard without the ownership check", async () => {
+    const storage = editStorage();
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+    const loadUnlocked = jest.fn().mockResolvedValue(true);
+    const view = await openForm(storage, scheduler, loadUnlocked);
+
+    await fireEvent.changeText(
+      await screen.findByTestId("pregnancy-end-postpartum-edit-date-input"),
+      "2026-05-28",
+    );
+    await fireEvent.press(
+      screen.getByTestId("pregnancy-end-postpartum-edit-mode-vaginal"),
+    );
+    await fireEvent.press(
+      screen.getByTestId("pregnancy-end-postpartum-edit-save-button"),
+    );
+
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"),
+    );
+    expect(storage.writePostpartumRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "pp_edit",
+        startedAt: "2026-05-28",
+        modeOfDelivery: "vaginal",
+      }),
+    );
+    expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endedAt: "2026-05-28",
+        modeOfDelivery: "vaginal",
+      }),
+    );
+    expect(scheduler.sync).toHaveBeenCalled();
+    expect(loadUnlocked).not.toHaveBeenCalled();
+    await view.unmount();
+  });
+
+  it("clears the delivery mode when 'prefer not to say' is chosen", async () => {
+    const storage = editStorage();
+    const view = await openForm(storage);
+
+    await fireEvent.press(
+      await screen.findByTestId("pregnancy-end-postpartum-edit-mode-skip"),
+    );
+    await fireEvent.press(
+      screen.getByTestId("pregnancy-end-postpartum-edit-save-button"),
+    );
+
+    await waitFor(() =>
+      expect(storage.writePostpartumRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ modeOfDelivery: null }),
+      ),
+    );
+    await view.unmount();
+  });
+
+  it.each([
+    ["", endCopy.endDate.errors.missingDate],
+    ["junk", endCopy.endDate.errors.invalidDate],
+    ["2026-06-16", endCopy.endDate.errors.future],
+    ["2026-02-28", endCopy.endDate.errors.beforeStart],
+  ])("shows the message for %j and writes nothing", async (value, message) => {
+    const storage = editStorage();
+    const view = await openForm(storage);
+
+    await fireEvent.changeText(
+      await screen.findByTestId("pregnancy-end-postpartum-edit-date-input"),
+      value,
+    );
+    await fireEvent.press(
+      screen.getByTestId("pregnancy-end-postpartum-edit-save-button"),
+    );
+
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(storage.writePostpartumRecord).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    await fireEvent.changeText(
+      screen.getByTestId("pregnancy-end-postpartum-edit-date-input"),
+      "2026-06-02",
+    );
+    expect(
+      screen.queryByTestId("pregnancy-end-postpartum-edit-error"),
+    ).toBeNull();
+    await view.unmount();
+  });
+
+  it("shows the generic message when the save fails or the record vanished", async () => {
+    const failing = editStorage();
+    (failing.writePostpartumRecord as jest.Mock).mockRejectedValue(
+      new Error("io"),
+    );
+    const view = await openForm(failing);
+
+    await fireEvent.press(
+      await screen.findByTestId("pregnancy-end-postpartum-edit-save-button"),
+    );
+    expect(
+      await screen.findByText(postpartumCopy.manage.editFailed),
+    ).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
+    await view.unmount();
+
+    const readActive = jest
+      .fn()
+      .mockResolvedValueOnce(postpartum())
+      .mockResolvedValue(null);
+    const vanished = await openForm(editStorage(readActive));
+    await fireEvent.press(
+      await screen.findByTestId("pregnancy-end-postpartum-edit-save-button"),
+    );
+    expect(
+      await screen.findByText(postpartumCopy.manage.editFailed),
+    ).toBeTruthy();
+    await vanished.unmount();
+  });
+});

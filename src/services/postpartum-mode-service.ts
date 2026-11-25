@@ -17,6 +17,10 @@ import type { LocalDateISO } from "../models/profile";
 import type { ScreeningResponse } from "../models/screening";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
+  validatePregnancyEndDate,
+  type PregnancyEndDateErrorCode,
+} from "./pregnancy-mode-service";
+import {
   buildScreeningHistorySummaryViewData,
   buildScreeningOfferViewData,
   type ScreeningHistorySummaryViewData,
@@ -158,6 +162,83 @@ export async function endPostpartum(
   }
 
   return { ok: true, record: ended };
+}
+
+export type UpdatePostpartumBirthDetailsInput = {
+  startedAt: string;
+  modeOfDelivery: ModeOfDelivery | null;
+};
+
+export type UpdatePostpartumBirthDetailsErrorCode =
+  | PregnancyEndDateErrorCode
+  | "no_active_postpartum"
+  | "save_failed";
+
+export type UpdatePostpartumBirthDetailsResult =
+  | { ok: true; record: PostpartumRecord }
+  | { ok: false; errorCode: UpdatePostpartumBirthDetailsErrorCode };
+
+// Corrects the birth date and delivery mode of the ACTIVE postpartum record.
+// The birth is stored twice -- on the postpartum record (startedAt) and on the
+// source ended-birth pregnancy (endedAt, which the short-gap check and the
+// delayed-start window read) -- so both are updated together, pregnancy first,
+// and the two can never disagree. Editing already-logged data is not new entry,
+// so the module entitlement is deliberately never consulted here.
+export async function updatePostpartumBirthDetails(
+  storage: LocalAppStorage,
+  input: UpdatePostpartumBirthDetailsInput,
+  now: Date,
+): Promise<UpdatePostpartumBirthDetailsResult> {
+  const active = await storage.readActivePostpartum();
+  if (!active) {
+    return { ok: false, errorCode: "no_active_postpartum" };
+  }
+
+  // The source is the ended birth pregnancy dated at the record's current
+  // birth date; when none is found (deleted, or imported without it) only the
+  // postpartum record is edited.
+  const pregnancyRecords = await storage.listPregnancyRecords();
+  const source = resolveMostRecentEndedBirth(
+    pregnancyRecords.filter((record) => record.endedAt === active.startedAt),
+  );
+
+  const startedAt = input.startedAt.trim();
+  const dateError = validatePregnancyEndDate(startedAt, source, now);
+  if (dateError) {
+    return { ok: false, errorCode: dateError };
+  }
+
+  const updated: PostpartumRecord = {
+    ...active,
+    startedAt,
+    modeOfDelivery: input.modeOfDelivery,
+  };
+
+  let sourceWritten = false;
+  try {
+    if (source) {
+      await storage.writePregnancyRecord({
+        ...source,
+        endedAt: startedAt,
+        modeOfDelivery: input.modeOfDelivery,
+      });
+      sourceWritten = true;
+    }
+    await storage.writePostpartumRecord(updated);
+  } catch {
+    if (source && sourceWritten) {
+      // Best effort: put the pregnancy record back so the two copies of the
+      // birth do not disagree after a failed second write.
+      try {
+        await storage.writePregnancyRecord(source);
+      } catch {
+        // Nothing further can be done; the save still reports as failed.
+      }
+    }
+    return { ok: false, errorCode: "save_failed" };
+  }
+
+  return { ok: true, record: updated };
 }
 
 export type DeletePostpartumDataResult =

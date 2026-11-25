@@ -5,6 +5,7 @@ import { getPostpartumCopy } from "../../../i18n/postpartum-copy";
 import { getPregnancyCopy } from "../../../i18n/pregnancy-copy";
 import { getPregnancyEndCopy } from "../../../i18n/pregnancy-end-copy";
 import { getScreeningCopy } from "../../../i18n/screening-copy";
+import type { PostpartumRecord } from "../../../models/postpartum";
 import {
   PREGNANCY_END_REASON_VALUES,
   type ModeOfDelivery,
@@ -22,6 +23,7 @@ import {
   endPostpartum,
   hasRecentEndedBirthPregnancy,
   startPostpartumFromBirth,
+  updatePostpartumBirthDetails,
 } from "../../../services/postpartum-mode-service";
 import { deleteAllScreeningData } from "../../../services/screening-service";
 import {
@@ -29,6 +31,8 @@ import {
   deleteAllPregnancyData,
   endPregnancy,
   updateEddForActivePregnancy,
+  validatePregnancyEndDate,
+  type PregnancyEndDateErrorCode,
   type UpdateEddErrorCode,
   type UpdateEddInput,
 } from "../../../services/pregnancy-mode-service";
@@ -134,6 +138,20 @@ export function PregnancyEndScreen({
   const [hasScreeningData, setHasScreeningData] = useState(false);
   const [isDeletingScreening, setIsDeletingScreening] = useState(false);
   const [screeningDeleteError, setScreeningDeleteError] = useState("");
+  // End date shared by the birth / loss / other steps, prefilled with today.
+  const [endDateValue, setEndDateValue] = useState(() =>
+    formatLocalDate(effectiveNow),
+  );
+  // Postpartum birth-details edit form.
+  const [activePostpartumRecord, setActivePostpartumRecord] =
+    useState<PostpartumRecord | null>(null);
+  const [editBirthActive, setEditBirthActive] = useState(false);
+  const [editBirthDate, setEditBirthDate] = useState("");
+  const [editBirthMode, setEditBirthMode] = useState<ModeOfDelivery | null>(
+    null,
+  );
+  const [editBirthError, setEditBirthError] = useState("");
+  const [isSavingBirthEdit, setIsSavingBirthEdit] = useState(false);
   const copy = getPregnancyEndCopy(language);
   const pregnancyCopy = getPregnancyCopy(language);
   const postpartumCopy = getPostpartumCopy(language);
@@ -186,6 +204,7 @@ export function PregnancyEndScreen({
       setBirthOptionVisible(visible);
       setActivePregnancyRecord(active);
       setHasActivePostpartum(activePostpartum !== null);
+      setActivePostpartumRecord(activePostpartum);
       setHasPostpartumData(postpartumRecords.length > 0);
       setHasScreeningData(screeningResponses.length > 0);
       setPostpartumStartOfferVisible(startOfferVisible);
@@ -236,6 +255,19 @@ export function PregnancyEndScreen({
   // flow screen only offers Confirm inside a chosen reason's step), mirroring
   // the dashboard cycle-return offer's data-with-the-press contract.
   async function handleConfirmEnd(reason: PregnancyEndReason) {
+    // The date is checked before the dialog so a typo never reaches the
+    // irreversible confirm.
+    const endDate = endDateValue.trim();
+    const dateError = validatePregnancyEndDate(
+      endDate,
+      activePregnancyRecord,
+      effectiveNow,
+    );
+    if (dateError) {
+      setError(resolveEndDateError(dateError, copy));
+      return;
+    }
+
     const dialog =
       reason === "birth"
         ? copy.birth.dialog
@@ -262,6 +294,7 @@ export function PregnancyEndScreen({
       storage,
       {
         reason,
+        endedAt: endDate,
         // modeOfDelivery is only meaningful (and only offered) for a birth; the
         // service also forces it to null for other reasons as defense in depth.
         ...(reason === "birth" && modeOfDelivery ? { modeOfDelivery } : {}),
@@ -299,6 +332,68 @@ export function PregnancyEndScreen({
         return;
       }
     }
+
+    router.replace("/(tabs)/dashboard");
+  }
+
+  function handleEndDateChange(value: string) {
+    setError("");
+    setEndDateValue(value);
+  }
+
+  function handleEditBirthPress() {
+    setEditBirthError("");
+    // The edit row renders only while a postpartum record is active, and that
+    // record is loaded in the same pass as the flag that shows the row.
+    const record = activePostpartumRecord as PostpartumRecord;
+    setEditBirthDate(record.startedAt);
+    setEditBirthMode(record.modeOfDelivery);
+    setEditBirthActive(true);
+  }
+
+  function handleEditBirthDateChange(value: string) {
+    setEditBirthError("");
+    setEditBirthDate(value);
+  }
+
+  function handleCancelBirthEdit() {
+    setEditBirthError("");
+    setEditBirthActive(false);
+  }
+
+  // Editing already-logged birth details is not new entry, so no module
+  // ownership check runs here.
+  async function handleSaveBirthEdit() {
+    setEditBirthError("");
+    setIsSavingBirthEdit(true);
+
+    const result = await updatePostpartumBirthDetails(
+      storage,
+      { startedAt: editBirthDate, modeOfDelivery: editBirthMode },
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setEditBirthError(
+        result.errorCode === "no_active_postpartum" ||
+          result.errorCode === "save_failed"
+          ? postpartumCopy.manage.editFailed
+          : resolveEndDateError(result.errorCode, copy),
+      );
+      setIsSavingBirthEdit(false);
+      return;
+    }
+
+    // The birth date feeds the postpartum-derived reminders and the partner
+    // projection, so both are refreshed like the other handlers.
+    await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+      now,
+    });
+    pushPartnerProjectionInBackground(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      now,
+    );
 
     router.replace("/(tabs)/dashboard");
   }
@@ -579,6 +674,18 @@ export function PregnancyEndScreen({
       isDeletingScreening={isDeletingScreening}
       screeningDeleteError={screeningDeleteError}
       onDeleteScreening={handleDeleteScreening}
+      endDateValue={endDateValue}
+      onEndDateChange={handleEndDateChange}
+      editBirthActive={editBirthActive}
+      editBirthDate={editBirthDate}
+      editBirthMode={editBirthMode}
+      editBirthError={editBirthError}
+      isSavingBirthEdit={isSavingBirthEdit}
+      onEditBirthPress={handleEditBirthPress}
+      onEditBirthDateChange={handleEditBirthDateChange}
+      onEditBirthModeSelect={setEditBirthMode}
+      onSaveBirthEdit={handleSaveBirthEdit}
+      onCancelBirthEdit={handleCancelBirthEdit}
     />
   );
 }
@@ -597,6 +704,23 @@ export function resolveUpdateDueDatePrefill(record: PregnancyRecord | null): {
     basis: record && record.eddBasis !== "lmp" ? record.eddBasis : "ultrasound",
     value: record ? record.edd : "",
   };
+}
+
+// Maps each end-date validation code to its message.
+export function resolveEndDateError(
+  code: PregnancyEndDateErrorCode,
+  copy: ReturnType<typeof getPregnancyEndCopy>,
+): string {
+  switch (code) {
+    case "missing_date":
+      return copy.endDate.errors.missingDate;
+    case "invalid_date":
+      return copy.endDate.errors.invalidDate;
+    case "future":
+      return copy.endDate.errors.future;
+    case "before_start":
+      return copy.endDate.errors.beforeStart;
+  }
 }
 
 // Maps every service error code to its wizard copy. Exported so the mapping

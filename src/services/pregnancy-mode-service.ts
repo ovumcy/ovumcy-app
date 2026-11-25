@@ -203,7 +203,42 @@ export type EndPregnancyInput = {
   endedAt?: LocalDateISO;
 };
 
-export type EndPregnancyErrorCode = "no_active_pregnancy" | "save_failed";
+export type PregnancyEndDateErrorCode =
+  | "missing_date"
+  | "invalid_date"
+  | "future"
+  | "before_start";
+
+// Validates a user-entered pregnancy end (birth) date: it must be a real
+// YYYY-MM-DD calendar date, not after today, and not before the day the
+// pregnancy record began. Pure so the screen and the postpartum birth-details
+// edit apply the identical rule. Returns null for an acceptable date.
+export function validatePregnancyEndDate(
+  value: string,
+  pregnancy: Pick<PregnancyRecord, "startedAt"> | null,
+  now: Date,
+): PregnancyEndDateErrorCode | null {
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return "missing_date";
+  }
+  if (!parseLocalDate(trimmed)) {
+    return "invalid_date";
+  }
+  // ISO dates compare chronologically as strings.
+  if (trimmed > formatLocalDate(now)) {
+    return "future";
+  }
+  if (pregnancy && trimmed < pregnancy.startedAt) {
+    return "before_start";
+  }
+  return null;
+}
+
+export type EndPregnancyErrorCode =
+  | "no_active_pregnancy"
+  | "invalid_end_date"
+  | "save_failed";
 
 export type EndPregnancyResult =
   | { ok: true; record: PregnancyRecord }
@@ -232,11 +267,17 @@ export async function endPregnancy(
   }
 
   // Default to today; an explicitly-passed endedAt is used only if it parses,
-  // so a bad value can never persist a broken date onto the ended record.
-  const endedAt =
-    input.endedAt && parseLocalDate(input.endedAt)
-      ? input.endedAt
-      : formatLocalDate(now);
+  // so a bad value can never persist a broken date onto the ended record. A
+  // parseable explicit date that lies in the future or before the record began
+  // is rejected rather than stored.
+  let endedAt = formatLocalDate(now);
+  const explicitEndedAt = input.endedAt?.trim() ?? "";
+  if (explicitEndedAt && parseLocalDate(explicitEndedAt)) {
+    if (validatePregnancyEndDate(explicitEndedAt, active, now) !== null) {
+      return { ok: false, errorCode: "invalid_end_date" };
+    }
+    endedAt = explicitEndedAt;
+  }
   const modeOfDelivery =
     input.reason === "birth" ? (input.modeOfDelivery ?? null) : null;
 
