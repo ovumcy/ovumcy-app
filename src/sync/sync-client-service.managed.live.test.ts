@@ -22,6 +22,10 @@ import {
 } from "./sync-contract";
 import { prepareSyncSetup } from "./sync-setup-service";
 
+// The suite-wide expo/fetch stub forwards to globalThis.fetch, which jest-expo
+// points back at expo/fetch; a live run needs a fetch that reaches the network.
+jest.mock("expo/fetch", () => ({ fetch: jest.requireActual("node-fetch") }));
+
 const managedBaseURL = process.env.OVUMCY_MANAGED_LIVE_BASE_URL ?? "";
 const syncBaseURL = process.env.OVUMCY_SYNC_LIVE_BASE_URL ?? "";
 const managedAdminToken = process.env.OVUMCY_MANAGED_LIVE_ADMIN_TOKEN ?? "";
