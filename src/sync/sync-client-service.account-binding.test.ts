@@ -58,7 +58,7 @@ function managedClient(accountID: string): ManagedCloudAPIClient {
       ok: true,
       auth: {
         accountID,
-        email: "alice@example.com",
+        login: "a3f9-0c12-77be-4d01",
         sessionToken: "managed-session",
         sessionExpiresAt: "2026-03-20T20:00:00.000Z",
         entitlement: entitlement(),
@@ -68,7 +68,7 @@ function managedClient(accountID: string): ManagedCloudAPIClient {
       ok: true,
       session: {
         accountID,
-        email: "alice@example.com",
+        login: "a3f9-0c12-77be-4d01",
         sessionExpiresAt: "2026-03-20T20:00:00.000Z",
         entitlement: entitlement(),
         twoFactorEnabled: true,

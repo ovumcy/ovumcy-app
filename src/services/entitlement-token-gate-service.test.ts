@@ -65,7 +65,7 @@ function sessionClient(
         ok: true,
         session: {
           accountID: result.accountID,
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           sessionExpiresAt: "2026-03-21T08:00:00.000Z",
           entitlement: {
             syncAllowed: true,
@@ -232,7 +232,7 @@ describe("buildEntitlementTokenGate", () => {
               ok: true as const,
               auth: {
                 accountID: "acct-1",
-                email: "owner@example.com",
+                login: "a3f9-0c12-77be-4d01",
                 sessionToken: "access-2",
                 sessionExpiresAt: "2099-03-21T08:00:00.000Z",
                 entitlement: {

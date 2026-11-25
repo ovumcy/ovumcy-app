@@ -95,7 +95,7 @@ describe("connectBackupSyncAccount managed plan refresh", () => {
         new Response(
           JSON.stringify({
             account_id: "acct-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_token: "managed-session-1",
             session_expires_at: "2026-06-19T08:15:00.000Z",
             sync_entitlement: {
@@ -190,7 +190,7 @@ describe("connectBackupSyncAccount managed plan refresh", () => {
         new Response(
           JSON.stringify({
             account_id: "acct-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_token: "managed-session-1",
             session_expires_at: "2099-06-19T08:15:00.000Z",
             sync_entitlement: {
@@ -487,7 +487,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
         new Response(
           JSON.stringify({
             account_id: "guest-account-1",
-            email: "guest+guest-account-1@guest.invalid",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-05-05T08:00:00.000Z",
             sync_entitlement: {
               sync_allowed: false,
@@ -544,7 +544,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { email: "owner@example.com", password: "very secure password 12345" },
+      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
       new Date(2026, 3, 5),
     );
 
@@ -563,7 +563,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       new Response(
         JSON.stringify({
           account_id: "guest-account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           recovery_code: "fresh1234fresh1234fresh1234fresh",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
@@ -574,7 +574,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { email: "owner@example.com", password: "very secure password 12345" },
+      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
       new Date(2026, 3, 5),
     );
 
@@ -610,7 +610,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
         ok: true,
         preferences: { ...GUEST_SYNC_PREFERENCES, guestSessionExpiresAt: null },
         accountID: "guest-account-1",
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "fresh1234fresh1234fresh1234fresh",
         ...(reset ? { accountKeyReset: true as const } : {}),
       });
@@ -621,7 +621,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
         storage,
         secretStore,
         state,
-        { email: "owner@example.com", password: "very secure password 12345" },
+        { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
         screenNow,
       );
 
@@ -647,7 +647,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { email: "owner@example.com", password: "very secure password 12345" },
+      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
       new Date(2026, 3, 5),
     );
 
@@ -674,7 +674,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { email: "owner@example.com", password: "very secure password 12345" },
+      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
       new Date(2026, 3, 5),
     );
 
@@ -701,7 +701,7 @@ describe("upgradeBackupSyncGuestAccount", () => {
       storage,
       secretStore,
       state,
-      { email: "owner@example.com", password: "short" },
+      { login: "a3f9-0c12-77be-4d01", password: "short" },
       new Date(2026, 3, 5),
     );
 
@@ -889,7 +889,7 @@ describe("connectBackupSyncAccount additional branches", () => {
       new Response(
         JSON.stringify({
           account_id: "managed-account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_token: "",
           session_expires_at: "",
           sync_entitlement: {
@@ -1097,7 +1097,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
         return new Response(
           JSON.stringify({
             account_id: "managed-account-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_token: "totp-session-1",
             session_expires_at: "2026-03-20T08:15:00.000Z",
             sync_entitlement: {
@@ -1150,7 +1150,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
         return new Response(
           JSON.stringify({
             account_id: "managed-account-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_token: "totp-session-1",
             session_expires_at: "2026-03-20T08:15:00.000Z",
             sync_entitlement: {
@@ -1168,7 +1168,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
         return new Response(
           JSON.stringify({
             account_id: "managed-account-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-03-20T08:15:00.000Z",
             sync_entitlement: {
               sync_allowed: true,
@@ -1232,7 +1232,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
     const screenNow = new Date("2026-03-19T09:30:00.000Z");
     const session = {
       account_id: "managed-account-2",
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       session_expires_at: "2026-03-20T08:15:00.000Z",
       sync_entitlement: {
         sync_allowed: true,
@@ -1293,7 +1293,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
         return new Response(
           JSON.stringify({
             account_id: "managed-account-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_token: "totp-session-1",
             session_expires_at: "2026-03-20T08:15:00.000Z",
             sync_entitlement: {
@@ -1313,7 +1313,7 @@ describe("completeBackupSyncTOTPChallenge", () => {
         return new Response(
           JSON.stringify({
             account_id: "managed-account-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-03-20T08:15:00.000Z",
             sync_entitlement: {
               sync_allowed: true,
@@ -1833,7 +1833,7 @@ describe("disconnectBackupSyncAccount", () => {
         return new Response(
           JSON.stringify({
             account_id: "acct-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-06-19T08:15:00.000Z",
             sync_entitlement: {
               sync_allowed: true,

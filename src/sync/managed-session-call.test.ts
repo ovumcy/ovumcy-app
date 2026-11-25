@@ -48,7 +48,7 @@ function refreshAnswering(
           ok: true as const,
           auth: {
             accountID: "acct-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: answer.sessionToken,
             sessionExpiresAt: "2026-07-22T12:00:00.000Z",
             entitlement: {

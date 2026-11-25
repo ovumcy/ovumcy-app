@@ -859,7 +859,7 @@ describe("deleteOvumcyAccount managed session renewal", () => {
       ok: true,
       auth: {
         accountID: "acct-1",
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         sessionToken: "fresh-session",
         sessionExpiresAt: "2026-07-22T12:00:00.000Z",
         refreshToken: "refresh-2",

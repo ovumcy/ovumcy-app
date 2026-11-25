@@ -71,7 +71,7 @@ function createManagedCloud(site: Site, refreshAnswer: RefreshAnswer = { ok: tru
             ok: true as const,
             auth: {
               accountID: "managed-account-1",
-              email: "alice@example.com",
+              login: "a3f9-0c12-77be-4d01",
               sessionToken: "access-2",
               sessionExpiresAt: "2099-03-21T08:00:00.000Z",
               entitlement: {

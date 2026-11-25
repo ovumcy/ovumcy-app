@@ -195,7 +195,7 @@ function entitlement(syncAllowed: boolean) {
 function sessionView(syncAllowed: boolean): ManagedCloudSessionView {
   return {
     accountID: "managed-account-1",
-    email: "alice@example.com",
+    login: "a3f9-0c12-77be-4d01",
     sessionExpiresAt: "2026-03-20T20:00:00.000Z",
     entitlement: entitlement(syncAllowed),
     twoFactorEnabled: true,
@@ -211,7 +211,7 @@ function managedClient(
       ok: true,
       auth: {
         accountID: "managed-account-1",
-        email: "alice@example.com",
+        login: "a3f9-0c12-77be-4d01",
         sessionToken: "",
         sessionExpiresAt: "",
         entitlement: entitlement(false),

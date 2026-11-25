@@ -483,7 +483,7 @@ describe("sync-account-recovery-service", () => {
         resetTokenExpiresAt: "2026-03-23T01:00:00.000Z",
       });
       expect(forgotPassword).toHaveBeenCalledWith({
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
       });
     });

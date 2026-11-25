@@ -12,7 +12,7 @@ describe("managed-cloud-api-client", () => {
         new Response(
           JSON.stringify({
             account_id: "account-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_token: "managed-session-1",
             session_expires_at: "2026-03-24T00:00:00.000Z",
             sync_entitlement: {
@@ -33,7 +33,7 @@ describe("managed-cloud-api-client", () => {
         new Response(
           JSON.stringify({
             account_id: "account-1",
-            email: "owner@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-03-24T00:00:00.000Z",
             sync_entitlement: {
               sync_allowed: true,
@@ -89,14 +89,14 @@ describe("managed-cloud-api-client", () => {
 
     await expect(
       client.register({
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         password: "very-secure-pass",
       }),
     ).resolves.toEqual({
       ok: true,
       auth: expect.objectContaining({
         accountID: "account-1",
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         sessionToken: "managed-session-1",
         entitlement: expect.objectContaining({
           syncAllowed: false,
@@ -675,7 +675,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     await expect(
-      client.login({ email: "alice@example.com", password: "pw" }),
+      client.login({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
     ).resolves.toEqual({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 90 });
   });
 
@@ -686,7 +686,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     await expect(
-      client.register({ email: "alice@example.com", password: "pw" }),
+      client.register({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
     ).resolves.toEqual({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 15 });
   });
 
@@ -700,7 +700,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     await expect(
-      client.register({ email: "alice@example.com", password: "pw" }),
+      client.register({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
     ).resolves.toEqual({ ok: false, errorCode: "trial_unavailable" });
   });
 
@@ -735,7 +735,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     await expect(
-      client.register({ email: "alice@example.com", password: "pw" }),
+      client.register({ login: "a3f9-0c12-77be-4d01", password: "pw" }),
     ).resolves.toEqual({ ok: false, errorCode: "generic" });
   });
 
@@ -1018,7 +1018,7 @@ describe("managed-cloud-api-client", () => {
       new Response(
         JSON.stringify({
           account_id: "guest-account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           recovery_code: "fresh1234fresh1234fresh1234fresh",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
@@ -1031,14 +1031,14 @@ describe("managed-cloud-api-client", () => {
 
     await expect(
       client.upgradeGuestAccount("guest-session-1", {
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         password: "very secure password 12345",
       }),
     ).resolves.toEqual({
       ok: true,
       result: {
         accountID: "guest-account-1",
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "fresh1234fresh1234fresh1234fresh",
       },
     });
@@ -1053,7 +1053,7 @@ describe("managed-cloud-api-client", () => {
     );
     expect(call?.[1]?.body).toBe(
       JSON.stringify({
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         password: "very secure password 12345",
       }),
     );
@@ -1105,7 +1105,7 @@ describe("managed-cloud-api-client", () => {
       "https://managed.example",
       fetch as unknown as typeof global.fetch,
     );
-    const input = { email: "owner@example.com", password: "very secure password 12345" };
+    const input = { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" };
 
     await expect(client.upgradeGuestAccount("session-1", input)).resolves.toEqual({
       ok: false,
@@ -1167,7 +1167,7 @@ describe("managed-cloud-api-client", () => {
       new Response(
         JSON.stringify({
           account_id: "account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_token: "managed-session-1",
           session_expires_at: "2026-03-24T00:00:00.000Z",
           sync_entitlement: {
@@ -1188,7 +1188,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     const result = await client.register({
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       password: "very secure password 12345",
     });
 
@@ -1205,7 +1205,7 @@ describe("managed-cloud-api-client", () => {
       new Response(
         JSON.stringify({
           account_id: "account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_token: "managed-session-1",
           session_expires_at: "2026-03-24T00:00:00.000Z",
           sync_entitlement: {
@@ -1225,7 +1225,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     const result = await client.login({
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       password: "very secure password 12345",
     });
 
@@ -1337,7 +1337,7 @@ describe("managed-cloud-api-client", () => {
 
     expect(
       await client.forgotPassword({
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
       }),
     ).toEqual({
@@ -1349,14 +1349,14 @@ describe("managed-cloud-api-client", () => {
     });
     expect(fetch.mock.calls[0]?.[1]?.body).toBe(
       JSON.stringify({
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recovery_code: "abcd1234abcd1234abcd1234abcd1234",
       }),
     );
 
     expect(
       await client.forgotPassword({
-        email: "ghost@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "00000000000000000000000000000000",
       }),
     ).toEqual({
@@ -1505,7 +1505,7 @@ describe("managed-cloud-api-client", () => {
       new Response(
         JSON.stringify({
           account_id: "account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_token: "",
           session_expires_at: "0001-01-01T00:00:00Z",
           sync_entitlement: {
@@ -1529,7 +1529,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     const result = await client.login({
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       password: "very secure password",
     });
 
@@ -1709,7 +1709,7 @@ describe("managed-cloud-api-client", () => {
       new Response(
         JSON.stringify({
           account_id: "account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_token: "managed-session-after-totp",
           session_expires_at: "2026-05-18T10:00:00.000Z",
           sync_entitlement: {
@@ -2137,7 +2137,7 @@ describe("managed-cloud-api-client", () => {
       new Response(
         JSON.stringify({
           account_id: "account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_token: "managed-session-1",
           session_expires_at: "2026-07-22T00:00:00.000Z",
           sync_entitlement: {
@@ -2160,7 +2160,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     await expect(
-      client.login({ email: "owner@example.com", password: "very-secure-pass" }),
+      client.login({ login: "a3f9-0c12-77be-4d01", password: "very-secure-pass" }),
     ).resolves.toEqual({
       ok: true,
       auth: expect.objectContaining({
@@ -2181,7 +2181,7 @@ describe("managed-cloud-api-client", () => {
       new Response(
         JSON.stringify({
           account_id: "account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_token: "managed-session-1",
           session_expires_at: "2026-07-22T00:00:00.000Z",
           sync_entitlement: {
@@ -2203,7 +2203,7 @@ describe("managed-cloud-api-client", () => {
     );
 
     const result = await client.login({
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       password: "very-secure-pass",
     });
 
@@ -2219,7 +2219,7 @@ describe("managed-cloud-api-client", () => {
       new Response(
         JSON.stringify({
           account_id: "account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_token: "managed-session-2",
           session_expires_at: "2026-07-23T00:00:00.000Z",
           sync_entitlement: {

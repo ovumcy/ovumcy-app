@@ -201,7 +201,7 @@ describe("useBackupSyncGuestUpgrade", () => {
       mockUpgradeBackupSyncGuestAccount.mockResolvedValue({
         ok: true,
         state: nextState,
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "fresh-code-1234",
       });
       const core = createBackupSyncSessionCoreMock();
@@ -219,7 +219,7 @@ describe("useBackupSyncGuestUpgrade", () => {
         core.storage,
         core.syncSecretStore,
         core.state,
-        { email: "owner@example.com", password: "a very secure password 123" },
+        { login: "a3f9-0c12-77be-4d01", password: "a very secure password 123" },
         core.effectiveNow,
       );
       expect(core.setState).toHaveBeenCalledWith(nextState);
@@ -235,7 +235,7 @@ describe("useBackupSyncGuestUpgrade", () => {
       mockUpgradeBackupSyncGuestAccount.mockResolvedValue({
         ok: true,
         state: createLoadedSettingsStateFixture({ hasSyncSession: true }),
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "fresh-code-1234",
         accountKeyReset: true,
       });
@@ -319,7 +319,7 @@ describe("useBackupSyncGuestUpgrade", () => {
       mockUpgradeBackupSyncGuestAccount.mockResolvedValue({
         ok: true,
         state: createLoadedSettingsStateFixture(),
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "fresh-code-1234",
       });
       const core = createBackupSyncSessionCoreMock();

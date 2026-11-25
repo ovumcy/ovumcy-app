@@ -801,7 +801,7 @@ describe("BackupSyncScreen", () => {
         return new Response(
           JSON.stringify({
             account_id: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-03-21T08:00:00.000Z",
             sync_entitlement: {
               sync_allowed: false,
@@ -908,7 +908,7 @@ describe("BackupSyncScreen", () => {
       .mockResolvedValueOnce(
         createJSONResponse({
           account_id: "managed-account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_expires_at: "2026-03-21T08:00:00.000Z",
           sync_entitlement: {
             sync_allowed: true,
@@ -1104,7 +1104,7 @@ describe("BackupSyncScreen", () => {
       .mockResolvedValueOnce(
         createJSONResponse({
           account_id: "managed-account-1",
-          email: "partner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_expires_at: "2026-03-21T08:00:00.000Z",
           sync_entitlement: {
             sync_allowed: true,
@@ -1535,7 +1535,7 @@ describe("BackupSyncScreen", () => {
         if (url.includes("/auth/session")) {
           return createJSONResponse({
             account_id: "guest-account-1",
-            email: "guest+guest-account-1@guest.invalid",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-04-12T00:00:00.000Z",
             sync_entitlement: {
               sync_allowed: false,
@@ -1635,7 +1635,7 @@ describe("BackupSyncScreen", () => {
       if (url.includes("/auth/session")) {
         return createJSONResponse({
           account_id: "managed-account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           session_expires_at: "2026-03-21T08:00:00.000Z",
           sync_entitlement: {
             sync_allowed: true,
@@ -2749,7 +2749,7 @@ describe("BackupSyncScreen", () => {
         if (url.includes("/auth/session")) {
           return createJSONResponse({
             account_id: "guest-account-1",
-            email: "guest+guest-account-1@guest.invalid",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: guestSessionExpiresAt,
             sync_entitlement: {
               sync_allowed: false,
@@ -2945,7 +2945,7 @@ describe("BackupSyncScreen", () => {
       global.fetch = jest.fn().mockResolvedValueOnce(
         createJSONResponse({
           account_id: "guest-account-1",
-          email: "owner@example.com",
+          login: "a3f9-0c12-77be-4d01",
           recovery_code: "fresh1234fresh1234fresh1234fresh",
         }),
       ) as unknown as typeof fetch;
@@ -3083,7 +3083,7 @@ describe("BackupSyncScreen", () => {
         if (url.includes("/auth/session")) {
           return createJSONResponse({
             account_id: "guest-account-1",
-            email: "guest+guest-account-1@guest.invalid",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-05-05T08:00:00.000Z",
             sync_entitlement: {
               sync_allowed: false,
@@ -3313,7 +3313,7 @@ function createManagedBillingFetchMock(options: {
     if (url.includes("/auth/session")) {
       return createJSONResponse({
         account_id: "managed-account-1",
-        email: "alice@example.com",
+        login: "a3f9-0c12-77be-4d01",
         session_expires_at: "2026-03-21T08:00:00.000Z",
         sync_entitlement: {
           sync_allowed: true,
@@ -3362,7 +3362,7 @@ function createManagedDeletionFetchMock(options: {
     if (url.includes("/auth/session")) {
       return createJSONResponse({
         account_id: "managed-account-1",
-        email: "alice@example.com",
+        login: "a3f9-0c12-77be-4d01",
         session_expires_at: "2026-03-21T08:00:00.000Z",
         sync_entitlement: {
           sync_allowed: true,
