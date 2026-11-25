@@ -52,7 +52,7 @@ function createManagedCloud(rejecting: Site[], refreshAnswer: RefreshAnswer = { 
         ok: true as const,
         session: {
           accountID: "managed-account-1",
-          email: "alice@example.com",
+          login: "a3f9-0c12-77be-4d01",
           sessionExpiresAt: "2099-03-21T08:00:00.000Z",
           entitlement: ENTITLEMENT,
         },
@@ -73,7 +73,7 @@ function createManagedCloud(rejecting: Site[], refreshAnswer: RefreshAnswer = { 
         ok: true as const,
         result: {
           accountID: "managed-account-1",
-          email: "alice@example.com",
+          login: "a3f9-0c12-77be-4d01",
           recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
         },
       }),
@@ -85,7 +85,7 @@ function createManagedCloud(rejecting: Site[], refreshAnswer: RefreshAnswer = { 
               ok: true as const,
               auth: {
                 accountID: "managed-account-1",
-                email: "alice@example.com",
+                login: "a3f9-0c12-77be-4d01",
                 sessionToken: "access-2",
                 sessionExpiresAt: "2099-03-21T08:00:00.000Z",
                 entitlement: ENTITLEMENT,
@@ -176,7 +176,7 @@ const callSites: CallSite[] = [
         createLocalAppStorageMock(),
         secretStore,
         managedPreferences,
-        { email: "alice@example.com", password: "correct horse battery staple" },
+        { login: "a3f9-0c12-77be-4d01", password: "correct horse battery staple" },
         cloud.managedClientFactory,
       ),
   },
@@ -364,7 +364,7 @@ describe("sync-client-service managed session renewal", () => {
               ok: true as const,
               session: {
                 accountID: "managed-account-1",
-                email: "alice@example.com",
+                login: "a3f9-0c12-77be-4d01",
                 sessionExpiresAt: "2099-03-21T08:00:00.000Z",
                 entitlement: { ...ENTITLEMENT, syncAllowed: false },
               },

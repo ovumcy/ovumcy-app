@@ -389,9 +389,6 @@ export type ConnectSyncAccountResult =
       // Set when register created the account but a later step failed: the
       // only copy of the recovery code, to be shown like a successful one.
       recoveryCode?: string;
-      // The Account ID issued with that code; without it the code alone
-      // cannot sign the new account in.
-      accountLogin?: string;
       retryAfterSeconds?: number;
     };
 
@@ -581,16 +578,9 @@ export async function connectSyncAccount(
   // The account exists from here on and the server never reissues its
   // recovery code, so a later failure still hands the code to the caller.
   const issuedRecoveryCode = authResult.auth.recoveryCode;
-  const issuedAccountLogin =
-    authResult.auth.login.length > 0 ? authResult.auth.login : undefined;
   const failAfterRegister = (errorCode: SyncConnectErrorCode): ConnectSyncAccountResult =>
     issuedRecoveryCode
-      ? {
-          ok: false,
-          errorCode,
-          recoveryCode: issuedRecoveryCode,
-          ...(issuedAccountLogin ? { accountLogin: issuedAccountLogin } : {}),
-        }
+      ? { ok: false, errorCode, recoveryCode: issuedRecoveryCode }
       : { ok: false, errorCode };
 
   const capabilitiesResult = await client.getCapabilities(authResult.auth.sessionToken);

@@ -52,7 +52,7 @@ function okRefresh(sessionToken: string, refreshToken: string) {
     ok: true as const,
     auth: {
       accountID: "acct-1",
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       sessionToken,
       sessionExpiresAt: "2026-07-22T12:00:00.000Z",
       entitlement: {
@@ -191,7 +191,7 @@ describe("ensureFreshManagedSession", () => {
       ok: true as const,
       auth: {
         accountID: "acct-1",
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         sessionToken: "access-2",
         sessionExpiresAt: "",
         entitlement: {
@@ -472,7 +472,7 @@ describe("managed session secret helpers", () => {
       }),
       {
         accountID: "acct-1",
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         sessionToken: "access-9",
         sessionExpiresAt: "2026-07-22T12:00:00.000Z",
         entitlement: {
@@ -496,7 +496,7 @@ describe("managed session secret helpers", () => {
   it("records no refresh state when the server issued none", () => {
     const applied = applyManagedAuthResultToSecrets(createSecrets(), {
       accountID: "acct-1",
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       sessionToken: "access-9",
       sessionExpiresAt: "2026-08-20T12:00:00.000Z",
       entitlement: {

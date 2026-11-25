@@ -668,7 +668,7 @@ describe("SettingsScreen", () => {
         new Response(
           JSON.stringify({
             account_id: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-03-21T08:00:00.000Z",
             sync_entitlement: {
               sync_allowed: true,
@@ -819,7 +819,7 @@ describe("SettingsScreen", () => {
         new Response(
           JSON.stringify({
             account_id: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             session_expires_at: "2026-03-21T08:00:00.000Z",
             sync_entitlement: {
               sync_allowed: true,

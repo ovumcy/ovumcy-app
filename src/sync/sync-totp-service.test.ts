@@ -894,7 +894,7 @@ describe("sync-totp-service", () => {
             ok: true,
             auth: {
               accountID: "account-1",
-              email: "owner@example.com",
+              login: "a3f9-0c12-77be-4d01",
               sessionToken: "managed-session-after-totp",
               sessionExpiresAt: "2026-05-18T10:00:00.000Z",
               entitlement: {
@@ -930,7 +930,7 @@ describe("sync-totp-service", () => {
             ok: true,
             auth: {
               accountID: "account-1",
-              email: "owner@example.com",
+              login: "a3f9-0c12-77be-4d01",
               sessionToken: "managed-session-after-totp",
               sessionExpiresAt: "2026-05-18T10:00:00.000Z",
               entitlement: {

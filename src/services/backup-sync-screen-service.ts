@@ -211,7 +211,6 @@ export async function connectBackupSyncAccount(
       errorCode: SyncConnectScreenErrorCode;
       // The only copy of a code issued by a register whose later steps failed.
       recoveryCode?: string;
-      accountLogin?: string;
       retryAfterSeconds?: number;
     }
 > {

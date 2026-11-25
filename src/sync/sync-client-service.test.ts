@@ -62,7 +62,7 @@ describe("sync-client-service", () => {
           ok: true,
           auth: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: "managed-session-1",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
@@ -686,7 +686,7 @@ describe("sync-client-service", () => {
           ok: true,
           session: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
               syncAllowed: false,
@@ -854,7 +854,7 @@ describe("sync-client-service", () => {
           ok: true,
           auth: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: "managed-session-1",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
@@ -1667,7 +1667,7 @@ describe("connectSyncAccount recovery code surfacing", () => {
           ok: true,
           auth: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: "managed-session-1",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
@@ -1723,7 +1723,7 @@ describe("connectSyncAccount recovery code surfacing", () => {
           ok: true,
           auth: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: "managed-session-1",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
@@ -1776,7 +1776,7 @@ describe("finalizeSyncSessionAfterTOTP", () => {
       ok: true,
       session: {
         accountID: "managed-account-1",
-        email: "alice@example.com",
+        login: "a3f9-0c12-77be-4d01",
         sessionExpiresAt: "2026-05-18T08:00:00.000Z",
         entitlement: {
           syncAllowed: true,
@@ -2087,7 +2087,7 @@ describe("upgradeGuestPartnerAccount", () => {
       storage,
       secretStore,
       guestPreferences,
-      { email: "owner@example.com", password: "very secure password 12345" },
+      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
       managedClientFactory,
     );
 
@@ -2114,7 +2114,7 @@ describe("upgradeGuestPartnerAccount", () => {
       ok: true,
       result: {
         accountID: "guest-account-1",
-        email: "owner@example.com",
+        login: "a3f9-0c12-77be-4d01",
         recoveryCode: "fresh1234fresh1234fresh1234fresh",
       },
     });
@@ -2126,14 +2126,14 @@ describe("upgradeGuestPartnerAccount", () => {
       storage,
       secretStore,
       guestPreferences,
-      { email: "  owner@example.com  ", password: "very secure password 12345" },
+      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
       managedClientFactory,
     );
 
     expect(result).toEqual({
       ok: true,
       accountID: "guest-account-1",
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       recoveryCode: "fresh1234fresh1234fresh1234fresh",
       preferences: {
         ...guestPreferences,
@@ -2144,7 +2144,7 @@ describe("upgradeGuestPartnerAccount", () => {
     // The email is trimmed before it reaches the server, and auth uses the
     // guest's CURRENT session token — upgrade never mints or reads a new one.
     expect(upgradeGuestAccount).toHaveBeenCalledWith("guest-session-1", {
-      email: "owner@example.com",
+      login: "a3f9-0c12-77be-4d01",
       password: "very secure password 12345",
     });
     expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith({
@@ -2179,7 +2179,7 @@ describe("upgradeGuestPartnerAccount", () => {
       storage,
       secretStore,
       guestPreferences,
-      { email: "owner@example.com", password: "very secure password 12345" },
+      { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
       managedClientFactory,
     );
 
@@ -2222,7 +2222,7 @@ describe("upgradeGuestPartnerAccount", () => {
         storage,
         secretStore,
         guestPreferences,
-        { email: "owner@example.com", password: "very secure password 12345" },
+        { login: "a3f9-0c12-77be-4d01", password: "very secure password 12345" },
         managedClientFactory,
       );
 
@@ -2321,7 +2321,7 @@ describe("sync device management", () => {
           ok: true,
           session: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
               syncAllowed: true,
@@ -2589,7 +2589,7 @@ describe("connectSyncAccount TOTP challenge handoff", () => {
           ok: true,
           auth: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: "",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
@@ -3306,7 +3306,7 @@ describe("loadConnectedSyncCapabilities additional branches", () => {
           ok: true,
           session: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
               syncAllowed: true,
@@ -3584,7 +3584,7 @@ describe("recoverSyncAccess managed failures", () => {
           ok: true,
           auth: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: "managed-session-1",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
@@ -3660,7 +3660,7 @@ describe("recoverSyncAccess managed failures", () => {
           ok: true,
           auth: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: "managed-session-1",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
@@ -3704,7 +3704,7 @@ describe("recoverSyncAccess managed failures", () => {
           ok: true,
           auth: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionToken: "managed-session-1",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
@@ -4289,7 +4289,7 @@ describe("runSyncUpload additional branches", () => {
             ok: true,
             session: {
               accountID: "managed-account-1",
-              email: "alice@example.com",
+              login: "a3f9-0c12-77be-4d01",
               sessionExpiresAt: "2026-03-21T08:00:00.000Z",
               entitlement: {
                 syncAllowed: true,
@@ -4902,7 +4902,7 @@ describe("sync device management additional branches", () => {
           ok: true,
           session: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
               syncAllowed: false,
@@ -4947,7 +4947,7 @@ describe("sync device management additional branches", () => {
           ok: true,
           session: {
             accountID: "managed-account-1",
-            email: "alice@example.com",
+            login: "a3f9-0c12-77be-4d01",
             sessionExpiresAt: "2026-03-21T08:00:00.000Z",
             entitlement: {
               syncAllowed: true,

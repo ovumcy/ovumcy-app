@@ -248,7 +248,7 @@ describe("guest upgrade binds the key to the upgraded account", () => {
     const managed = {
       upgradeGuestAccount: jest.fn().mockResolvedValue({
         ok: true,
-        result: { accountID: "acct-upgraded", email: "owner@example.com", recoveryCode: "RC" },
+        result: { accountID: "acct-upgraded", login: "a3f9-0c12-77be-4d01", recoveryCode: "RC" },
       }),
     } as unknown as ManagedCloudAPIClient;
     return {
@@ -260,7 +260,7 @@ describe("guest upgrade binds the key to the upgraded account", () => {
           storage,
           secretStore,
           preferences,
-          { email: "owner@example.com", password: "correct horse battery" },
+          { login: "a3f9-0c12-77be-4d01", password: "correct horse battery" },
           () => managed,
           NOW,
         ),
@@ -300,7 +300,7 @@ describe("guest upgrade binds the key to the upgraded account", () => {
         advanceSyncWipeEpoch();
         return {
           ok: true,
-          result: { accountID: "acct-upgraded", email: "owner@example.com", recoveryCode: "RC" },
+          result: { accountID: "acct-upgraded", login: "a3f9-0c12-77be-4d01", recoveryCode: "RC" },
         };
       }),
     } as unknown as ManagedCloudAPIClient;
@@ -309,7 +309,7 @@ describe("guest upgrade binds the key to the upgraded account", () => {
       harness.storage,
       harness.secretStore,
       { ...createDefaultSyncPreferencesRecord(), mode: "managed", accountId: "acct-previous-owner" },
-      { email: "owner@example.com", password: "correct horse battery" },
+      { login: "a3f9-0c12-77be-4d01", password: "correct horse battery" },
       () => managed,
       NOW,
     );
@@ -456,7 +456,7 @@ describe("guest upgrade superseded by a local wipe after the request", () => {
     const managed = {
       upgradeGuestAccount: jest.fn().mockResolvedValue({
         ok: true,
-        result: { accountID: "acct-upgraded", email: "owner@example.com", recoveryCode: "RC" },
+        result: { accountID: "acct-upgraded", login: "a3f9-0c12-77be-4d01", recoveryCode: "RC" },
       }),
     } as unknown as ManagedCloudAPIClient;
     const run = () =>
@@ -464,7 +464,7 @@ describe("guest upgrade superseded by a local wipe after the request", () => {
         storage,
         secretStore,
         preferences,
-        { email: "owner@example.com", password: "correct horse battery" },
+        { login: "a3f9-0c12-77be-4d01", password: "correct horse battery" },
         () => managed,
         NOW,
       );
