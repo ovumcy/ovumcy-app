@@ -91,6 +91,10 @@ function createJSONResponse(payload: unknown, status = 200): Response {
   });
 }
 
+async function agreeToDataSharingConsent() {
+  await fireEvent.press(await screen.findByTestId("data-sharing-consent-agree"));
+}
+
 describe("BackupSyncScreen", () => {
   beforeEach(() => {
     clearManagedPartnerInviteToken();
@@ -311,6 +315,7 @@ describe("BackupSyncScreen", () => {
           originalSecrets.recoveryPhrase,
         );
         await fireEvent.press(screen.getByTestId("settings-sync-recover-button"));
+        await agreeToDataSharingConsent();
 
         await waitFor(() =>
           expect(screen.getByTestId("settings-sync-upload-button")).toBeTruthy(),
@@ -444,6 +449,7 @@ describe("BackupSyncScreen", () => {
       await screen.findByTestId("settings-sync-section");
 
       await fireEvent.press(screen.getByTestId("settings-sync-upload-button"));
+      await agreeToDataSharingConsent();
 
       expect(
         await screen.findByTestId("sync-recovery-key-stepup-password"),
@@ -1021,6 +1027,7 @@ describe("BackupSyncScreen", () => {
 
     await fireEvent.press(screen.getByTestId("settings-partner-access-level-full"));
     await fireEvent.press(screen.getByTestId("settings-partner-issue-button"));
+    await agreeToDataSharingConsent();
 
     await screen.findByTestId("settings-partner-invite-link-card");
     // The shared link is the server's URL plus a client-generated secret in
@@ -2254,6 +2261,7 @@ describe("BackupSyncScreen", () => {
         "correct horse battery staple",
       );
       await fireEvent.press(screen.getByTestId("settings-sync-login-button"));
+      await agreeToDataSharingConsent();
 
       // The challenge prompt is rendered once connect returns the deferred
       // result. Until the user submits the code there must be no session
@@ -2369,6 +2377,7 @@ describe("BackupSyncScreen", () => {
         "correct horse battery staple",
       );
       await fireEvent.press(screen.getByTestId("settings-sync-login-button"));
+      await agreeToDataSharingConsent();
 
       await screen.findByTestId("backup-sync-totp-challenge-submit");
       await fireEvent.changeText(

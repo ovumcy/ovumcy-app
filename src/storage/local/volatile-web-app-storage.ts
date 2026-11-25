@@ -33,6 +33,7 @@ import {
   createDefaultSyncPreferencesRecord,
   normalizeSyncMode,
   normalizeSyncSetupStatus,
+  withDataSharingConsent,
   type SyncPreferencesRecord,
 } from "../../sync/sync-contract";
 import {
@@ -135,10 +136,13 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
         state.syncPreferencesRecord.restoreInProgress === true;
       state = {
         ...state,
-        syncPreferencesRecord: mergeSyncPreferencesRecord({
-          ...record,
-          restoreInProgress,
-        }),
+        syncPreferencesRecord: mergeSyncPreferencesRecord(
+          withDataSharingConsent(
+            { ...record, restoreInProgress },
+            options?.dataSharingConsent ??
+              state.syncPreferencesRecord.dataSharingConsent,
+          ),
+        ),
       };
     },
 
@@ -619,7 +623,7 @@ function mergeSyncPreferencesRecord(
 ): SyncPreferencesRecord {
   const defaults = createDefaultSyncPreferencesRecord();
 
-  return {
+  return withDataSharingConsent({
     ...defaults,
     ...record,
     mode: normalizeSyncMode(record.mode),
@@ -660,7 +664,7 @@ function mergeSyncPreferencesRecord(
         : null,
     // A record written before this field existed reads as false.
     restoreInProgress: record.restoreInProgress === true,
-  };
+  }, record.dataSharingConsent);
 }
 
 function mergeDayLogRecord(

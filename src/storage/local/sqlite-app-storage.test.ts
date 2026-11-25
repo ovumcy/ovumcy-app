@@ -1172,6 +1172,43 @@ describe("sqlite-app-storage", () => {
     });
   });
 
+  it("keeps the stored data-sharing consent across ordinary preferences writes and changes it only when asked", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+    const preferences = createDefaultSyncPreferencesRecord();
+    const grant = { revision: "2026-11-25", givenAt: "2026-11-25T08:00:00.000Z" };
+
+    await storage.writeSyncPreferencesRecord({
+      ...preferences,
+      dataSharingConsent: { managed_sync: grant },
+    });
+    await expect(storage.readSyncPreferencesRecord()).resolves.not.toHaveProperty(
+      "dataSharingConsent",
+    );
+
+    await storage.writeSyncPreferencesRecord(preferences, {
+      dataSharingConsent: { managed_sync: grant },
+    });
+    await storage.writeSyncPreferencesRecord({ ...preferences, deviceLabel: "Pixel 7" });
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      deviceLabel: "Pixel 7",
+      dataSharingConsent: { managed_sync: grant },
+    });
+
+    await storage.writeSyncPreferencesRecord(preferences, { dataSharingConsent: {} });
+    await expect(storage.readSyncPreferencesRecord()).resolves.not.toHaveProperty(
+      "dataSharingConsent",
+    );
+  });
+
   it("keeps the floor's account id in the encrypted payload only, and reads an empty one as unbound", async () => {
     const inspected = createInspectableFakeDatabase();
     const storage = createSQLiteAppStorage({

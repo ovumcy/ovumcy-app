@@ -134,7 +134,71 @@ export type SyncPreferencesRecord = {
   // stored value and ignores this field unless the caller passes the flag
   // explicitly, so a write built from an in-memory copy cannot clear it.
   restoreInProgress?: boolean;
+  // The explicit consent given before health data first left this device for
+  // each optional destination: the revision of the consent text shown and when
+  // it was accepted. Absent reads as no consent. Like restoreInProgress,
+  // `writeSyncPreferencesRecord` keeps the stored value unless the caller
+  // passes `options.dataSharingConsent`; only the consent service passes it.
+  dataSharingConsent?: DataSharingConsentRecord;
 };
+
+export const DATA_SHARING_CONSENT_PURPOSES = [
+  "managed_sync",
+  "self_hosted_sync",
+  "partner_share",
+] as const;
+export type DataSharingConsentPurpose =
+  (typeof DATA_SHARING_CONSENT_PURPOSES)[number];
+
+export type DataSharingConsentGrant = {
+  revision: string;
+  givenAt: string;
+};
+
+export type DataSharingConsentRecord = Partial<
+  Record<DataSharingConsentPurpose, DataSharingConsentGrant>
+>;
+
+export function normalizeDataSharingConsentRecord(
+  value: unknown,
+): DataSharingConsentRecord {
+  if (typeof value !== "object" || value === null) {
+    return {};
+  }
+  const source = value as Record<string, unknown>;
+  const record: DataSharingConsentRecord = {};
+  for (const purpose of DATA_SHARING_CONSENT_PURPOSES) {
+    const grant = source[purpose];
+    if (typeof grant !== "object" || grant === null) {
+      continue;
+    }
+    const { revision, givenAt } = grant as Record<string, unknown>;
+    if (
+      typeof revision === "string" &&
+      revision.length > 0 &&
+      typeof givenAt === "string" &&
+      givenAt.length > 0
+    ) {
+      record[purpose] = { revision, givenAt };
+    }
+  }
+  return record;
+}
+
+// Returns a copy carrying `consent` normalized, with the key omitted when no
+// grant survives, so a record without consent stays shaped as before the
+// field existed.
+export function withDataSharingConsent<
+  T extends { dataSharingConsent?: DataSharingConsentRecord },
+>(record: T, consent: unknown): T {
+  const next = { ...record };
+  delete next.dataSharingConsent;
+  const normalized = normalizeDataSharingConsentRecord(consent);
+  if (Object.keys(normalized).length > 0) {
+    next.dataSharingConsent = normalized;
+  }
+  return next;
+}
 
 export type SyncAuthResult = {
   accountID: string;

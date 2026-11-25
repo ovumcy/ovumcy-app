@@ -5,6 +5,7 @@ import {
   restoreBackupSyncSnapshot,
   uploadBackupSyncSnapshot,
 } from "../../../services/backup-sync-screen-service";
+import { resolveSyncConsentPurpose } from "../../../services/data-sharing-consent-service";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import { clearManagedPartnerInviteToken } from "../../../security/managed-partner-invite-token-buffer";
 import { openConfirmation } from "../../confirm/open-confirmation";
@@ -72,6 +73,14 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
 
   async function handleSyncNow() {
     setPendingStepUp(null);
+    if (
+      state &&
+      !(await core.ensureDataSharingConsent(
+        resolveSyncConsentPurpose(state.syncPreferences.mode),
+      ))
+    ) {
+      return;
+    }
     await runUpload();
   }
 

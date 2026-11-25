@@ -99,6 +99,22 @@ describe("useBackupSyncPartnerAccess", () => {
       expect(mockIssueManagedPartnerInvite).not.toHaveBeenCalled();
     });
 
+    it("issues no invite and stays idle when partner-share consent is not given", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        ensureDataSharingConsent: jest.fn().mockResolvedValue(false),
+      });
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+
+      await act(async () => {
+        await result.current.handleIssuePartnerInvite();
+      });
+
+      expect(core.ensureDataSharingConsent).toHaveBeenCalledWith("partner_share");
+      expect(mockIssueManagedPartnerInvite).not.toHaveBeenCalled();
+      expect(core.setPartnerErrorMessage).not.toHaveBeenCalled();
+      expect(result.current.isPartnerBusy).toBe(false);
+    });
+
     it("forwards the currently selected access level to the service", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockIssueManagedPartnerInvite.mockResolvedValue({

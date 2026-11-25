@@ -66,6 +66,22 @@ describe("useBackupSyncActions", () => {
       expect(result.current.isSyncingNow).toBe(false);
     });
 
+    it("uploads nothing when sync consent is not given", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        ensureDataSharingConsent: jest.fn().mockResolvedValue(false),
+      });
+      const { result } = await renderHook(() => useBackupSyncActions(core));
+
+      await act(async () => {
+        await result.current.handleSyncNow();
+      });
+
+      expect(core.ensureDataSharingConsent).toHaveBeenCalledWith("managed_sync");
+      expect(core.saveSyncDraftIfNeeded).not.toHaveBeenCalled();
+      expect(mockUploadBackupSyncSnapshot).not.toHaveBeenCalled();
+      expect(result.current.isSyncingNow).toBe(false);
+    });
+
     it("stops quietly without calling the service when the draft cannot be saved", async () => {
       const core = createBackupSyncSessionCoreMock({
         saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(null),

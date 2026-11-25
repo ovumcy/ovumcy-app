@@ -62,6 +62,23 @@ describe("useBackupSyncAccountConnection", () => {
       expect(mockConnectBackupSyncAccount).not.toHaveBeenCalled();
     });
 
+    it("sends nothing and stays idle when sync consent is not given", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        ensureDataSharingConsent: jest.fn().mockResolvedValue(false),
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("register");
+      });
+
+      expect(core.ensureDataSharingConsent).toHaveBeenCalledWith("managed_sync");
+      expect(core.saveSyncDraftIfNeeded).not.toHaveBeenCalled();
+      expect(mockConnectBackupSyncAccount).not.toHaveBeenCalled();
+      expect(core.setErrorState).not.toHaveBeenCalled();
+      expect(result.current.isAuthenticatingSync).toBe(false);
+    });
+
     it("stops without calling the service when the draft cannot be saved", async () => {
       const core = createBackupSyncSessionCoreMock({
         saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(null),
@@ -447,6 +464,22 @@ describe("useBackupSyncAccountConnection", () => {
       expect(mockRecoverBackupSyncAccess).not.toHaveBeenCalled();
     });
 
+    it("attaches nothing when sync consent is not given", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        ensureDataSharingConsent: jest.fn().mockResolvedValue(false),
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleRecoverSync();
+      });
+
+      expect(core.saveSyncDraftIfNeeded).not.toHaveBeenCalled();
+      expect(mockRecoverBackupSyncAccess).not.toHaveBeenCalled();
+      expect(core.setErrorState).not.toHaveBeenCalled();
+      expect(result.current.isRecoveringSync).toBe(false);
+    });
+
     it("stops without calling the service when the draft cannot be saved", async () => {
       const core = createBackupSyncSessionCoreMock({
         saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(null),
@@ -812,6 +845,40 @@ describe("useBackupSyncAccountConnection", () => {
       expect(core.reloadPartnerAccess).toHaveBeenCalledWith(disconnectedState);
       expect(core.setAccountStatusMessage).toHaveBeenCalledWith(
         core.viewData.account.status.disconnected,
+      );
+    });
+
+    it("withdraws the managed sync and partner-share consent on a disconnect and keeps the self-hosted one", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      const storedPreferences = {
+        ...core.state!.savedSyncPreferences,
+        dataSharingConsent: {
+          managed_sync: { revision: "r1", givenAt: "2026-03-01T08:00:00.000Z" },
+          partner_share: { revision: "r1", givenAt: "2026-03-01T08:00:00.000Z" },
+          self_hosted_sync: { revision: "r1", givenAt: "2026-03-01T08:00:00.000Z" },
+        },
+      };
+      jest
+        .mocked(core.storage.readSyncPreferencesRecord)
+        .mockResolvedValue(storedPreferences);
+      mockDisconnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        state: createLoadedSettingsStateFixture({ hasSyncSession: false }),
+        remoteSignOut: "confirmed",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleDisconnectSync();
+      });
+
+      expect(core.storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+        storedPreferences,
+        {
+          dataSharingConsent: {
+            self_hosted_sync: { revision: "r1", givenAt: "2026-03-01T08:00:00.000Z" },
+          },
+        },
       );
     });
 

@@ -17,6 +17,8 @@ import type {
   BackupSyncSetupPresentation,
 } from "../../services/backup-sync-view-service";
 import type { ResolvedBillingOffer } from "../../services/offers-service";
+import type { DataSharingConsentViewData } from "../../services/data-sharing-consent-service";
+import { DataSharingConsentDialog } from "./backup-sync/DataSharingConsentDialog";
 import { AppButton } from "../components/AppButton";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { InlineBackButton } from "../components/InlineBackButton";
@@ -41,6 +43,8 @@ export type BackupSyncFlowScreenProps = {
   authPasswordValue: string;
   billingOffers: ResolvedBillingOffer[];
   confirmActionLabel: string;
+  dataSharingConsent: DataSharingConsentViewData | null;
+  onAnswerDataSharingConsent: (accepted: boolean) => void;
   deviceErrorMessage: string;
   deviceListItems: BackupSyncDeviceListItemView[] | null;
   deviceStatusMessage: string;
@@ -163,6 +167,8 @@ export function BackupSyncFlowScreen({
   authPasswordValue,
   billingOffers,
   confirmActionLabel,
+  dataSharingConsent,
+  onAnswerDataSharingConsent,
   deviceErrorMessage,
   deviceListItems,
   deviceStatusMessage,
@@ -475,6 +481,10 @@ export function BackupSyncFlowScreen({
           statusMessage={partnerStatusMessage}
         />
       ) : null}
+      <DataSharingConsentDialog
+        consent={dataSharingConsent}
+        onAnswer={onAnswerDataSharingConsent}
+      />
     </ScreenScaffold>
   );
 }

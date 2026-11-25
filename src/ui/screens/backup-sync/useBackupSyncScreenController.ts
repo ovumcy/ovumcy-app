@@ -7,6 +7,7 @@ import {
   shouldBlockManagedRecoveryAction,
   shouldRotateManagedRecoveryPhrase,
 } from "../../../services/backup-sync-view-service";
+import { buildDataSharingConsentViewData } from "../../../services/data-sharing-consent-service";
 import {
   resolveVisibleBillingOffers,
 } from "../../../services/offers-service";
@@ -224,6 +225,10 @@ export function useBackupSyncScreenController(
       backLabel: viewData.account.backToSettingsLabel,
       billingOffers,
       confirmActionLabel: viewData.common.confirmAction,
+      dataSharingConsent: core.pendingDataSharingConsent
+        ? buildDataSharingConsentViewData(core.pendingDataSharingConsent, language)
+        : null,
+      onAnswerDataSharingConsent: core.answerDataSharingConsent,
       deviceErrorMessage: deviceManagement.deviceErrorMessage,
       deviceListItems: deviceManagement.deviceListItems,
       deviceStatusMessage: deviceManagement.deviceStatusMessage,
