@@ -224,8 +224,8 @@ operation at all.
 - When a session already exists at purchase time, the app passes the store an
   opaque per-account reference issued by the managed cloud. It is never the
   login or the internal account id, and the app never derives it.
-- Any server refusal or outage leaves premium off; nothing on the device
-  substitutes for the server's answer. The bounded offline-grace cache
+- A handoff the server refuses or that cannot reach it grants nothing: a
+  purchase alone never turns premium on. The bounded offline-grace cache
   (`SECURITY.md`) is unchanged and is filled only from a billing snapshot.
 - "Manage subscription" opens the store's own subscription page; it is not an
   external checkout.
