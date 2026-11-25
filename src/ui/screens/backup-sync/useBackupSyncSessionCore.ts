@@ -136,6 +136,9 @@ export function useBackupSyncSessionCore({
   const [accountStatusMessage, setAccountStatusMessage] = useState("");
   const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");
   const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState("");
+  // The managed Account ID that arrives with a registration's recovery code;
+  // shown in the same one-time reveal and held in memory only.
+  const [generatedAccountLogin, setGeneratedAccountLogin] = useState("");
   // Only which offer the screen shows; the phrase itself stays in its
   // in-memory buffer until the gated reveal.
   const [accountChangeRecoveryPhrase, setAccountChangeRecoveryPhrase] =
@@ -412,6 +415,7 @@ export function useBackupSyncSessionCore({
         setGeneratedRecoveryPhrase(peekUnacknowledgedManagedRecoveryPhrase() ?? "");
         setAccountChangeRecoveryPhrase(accountChangePhraseState);
         setGeneratedRecoveryCode("");
+        setGeneratedAccountLogin("");
         setRecoveryPhraseInputValue("");
         resetPartnerFeedback();
         const [partnerState, dismissedIDs] = await Promise.all([
@@ -535,6 +539,7 @@ export function useBackupSyncSessionCore({
     if (!syncResult.state.hasStoredSyncSecrets) {
       setGeneratedRecoveryPhrase("");
       setGeneratedRecoveryCode("");
+      setGeneratedAccountLogin("");
       setAccountChangeRecoveryPhrase("none");
     }
     setState(syncResult.state);
@@ -582,6 +587,8 @@ export function useBackupSyncSessionCore({
     setGeneratedRecoveryPhrase,
     generatedRecoveryCode,
     setGeneratedRecoveryCode,
+    generatedAccountLogin,
+    setGeneratedAccountLogin,
     accountChangeRecoveryPhrase,
     setAccountChangeRecoveryPhrase,
     recoveryPhraseInputValue,

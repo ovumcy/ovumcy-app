@@ -10,6 +10,7 @@ import {
   type ManagedSessionCallFailure,
 } from "./managed-session-call";
 import { clearManagedSessionFromSecrets } from "./managed-session-refresh-service";
+import { normalizeManagedAccountId } from "./managed-account-id";
 import { clearLocalSyncSession } from "./sync-client-service";
 import {
   createSyncAPIClient,
@@ -50,6 +51,7 @@ export type ChangeSyncPasswordErrorCode =
 export type RequestSyncPasswordResetErrorCode =
   | NormalizeSyncEndpointErrorCode
   | "login_required"
+  | "account_id_invalid"
   | "recovery_code_required"
   | "invalid_recovery_credentials"
   | "rate_limited"
@@ -198,7 +200,7 @@ export async function changeSyncAccountPassword(
  */
 export async function requestSyncPasswordReset(
   preferences: SyncPreferencesRecord,
-  input: { loginOrEmail: string; recoveryCode: string },
+  input: { login: string; recoveryCode: string },
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
@@ -209,9 +211,16 @@ export async function requestSyncPasswordReset(
     }
   | { ok: false; errorCode: RequestSyncPasswordResetErrorCode }
 > {
-  const identifier = input.loginOrEmail.trim();
+  let identifier = input.login.trim();
   if (identifier.length === 0) {
     return { ok: false, errorCode: "login_required" };
+  }
+  if (preferences.mode === "managed") {
+    const accountId = normalizeManagedAccountId(identifier);
+    if (accountId === null) {
+      return { ok: false, errorCode: "account_id_invalid" };
+    }
+    identifier = accountId;
   }
   if (input.recoveryCode.trim().length === 0) {
     return { ok: false, errorCode: "recovery_code_required" };
@@ -220,7 +229,7 @@ export async function requestSyncPasswordReset(
   if (preferences.mode === "managed") {
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const result = await client.forgotPassword({
-      email: identifier,
+      login: identifier,
       recoveryCode: input.recoveryCode,
     });
     if (!result.ok) {

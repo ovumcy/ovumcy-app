@@ -6,6 +6,11 @@ export type AccountSecurityCopy = {
   backLabel: string;
   loading: string;
 
+  accountId: {
+    title: string;
+    hint: string;
+  };
+
   changePassword: {
     title: string;
     hint: string;
@@ -19,6 +24,7 @@ export type AccountSecurityCopy = {
     title: string;
     hint: string;
     loginLabel: string;
+    managedLoginLabel: string;
     recoveryCodeLabel: string;
     submitLabel: string;
     stageTwoTitle: string;
@@ -60,6 +66,7 @@ export type AccountSecurityCopy = {
     rateLimitedRetry: string;
     networkFailed: string;
     loginRequired: string;
+    accountIdInvalid: string;
     recoveryCodeRequired: string;
     resetTokenRequired: string;
     unauthorized: string;
@@ -76,6 +83,11 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
   backLabel: "Back to backup & sync",
   loading: "Loading account…",
 
+  accountId: {
+    title: "Account ID",
+    hint: "You sign in on other devices with this Account ID and your password. It is not a secret, but keep it with your recovery code.",
+  },
+
   changePassword: {
     title: "Change password",
     hint: "Other devices will be signed out. This device stays connected.",
@@ -89,6 +101,7 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     title: "Forgot password",
     hint: "Use your account-level recovery code to reset the password.",
     loginLabel: "Login or email",
+    managedLoginLabel: "Account ID",
     recoveryCodeLabel: "Recovery code",
     submitLabel: "Request password reset",
     stageTwoTitle: "Set a new password",
@@ -138,6 +151,7 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
       "Too many attempts. Please wait a moment before trying again.",
     networkFailed: "Network error. Try again.",
     loginRequired: "Enter your login or email.",
+    accountIdInvalid: "Enter the 16-character Account ID (letters a-f and digits).",
     recoveryCodeRequired: "Enter the recovery code.",
     resetTokenRequired: "Reset token is missing.",
     unauthorized: "Session expired. Sign in again.",
@@ -157,6 +171,11 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
   backLabel: "Zurück zu Backup & Sync",
   loading: "Konto wird geladen…",
 
+  accountId: {
+    title: "Account-ID",
+    hint: "Mit dieser Account-ID und Ihrem Passwort melden Sie sich auf anderen Geräten an. Sie ist kein Geheimnis, bewahren Sie sie aber zusammen mit Ihrem Wiederherstellungscode auf.",
+  },
+
   changePassword: {
     title: "Passwort ändern",
     hint: "Andere Geräte werden abgemeldet. Dieses Gerät bleibt verbunden.",
@@ -170,6 +189,7 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
     title: "Passwort vergessen",
     hint: "Verwenden Sie den Konto-Wiederherstellungscode, um das Passwort zurückzusetzen.",
     loginLabel: "Login oder E-Mail",
+    managedLoginLabel: "Account-ID",
     recoveryCodeLabel: "Wiederherstellungscode",
     submitLabel: "Zurücksetzung anfordern",
     stageTwoTitle: "Neues Passwort setzen",
@@ -221,6 +241,7 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
       "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
     networkFailed: "Netzwerkfehler. Versuchen Sie es erneut.",
     loginRequired: "Geben Sie Ihren Login oder Ihre E-Mail ein.",
+    accountIdInvalid: "Geben Sie die 16-stellige Account-ID ein (Buchstaben a-f und Ziffern).",
     recoveryCodeRequired: "Geben Sie den Wiederherstellungscode ein.",
     resetTokenRequired: "Zurücksetzungs-Token fehlt.",
     unauthorized: "Sitzung abgelaufen. Melden Sie sich erneut an.",
@@ -241,6 +262,11 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
   backLabel: "Retour à Backup & Sync",
   loading: "Chargement du compte…",
 
+  accountId: {
+    title: "ID de compte",
+    hint: "Vous vous connectez sur d'autres appareils avec cet ID de compte et votre mot de passe. Ce n'est pas un secret, mais conservez-le avec votre code de récupération.",
+  },
+
   changePassword: {
     title: "Changer le mot de passe",
     hint: "Les autres appareils seront déconnectés. Cet appareil reste connecté.",
@@ -255,6 +281,7 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
     title: "Mot de passe oublié",
     hint: "Utilisez votre code de récupération du compte pour réinitialiser le mot de passe.",
     loginLabel: "Login ou e-mail",
+    managedLoginLabel: "ID de compte",
     recoveryCodeLabel: "Code de récupération",
     submitLabel: "Demander la réinitialisation",
     stageTwoTitle: "Définir un nouveau mot de passe",
@@ -307,6 +334,7 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
       "Trop de tentatives. Veuillez patienter un instant avant de réessayer.",
     networkFailed: "Erreur réseau. Réessayez.",
     loginRequired: "Entrez votre login ou votre e-mail.",
+    accountIdInvalid: "Saisissez l'ID de compte à 16 caractères (lettres a-f et chiffres).",
     recoveryCodeRequired: "Entrez le code de récupération.",
     resetTokenRequired: "Token de réinitialisation manquant.",
     unauthorized: "Session expirée. Reconnectez-vous.",
@@ -327,6 +355,11 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
   backLabel: "Назад к Backup & Sync",
   loading: "Загрузка аккаунта…",
 
+  accountId: {
+    title: "ID аккаунта",
+    hint: "На других устройствах вы входите по этому ID аккаунта и паролю. Это не секрет, но храните его вместе с кодом восстановления.",
+  },
+
   changePassword: {
     title: "Сменить пароль",
     hint: "Другие устройства будут отключены. Это устройство останется подключённым.",
@@ -340,6 +373,7 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
     title: "Забыли пароль",
     hint: "Используйте код восстановления аккаунта, чтобы сбросить пароль.",
     loginLabel: "Логин или email",
+    managedLoginLabel: "ID аккаунта",
     recoveryCodeLabel: "Код восстановления",
     submitLabel: "Запросить сброс пароля",
     stageTwoTitle: "Задать новый пароль",
@@ -391,6 +425,7 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
       "Слишком много попыток. Пожалуйста, подождите немного, прежде чем повторить.",
     networkFailed: "Ошибка сети. Попробуйте снова.",
     loginRequired: "Введите логин или email.",
+    accountIdInvalid: "Введите 16-символьный ID аккаунта (буквы a-f и цифры).",
     recoveryCodeRequired: "Введите код восстановления.",
     resetTokenRequired: "Отсутствует токен сброса.",
     unauthorized: "Сессия истекла. Войдите снова.",
@@ -411,6 +446,11 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
   backLabel: "Volver a Backup & Sync",
   loading: "Cargando cuenta…",
 
+  accountId: {
+    title: "ID de cuenta",
+    hint: "Inicias sesión en otros dispositivos con este ID de cuenta y tu contraseña. No es un secreto, pero guárdalo junto con tu código de recuperación.",
+  },
+
   changePassword: {
     title: "Cambiar contraseña",
     hint: "Los otros dispositivos serán desconectados. Este dispositivo se mantiene conectado.",
@@ -425,6 +465,7 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
     title: "Olvidé la contraseña",
     hint: "Usa el código de recuperación de la cuenta para restablecer la contraseña.",
     loginLabel: "Login o email",
+    managedLoginLabel: "ID de cuenta",
     recoveryCodeLabel: "Código de recuperación",
     submitLabel: "Solicitar restablecimiento",
     stageTwoTitle: "Establecer una nueva contraseña",
@@ -477,6 +518,7 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
       "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
     networkFailed: "Error de red. Vuelve a intentarlo.",
     loginRequired: "Introduce tu login o email.",
+    accountIdInvalid: "Introduce el ID de cuenta de 16 caracteres (letras a-f y dígitos).",
     recoveryCodeRequired: "Introduce el código de recuperación.",
     resetTokenRequired: "Falta el token de restablecimiento.",
     unauthorized: "La sesión ha caducado. Vuelve a iniciar sesión.",
@@ -497,6 +539,11 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
   backLabel: "Torna a Backup & Sync",
   loading: "Caricamento dell'account…",
 
+  accountId: {
+    title: "ID account",
+    hint: "Accedi dagli altri dispositivi con questo ID account e la tua password. Non è un segreto, ma conservalo insieme al codice di recupero.",
+  },
+
   changePassword: {
     title: "Cambia password",
     hint: "Gli altri dispositivi verranno disconnessi. Questo dispositivo resta connesso.",
@@ -510,6 +557,7 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
     title: "Password dimenticata",
     hint: "Usa il codice di recupero dell'account per reimpostare la password.",
     loginLabel: "Login o email",
+    managedLoginLabel: "ID account",
     recoveryCodeLabel: "Codice di recupero",
     submitLabel: "Richiedi la reimpostazione della password",
     stageTwoTitle: "Imposta una nuova password",
@@ -559,6 +607,7 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
       "Troppi tentativi. Attendi un momento prima di riprovare.",
     networkFailed: "Errore di rete. Riprova.",
     loginRequired: "Inserisci il tuo login o la tua email.",
+    accountIdInvalid: "Inserisci l'ID account di 16 caratteri (lettere a-f e cifre).",
     recoveryCodeRequired: "Inserisci il codice di recupero.",
     resetTokenRequired: "Token di reimpostazione mancante.",
     unauthorized: "Sessione scaduta. Accedi di nuovo.",

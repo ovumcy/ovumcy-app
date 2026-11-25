@@ -99,6 +99,9 @@ export function useSyncAccountSecurityController({
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(
     null,
   );
+  // The managed Account ID from the live session read; screen memory only,
+  // null for self-hosted or when the read failed.
+  const [accountLogin, setAccountLogin] = useState<string | null>(null);
 
   // Change password
   const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
@@ -200,6 +203,7 @@ export function useSyncAccountSecurityController({
         );
         if (!cancelled) {
           setTwoFactorEnabled(status ? status.twoFactorEnabled : null);
+          setAccountLogin(status ? status.accountLogin : null);
         }
       }
     })();
@@ -272,7 +276,7 @@ export function useSyncAccountSecurityController({
     setForgotErrorCode(null);
     setForgotStatus("submitting");
     const result = await requestSyncPasswordReset(preferences, {
-      loginOrEmail: forgotLogin,
+      login: forgotLogin,
       recoveryCode: forgotRecoveryCode,
     });
     if (result.ok) {
@@ -594,6 +598,10 @@ export function useSyncAccountSecurityController({
     revealedRecoveryCodeFromTOTP,
     revealedRecoveryCodeFromPasswordChange,
     handleAcknowledgeRecoveryCode,
+
+    // account identity
+    accountLogin,
+    isManaged: preferences?.mode === "managed",
 
     // two-factor
     twoFactorEnabled,

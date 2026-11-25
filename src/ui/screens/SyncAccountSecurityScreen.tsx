@@ -109,6 +109,8 @@ export function SyncAccountSecurityScreen({
         }
         onAcknowledgeRecoveryCode={controller.handleAcknowledgeRecoveryCode}
         totpCopy={totpCopy}
+        accountLogin={controller.accountLogin}
+        isManaged={controller.isManaged}
         twoFactorEnabled={controller.twoFactorEnabled}
         totpMode={controller.totpMode}
         onTOTPModeChange={controller.handleTOTPModeChange}

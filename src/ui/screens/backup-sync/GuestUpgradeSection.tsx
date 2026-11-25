@@ -11,8 +11,8 @@ import { useThemedStyles } from "../../theme/useThemedStyles";
 
 type GuestUpgradeSectionProps = {
   copy: PartnerCopy;
-  emailValue: string;
   formErrorMessage: string;
+  generatedAccountLogin: string;
   generatedRecoveryCode: string;
   isFormOpen: boolean;
   isGuestPartner: boolean;
@@ -20,7 +20,6 @@ type GuestUpgradeSectionProps = {
   nudgeMessage: string;
   onAcknowledgeRecoveryCode: () => void;
   onCancelForm: () => void;
-  onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onSubmitForm: () => void | Promise<void>;
   onTapKeepAccess: () => void | Promise<void>;
@@ -45,8 +44,8 @@ function ignoreRequestClose() {}
 
 export function GuestUpgradeSection({
   copy,
-  emailValue,
   formErrorMessage,
+  generatedAccountLogin,
   generatedRecoveryCode,
   isFormOpen,
   isGuestPartner,
@@ -54,7 +53,6 @@ export function GuestUpgradeSection({
   nudgeMessage,
   onAcknowledgeRecoveryCode,
   onCancelForm,
-  onEmailChange,
   onPasswordChange,
   onSubmitForm,
   onTapKeepAccess,
@@ -107,24 +105,6 @@ export function GuestUpgradeSection({
             ) : null}
 
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>{upgradeCopy.emailLabel}</Text>
-              <AppTextInput
-                accessibilityLabel={upgradeCopy.emailLabel}
-                autoCapitalize="none"
-                autoComplete="email"
-                autoCorrect={false}
-                editable={!isSubmitting}
-                keyboardType="email-address"
-                onChangeText={onEmailChange}
-                placeholder={upgradeCopy.emailPlaceholder}
-                style={styles.input}
-                testID="backup-sync-guest-upgrade-email-input"
-                textContentType="emailAddress"
-                value={emailValue}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
               <Text style={styles.fieldLabel}>{upgradeCopy.passwordLabel}</Text>
               <AppTextInput
                 accessibilityLabel={upgradeCopy.passwordLabel}
@@ -173,6 +153,18 @@ export function GuestUpgradeSection({
           <View style={styles.modalCard} testID="backup-sync-guest-upgrade-recovery-code-modal">
             <Text style={styles.modalTitle}>{upgradeCopy.revealTitle}</Text>
             <Text style={styles.hint}>{upgradeCopy.revealHint}</Text>
+            {generatedAccountLogin.length > 0 ? (
+              <View style={styles.recoveryCodeCard}>
+                <Text style={styles.hint}>{upgradeCopy.revealAccountIdLabel}</Text>
+                <Text
+                  selectable
+                  style={styles.recoveryCodeValue}
+                  testID="backup-sync-guest-upgrade-account-id-value"
+                >
+                  {generatedAccountLogin}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.recoveryCodeCard}>
               <Text
                 selectable

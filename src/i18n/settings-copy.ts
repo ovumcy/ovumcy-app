@@ -282,6 +282,8 @@ const settingsCopyEn = {
     encryptionMissing: "No recovery phrase has been created on this device yet.",
     loginLabel: "Email or login",
     loginPlaceholder: "owner@example.com",
+    managedLoginLabel: "Account ID",
+    managedLoginPlaceholder: "xxxx-xxxx-xxxx-xxxx",
     passwordLabel: "Password",
     passwordPlaceholder: "Enter password",
     recoveryImportTitle: "Restore access with a recovery phrase",
@@ -344,6 +346,10 @@ const settingsCopyEn = {
     recoveryCodeTitle: "Account recovery code",
     recoveryCodeHint:
       "Save this code somewhere safe. It is shown only once and lets you reset your sync account password if you forget it.",
+    recoveryKitTitle: "Save your Account ID and recovery code",
+    recoveryKitHint:
+      "Save both somewhere safe. You sign in with the Account ID and your password, and you need the recovery code to reset a forgotten password. The recovery code is shown only once.",
+    recoveryKitAccountIdLabel: "Account ID",
     prepareLabel: "Create recovery phrase",
     regenerateLabel: "Create a new recovery phrase",
     regeneratePrompt:
@@ -372,6 +378,7 @@ const settingsCopyEn = {
     deleted: "Account deleted. Returning to onboarding.",
     errors: {
       loginRequired: "Login is required.",
+      accountIdInvalid: "Enter the 16-character Account ID (letters a-f and digits).",
       passwordRequired: "Password is required.",
       passwordTooShort: "Password must be at least 12 characters.",
       deviceLabelRequired: "Device label is required.",
@@ -905,6 +912,8 @@ const settingsCopyDe: SettingsCopy = {
       "Auf diesem Gerät wurde noch keine Wiederherstellungsphrase erstellt.",
     loginLabel: "E-Mail oder Login",
     loginPlaceholder: "owner@example.com",
+    managedLoginLabel: "Account-ID",
+    managedLoginPlaceholder: "xxxx-xxxx-xxxx-xxxx",
     passwordLabel: "Passwort",
     passwordPlaceholder: "Passwort eingeben",
     recoveryImportTitle: "Zugriff mit Wiederherstellungsphrase wiederherstellen",
@@ -967,6 +976,10 @@ const settingsCopyDe: SettingsCopy = {
     recoveryCodeTitle: "Konto-Wiederherstellungscode",
     recoveryCodeHint:
       "Speichern Sie diesen Code sicher. Er wird nur einmal angezeigt und erlaubt Ihnen, das Passwort Ihres Sync-Kontos zurückzusetzen, falls Sie es vergessen.",
+    recoveryKitTitle: "Account-ID und Wiederherstellungscode speichern",
+    recoveryKitHint:
+      "Speichern Sie beides sicher. Sie melden sich mit der Account-ID und Ihrem Passwort an und brauchen den Wiederherstellungscode, um ein vergessenes Passwort zurückzusetzen. Der Wiederherstellungscode wird nur einmal angezeigt.",
+    recoveryKitAccountIdLabel: "Account-ID",
     prepareLabel: "Wiederherstellungsphrase erstellen",
     regenerateLabel: "Neue Wiederherstellungsphrase erstellen",
     regeneratePrompt:
@@ -998,6 +1011,7 @@ const settingsCopyDe: SettingsCopy = {
     errors: {
       ...settingsCopyEn.account.errors,
       loginRequired: "Login ist erforderlich.",
+      accountIdInvalid: "Geben Sie die 16-stellige Account-ID ein (Buchstaben a-f und Ziffern).",
       passwordRequired: "Passwort ist erforderlich.",
       passwordTooShort: "Das Passwort muss mindestens 12 Zeichen lang sein.",
       deviceLabelRequired: "Die Gerätebezeichnung ist erforderlich.",
@@ -1565,6 +1579,8 @@ const settingsCopyFr: SettingsCopy = {
       "Aucune phrase de récupération n'a encore été créée sur cet appareil.",
     loginLabel: "E-mail ou identifiant",
     loginPlaceholder: "owner@example.com",
+    managedLoginLabel: "ID de compte",
+    managedLoginPlaceholder: "xxxx-xxxx-xxxx-xxxx",
     passwordLabel: "Mot de passe",
     passwordPlaceholder: "Saisir le mot de passe",
     recoveryImportTitle:
@@ -1625,6 +1641,10 @@ const settingsCopyFr: SettingsCopy = {
     recoveryCodeTitle: "Code de récupération du compte",
     recoveryCodeHint:
       "Conservez ce code en lieu sûr. Il s'affiche une seule fois et permet de réinitialiser le mot de passe de votre compte de sync si vous l'oubliez.",
+    recoveryKitTitle: "Conservez votre ID de compte et votre code de récupération",
+    recoveryKitHint:
+      "Conservez les deux en lieu sûr. Vous vous connectez avec l'ID de compte et votre mot de passe, et le code de récupération sert à réinitialiser un mot de passe oublié. Le code de récupération s'affiche une seule fois.",
+    recoveryKitAccountIdLabel: "ID de compte",
     recoveryNotice:
       "Cet écran affiche la phrase de récupération seulement quand vous préparez ou recréez les clés locales de sync.",
     recoveryShownOnce: "Affichée une seule fois après la génération.",
@@ -1661,6 +1681,7 @@ const settingsCopyFr: SettingsCopy = {
     errors: {
       ...settingsCopyEn.account.errors,
       loginRequired: "L'identifiant est obligatoire.",
+      accountIdInvalid: "Saisissez l'ID de compte à 16 caractères (lettres a-f et chiffres).",
       passwordRequired: "Le mot de passe est obligatoire.",
       passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
       deviceLabelRequired: "Le nom de l'appareil est obligatoire.",
@@ -2219,6 +2240,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       encryptionMissing: "Фраза восстановления на этом устройстве ещё не создана.",
       loginLabel: "Email или логин",
       loginPlaceholder: "owner@example.com",
+      managedLoginLabel: "ID аккаунта",
+      managedLoginPlaceholder: "xxxx-xxxx-xxxx-xxxx",
       passwordLabel: "Пароль",
       passwordPlaceholder: "Введите пароль",
       recoveryImportTitle: "Восстановить доступ по фразе восстановления",
@@ -2280,6 +2303,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryCodeTitle: "Код восстановления аккаунта",
       recoveryCodeHint:
         "Сохраните этот код в надёжном месте. Он показывается только один раз и позволяет сбросить пароль вашего sync-аккаунта, если вы его забудете.",
+      recoveryKitTitle: "Сохраните ID аккаунта и код восстановления",
+      recoveryKitHint:
+        "Сохраните оба в надёжном месте. Вход выполняется по ID аккаунта и паролю, а код восстановления нужен, чтобы сбросить забытый пароль. Код восстановления показывается только один раз.",
+      recoveryKitAccountIdLabel: "ID аккаунта",
       recoveryExportLabel: "Экспортировать как текст",
       prepareLabel: "Создать фразу восстановления",
       regenerateLabel: "Создать новую фразу восстановления",
@@ -2309,6 +2336,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deleted: "Аккаунт удалён. Возврат к онбордингу.",
       errors: {
         loginRequired: "Логин обязателен.",
+        accountIdInvalid: "Введите 16-символьный ID аккаунта (буквы a-f и цифры).",
         passwordRequired: "Пароль обязателен.",
         passwordTooShort: "Пароль должен содержать не менее 12 символов.",
         deviceLabelRequired: "Название устройства обязательно.",
@@ -2838,6 +2866,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       encryptionMissing: "Todavía no se ha creado una frase de recuperación en este dispositivo.",
       loginLabel: "Correo o usuario",
       loginPlaceholder: "owner@example.com",
+      managedLoginLabel: "ID de cuenta",
+      managedLoginPlaceholder: "xxxx-xxxx-xxxx-xxxx",
       passwordLabel: "Contraseña",
       passwordPlaceholder: "Introduce la contraseña",
       recoveryImportTitle: "Restaurar acceso con una frase de recuperación",
@@ -2901,6 +2931,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryCodeTitle: "Código de recuperación de la cuenta",
       recoveryCodeHint:
         "Guarda este código en un lugar seguro. Se muestra solo una vez y te permite restablecer la contraseña de tu cuenta de sync si la olvidas.",
+      recoveryKitTitle: "Guarda tu ID de cuenta y tu código de recuperación",
+      recoveryKitHint:
+        "Guarda ambos en un lugar seguro. Inicias sesión con el ID de cuenta y tu contraseña, y necesitas el código de recuperación para restablecer una contraseña olvidada. El código de recuperación se muestra solo una vez.",
+      recoveryKitAccountIdLabel: "ID de cuenta",
       prepareLabel: "Crear frase de recuperación",
       regenerateLabel: "Crear una nueva frase de recuperación",
       regeneratePrompt:
@@ -2931,6 +2965,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deleted: "Cuenta eliminada. Volviendo al onboarding.",
       errors: {
         loginRequired: "El login es obligatorio.",
+        accountIdInvalid: "Introduce el ID de cuenta de 16 caracteres (letras a-f y dígitos).",
         passwordRequired: "La contraseña es obligatoria.",
         passwordTooShort: "La contraseña debe tener al menos 12 caracteres.",
         deviceLabelRequired: "La etiqueta del dispositivo es obligatoria.",
@@ -3467,6 +3502,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       encryptionMissing: "Non è ancora stata creata una frase di recupero su questo dispositivo.",
       loginLabel: "Email o nome utente",
       loginPlaceholder: "owner@example.com",
+      managedLoginLabel: "ID account",
+      managedLoginPlaceholder: "xxxx-xxxx-xxxx-xxxx",
       passwordLabel: "Password",
       passwordPlaceholder: "Inserisci la password",
       recoveryImportTitle: "Ripristina l'accesso con una frase di recupero",
@@ -3530,6 +3567,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryCodeTitle: "Codice di recupero dell'account",
       recoveryCodeHint:
         "Conserva questo codice in un luogo sicuro. Viene mostrato solo una volta e ti permette di reimpostare la password del tuo account sync se la dimentichi.",
+      recoveryKitTitle: "Conserva l'ID account e il codice di recupero",
+      recoveryKitHint:
+        "Conserva entrambi in un luogo sicuro. Accedi con l'ID account e la tua password, e ti serve il codice di recupero per reimpostare una password dimenticata. Il codice di recupero viene mostrato solo una volta.",
+      recoveryKitAccountIdLabel: "ID account",
       prepareLabel: "Crea frase di recupero",
       regenerateLabel: "Crea una nuova frase di recupero",
       regeneratePrompt:
@@ -3560,6 +3601,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deleted: "Account eliminato. Ritorno alla configurazione iniziale.",
       errors: {
         loginRequired: "Il login è obbligatorio.",
+        accountIdInvalid: "Inserisci l'ID account di 16 caratteri (lettere a-f e cifre).",
         passwordRequired: "La password è obbligatoria.",
         passwordTooShort: "La password deve contenere almeno 12 caratteri.",
         deviceLabelRequired: "L'etichetta del dispositivo è obbligatoria.",

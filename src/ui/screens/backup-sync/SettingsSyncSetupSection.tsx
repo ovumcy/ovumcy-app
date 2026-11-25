@@ -48,6 +48,7 @@ type SettingsSyncSetupSectionProps = {
   billingOffers?: ResolvedBillingOffer[];
   confirmActionLabel: string;
   errorPresentation: BackupSyncErrorPresentation;
+  generatedAccountLogin: string;
   generatedRecoveryCode: string;
   generatedRecoveryPhrase: string;
   hasSyncSession: boolean;
@@ -96,6 +97,7 @@ export function SettingsSyncSetupSection({
   billingOffers = [],
   confirmActionLabel,
   errorPresentation,
+  generatedAccountLogin,
   generatedRecoveryCode,
   generatedRecoveryPhrase,
   hasSyncSession,
@@ -141,6 +143,15 @@ export function SettingsSyncSetupSection({
       setActiveAccountPane("auth");
     }
   }, [activeAccountPane, hasStoredSyncSecrets]);
+
+  // A managed account signs in with its server-generated Account ID, never an
+  // email; self-hosted keeps its own login wording.
+  const loginLabel = presentation.isManaged
+    ? viewData.managedLoginLabel
+    : viewData.loginLabel;
+  const loginPlaceholder = presentation.isManaged
+    ? viewData.managedLoginPlaceholder
+    : viewData.loginPlaceholder;
 
   function handleAccountSubmit() {
     if (hasSyncSession) {
@@ -417,15 +428,15 @@ export function SettingsSyncSetupSection({
                 testID="settings-sync-account-form"
               >
                 <View style={styles.formGroup}>
-                  <Text style={styles.fieldLabel}>{viewData.loginLabel}</Text>
+                  <Text style={styles.fieldLabel}>{loginLabel}</Text>
                   <AppTextInput
-                    accessibilityLabel={viewData.loginLabel}
+                    accessibilityLabel={loginLabel}
                     autoCapitalize="none"
                     autoComplete="username"
                     autoCorrect={false}
                     editable={!presentation.accountActionsDisabled}
                     onChangeText={onAuthLoginChange}
-                    placeholder={viewData.loginPlaceholder}
+                    placeholder={loginPlaceholder}
                     style={styles.input}
                     testID="settings-sync-login-input"
                     textContentType="username"
@@ -747,11 +758,29 @@ export function SettingsSyncSetupSection({
               testID="settings-sync-recovery-code-modal"
             >
               <Text style={styles.modalTitle}>
-                {viewData.recoveryCodeTitle}
+                {generatedAccountLogin.length > 0
+                  ? viewData.recoveryKitTitle
+                  : viewData.recoveryCodeTitle}
               </Text>
               <Text style={styles.helperText}>
-                {viewData.recoveryCodeHint}
+                {generatedAccountLogin.length > 0
+                  ? viewData.recoveryKitHint
+                  : viewData.recoveryCodeHint}
               </Text>
+              {generatedAccountLogin.length > 0 ? (
+                <View style={styles.modalPhraseCard}>
+                  <Text style={styles.helperText}>
+                    {viewData.recoveryKitAccountIdLabel}
+                  </Text>
+                  <Text
+                    selectable
+                    style={styles.modalPhrase}
+                    testID="settings-sync-account-id-value"
+                  >
+                    {generatedAccountLogin}
+                  </Text>
+                </View>
+              ) : null}
               <View style={styles.modalPhraseCard}>
                 <Text
                   selectable

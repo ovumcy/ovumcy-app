@@ -38,6 +38,7 @@ import { entitlementTokenStore as defaultEntitlementTokenStore } from "./app-wip
 import type { PartnerShareSecretStore } from "../security/partner-share-secret-store";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "./app-partner-share-service";
 import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation-service";
+import { normalizeManagedAccountId } from "./managed-account-id";
 import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
 import {
   isSyncDeviceLabelLengthValid,
@@ -84,6 +85,7 @@ export type SyncConnectErrorCode =
   | NormalizeSyncEndpointErrorCode
   | "sync_not_prepared"
   | "login_required"
+  | "account_id_invalid"
   | "password_required"
   | "password_too_short"
   | "password_too_long"
@@ -109,6 +111,7 @@ export type SyncRecoverErrorCode =
   | "recovery_not_available"
   | "recovery_package_not_found"
   | "login_required"
+  | "account_id_invalid"
   | "password_required"
   | "sync_not_allowed"
   | "invalid_credentials"
@@ -359,6 +362,10 @@ export type ConnectSyncAccountResult =
       // server never reissues an existing recovery code). The caller is
       // expected to surface it once to the owner and then forget it.
       recoveryCode?: string;
+      // The managed Account ID (grouped display form) the server generated at
+      // register, set alongside recoveryCode so both are shown in one reveal.
+      // Memory only: never written to a store.
+      accountLogin?: string;
       // Set when the sign-in reached another account and replaced the sync
       // key; its phrase waits in the account-change buffer, never here.
       accountKeyReset?: true;
@@ -382,6 +389,9 @@ export type ConnectSyncAccountResult =
       // Set when register created the account but a later step failed: the
       // only copy of the recovery code, to be shown like a successful one.
       recoveryCode?: string;
+      // The Account ID issued with that code; without it the code alone
+      // cannot sign the new account in.
+      accountLogin?: string;
       retryAfterSeconds?: number;
     };
 
@@ -395,9 +405,21 @@ export async function connectSyncAccount(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<ConnectSyncAccountResult> {
-  const login = credentials.login.trim();
-  if (login.length === 0) {
-    return { ok: false, errorCode: "login_required" };
+  // A managed registration carries no identifier: the server generates the
+  // Account ID. Every other path needs the typed login, and a managed sign-in
+  // needs it in the Account ID shape.
+  let login = credentials.login.trim();
+  if (!(preferences.mode === "managed" && mode === "register")) {
+    if (login.length === 0) {
+      return { ok: false, errorCode: "login_required" };
+    }
+    if (preferences.mode === "managed") {
+      const accountId = normalizeManagedAccountId(login);
+      if (accountId === null) {
+        return { ok: false, errorCode: "account_id_invalid" };
+      }
+      login = accountId;
+    }
   }
   if (credentials.password.length === 0) {
     return { ok: false, errorCode: "password_required" };
@@ -413,7 +435,8 @@ export async function connectSyncAccount(
   if (mode === "register" && isPasswordTooLong(credentials.password)) {
     return { ok: false, errorCode: "password_too_long" };
   }
-  // The managed cloud registers an email address and validates it itself.
+  // The managed cloud generates its own identifier, so only a self-hosted
+  // login is length-checked here.
   if (
     mode === "register" &&
     preferences.mode === "self_hosted" &&
@@ -440,12 +463,9 @@ export async function connectSyncAccount(
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const authResult =
       mode === "register"
-        ? await managedClient.register({
-            email: login,
-            password: credentials.password,
-          })
+        ? await managedClient.register({ password: credentials.password })
         : await managedClient.login({
-            email: login,
+            login,
             password: credentials.password,
           });
     if (!authResult.ok) {
@@ -513,6 +533,7 @@ export async function connectSyncAccount(
       capabilities: SyncCapabilityDocument;
       preferences: SyncPreferencesRecord;
       recoveryCode?: string;
+      accountLogin?: string;
       accountKeyReset?: true;
     } = {
       ok: true,
@@ -524,6 +545,9 @@ export async function connectSyncAccount(
     };
     if (authResult.auth.recoveryCode) {
       success.recoveryCode = authResult.auth.recoveryCode;
+      if (authResult.auth.login.length > 0) {
+        success.accountLogin = authResult.auth.login;
+      }
     }
     return success;
   }
@@ -557,9 +581,16 @@ export async function connectSyncAccount(
   // The account exists from here on and the server never reissues its
   // recovery code, so a later failure still hands the code to the caller.
   const issuedRecoveryCode = authResult.auth.recoveryCode;
+  const issuedAccountLogin =
+    authResult.auth.login.length > 0 ? authResult.auth.login : undefined;
   const failAfterRegister = (errorCode: SyncConnectErrorCode): ConnectSyncAccountResult =>
     issuedRecoveryCode
-      ? { ok: false, errorCode, recoveryCode: issuedRecoveryCode }
+      ? {
+          ok: false,
+          errorCode,
+          recoveryCode: issuedRecoveryCode,
+          ...(issuedAccountLogin ? { accountLogin: issuedAccountLogin } : {}),
+        }
       : { ok: false, errorCode };
 
   const capabilitiesResult = await client.getCapabilities(authResult.auth.sessionToken);
@@ -957,7 +988,9 @@ export type UpgradeGuestPartnerAccountResult =
   | {
       ok: true;
       accountID: string;
-      email: string;
+      // The Account ID the account now signs in with (grouped display form),
+      // shown with the recovery code and never stored.
+      login: string;
       // recoveryCode is the plaintext account-level recovery code, returned
       // exactly once by the server (same contract as the register-flow
       // code) and never re-fetchable. The caller must surface it once and
@@ -980,7 +1013,7 @@ export type UpgradeGuestPartnerAccountResult =
 
 /**
  * upgradeGuestPartnerAccount converts the guest-partner account behind this
- * device's CURRENT managed session into a normal email+password account
+ * device's CURRENT managed session into a normal password account with a server-generated Account ID
  * (POST /account/upgrade). Bearer auth is the stored managed session, renewed
  * and retried once on a 401 like every managed call; unlike
  * connectSyncAccount/persistGuestPartnerSession the upgrade itself never
@@ -1005,7 +1038,7 @@ export async function upgradeGuestPartnerAccount(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
-  input: { email: string; password: string },
+  input: { password: string },
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   now: Date = new Date(),
 ): Promise<UpgradeGuestPartnerAccountResult> {
@@ -1016,7 +1049,7 @@ export async function upgradeGuestPartnerAccount(
   }
 
   const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-  const credentials = { email: input.email.trim(), password: input.password };
+  const credentials = { password: input.password };
   const result = await callWithManagedSession(
     secretStore,
     (sessionToken) => managedClient.upgradeGuestAccount(sessionToken, credentials),
@@ -1086,7 +1119,7 @@ export async function upgradeGuestPartnerAccount(
   return {
     ok: true,
     accountID,
-    email: result.result.email,
+    login: result.result.login,
     recoveryCode: result.result.recoveryCode,
     preferences: nextPreferences,
     ...keyReset,
@@ -1213,9 +1246,16 @@ export async function recoverSyncAccess(
       retryAfterSeconds?: number;
     }
 > {
-  const login = credentials.login.trim();
+  let login = credentials.login.trim();
   if (login.length === 0) {
     return { ok: false, errorCode: "login_required" };
+  }
+  if (preferences.mode === "managed") {
+    const accountId = normalizeManagedAccountId(login);
+    if (accountId === null) {
+      return { ok: false, errorCode: "account_id_invalid" };
+    }
+    login = accountId;
   }
   if (credentials.password.length === 0) {
     return { ok: false, errorCode: "password_required" };
@@ -1247,7 +1287,7 @@ export async function recoverSyncAccess(
   if (preferences.mode === "managed") {
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const authResult = await managedClient.login({
-      email: login,
+      login,
       password: credentials.password,
     });
     if (!authResult.ok) {
@@ -1527,7 +1567,7 @@ export async function finalizeSyncRecoveryAfterTOTP(
     }
     const managedAuth: ManagedCloudAuthResult = {
       accountID: session.accountID,
-      email: session.email,
+      login: session.login,
       sessionToken: input.sessionToken,
       sessionExpiresAt: input.sessionExpiresAt || session.sessionExpiresAt,
       entitlement: session.entitlement,

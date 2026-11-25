@@ -131,6 +131,8 @@ export function createBackupSyncSessionCoreMock(
     setGeneratedRecoveryPhrase: jest.fn(),
     generatedRecoveryCode: "",
     setGeneratedRecoveryCode: jest.fn(),
+    generatedAccountLogin: "",
+    setGeneratedAccountLogin: jest.fn(),
     accountChangeRecoveryPhrase: "none",
     setAccountChangeRecoveryPhrase: jest.fn(),
     recoveryPhraseInputValue: "",

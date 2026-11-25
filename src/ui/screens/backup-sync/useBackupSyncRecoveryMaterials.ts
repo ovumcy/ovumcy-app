@@ -296,6 +296,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
 
   function handleAcknowledgeRecoveryCode() {
     core.setGeneratedRecoveryCode("");
+    core.setGeneratedAccountLogin("");
   }
 
   // Only the explicit confirm reveals: a dismissed confirm or a failed device

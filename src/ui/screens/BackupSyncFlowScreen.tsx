@@ -49,6 +49,7 @@ export type BackupSyncFlowScreenProps = {
   deviceListItems: BackupSyncDeviceListItemView[] | null;
   deviceStatusMessage: string;
   errorPresentation: BackupSyncErrorPresentation;
+  generatedAccountLogin: string;
   generatedRecoveryCode: string;
   generatedRecoveryPhrase: string;
   hasSyncSession: boolean;
@@ -59,8 +60,8 @@ export type BackupSyncFlowScreenProps = {
   isPartnerBusy: boolean;
   isPreparing: boolean;
   isRotatingRecoveryPhrase: boolean;
-  guestUpgradeEmailValue: string;
   guestUpgradeFormErrorMessage: string;
+  guestUpgradeGeneratedAccountLogin: string;
   guestUpgradeGeneratedRecoveryCode: string;
   guestUpgradeIsFormOpen: boolean;
   guestUpgradeIsSubmitting: boolean;
@@ -78,7 +79,6 @@ export type BackupSyncFlowScreenProps = {
   onExportRecoveryPhrase: () => void | Promise<void>;
   onGuestUpgradeAcknowledgeRecoveryCode: () => void;
   onGuestUpgradeCancelForm: () => void;
-  onGuestUpgradeEmailChange: (value: string) => void;
   onGuestUpgradePasswordChange: (value: string) => void;
   onGuestUpgradeSubmitForm: () => void | Promise<void>;
   onGuestUpgradeTapKeepAccess: () => void | Promise<void>;
@@ -173,6 +173,7 @@ export function BackupSyncFlowScreen({
   deviceListItems,
   deviceStatusMessage,
   errorPresentation,
+  generatedAccountLogin,
   generatedRecoveryCode,
   generatedRecoveryPhrase,
   hasSyncSession,
@@ -183,7 +184,7 @@ export function BackupSyncFlowScreen({
   isPartnerBusy,
   isPreparing,
   isRotatingRecoveryPhrase,
-  guestUpgradeEmailValue,
+  guestUpgradeGeneratedAccountLogin,
   guestUpgradeFormErrorMessage,
   guestUpgradeGeneratedRecoveryCode,
   guestUpgradeIsFormOpen,
@@ -202,7 +203,6 @@ export function BackupSyncFlowScreen({
   onExportRecoveryPhrase,
   onGuestUpgradeAcknowledgeRecoveryCode,
   onGuestUpgradeCancelForm,
-  onGuestUpgradeEmailChange,
   onGuestUpgradePasswordChange,
   onGuestUpgradeSubmitForm,
   onGuestUpgradeTapKeepAccess,
@@ -367,6 +367,7 @@ export function BackupSyncFlowScreen({
         billingOffers={billingOffers}
         confirmActionLabel={confirmActionLabel}
         errorPresentation={errorPresentation}
+        generatedAccountLogin={generatedAccountLogin}
         generatedRecoveryCode={generatedRecoveryCode}
         generatedRecoveryPhrase={generatedRecoveryPhrase}
         hasSyncSession={hasSyncSession}
@@ -402,8 +403,8 @@ export function BackupSyncFlowScreen({
       />
       <GuestUpgradeSection
         copy={partnerCopy}
-        emailValue={guestUpgradeEmailValue}
         formErrorMessage={guestUpgradeFormErrorMessage}
+        generatedAccountLogin={guestUpgradeGeneratedAccountLogin}
         generatedRecoveryCode={guestUpgradeGeneratedRecoveryCode}
         isFormOpen={guestUpgradeIsFormOpen}
         isGuestPartner={isGuestPartner}
@@ -411,7 +412,6 @@ export function BackupSyncFlowScreen({
         nudgeMessage={guestUpgradeNudgeMessage}
         onAcknowledgeRecoveryCode={onGuestUpgradeAcknowledgeRecoveryCode}
         onCancelForm={onGuestUpgradeCancelForm}
-        onEmailChange={onGuestUpgradeEmailChange}
         onPasswordChange={onGuestUpgradePasswordChange}
         onSubmitForm={onGuestUpgradeSubmitForm}
         onTapKeepAccess={onGuestUpgradeTapKeepAccess}

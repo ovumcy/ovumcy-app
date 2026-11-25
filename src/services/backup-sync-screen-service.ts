@@ -187,6 +187,9 @@ export async function connectBackupSyncAccount(
       // exactly once at register. Undefined on login. Callers must surface it
       // immediately to the owner — the server never reissues the same code.
       recoveryCode?: string;
+      // The managed Account ID generated with that recovery code; shown with
+      // it once and never stored.
+      accountLogin?: string;
       // The sign-in reached another account and replaced the sync key; the
       // screen offers the gated reveal of its phrase.
       accountKeyReset?: true;
@@ -208,6 +211,7 @@ export async function connectBackupSyncAccount(
       errorCode: SyncConnectScreenErrorCode;
       // The only copy of a code issued by a register whose later steps failed.
       recoveryCode?: string;
+      accountLogin?: string;
       retryAfterSeconds?: number;
     }
 > {
@@ -246,6 +250,7 @@ export async function connectBackupSyncAccount(
     state: LoadedSettingsState;
     connected: boolean;
     recoveryCode?: string;
+    accountLogin?: string;
     accountKeyReset?: true;
   } = {
     ok: true,
@@ -264,6 +269,9 @@ export async function connectBackupSyncAccount(
   };
   if (result.recoveryCode) {
     success.recoveryCode = result.recoveryCode;
+  }
+  if (result.accountLogin) {
+    success.accountLogin = result.accountLogin;
   }
   if (result.accountKeyReset) {
     success.accountKeyReset = true;
@@ -367,13 +375,13 @@ export async function upgradeBackupSyncGuestAccount(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   currentState: LoadedSettingsState,
-  input: { email: string; password: string },
+  input: { password: string },
   now: Date,
 ): Promise<
   | {
       ok: true;
       state: LoadedSettingsState;
-      email: string;
+      login: string;
       recoveryCode: string;
       accountKeyReset?: true;
     }
@@ -414,7 +422,7 @@ export async function upgradeBackupSyncGuestAccount(
   return {
     ok: true,
     state: nextState,
-    email: result.email,
+    login: result.login,
     recoveryCode: result.recoveryCode,
     ...(result.accountKeyReset ? { accountKeyReset: true as const } : {}),
   };

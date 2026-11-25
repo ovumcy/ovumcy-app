@@ -435,6 +435,8 @@ export function resolveBackupSyncErrorMessage(
   switch (errorCode) {
     case "login_required":
       return viewData.errors.loginRequired;
+    case "account_id_invalid":
+      return viewData.errors.accountIdInvalid;
     case "password_required":
       return viewData.errors.passwordRequired;
     case "password_too_short":
@@ -614,6 +616,7 @@ export function resolveBackupSyncErrorPresentation(
         endpointMessage: message,
       };
     case "login_required":
+    case "account_id_invalid":
     case "login_invalid_length":
       return {
         ...emptyPresentation,
