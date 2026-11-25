@@ -164,6 +164,7 @@ export function useBackupSyncSessionCore({
   const dataSharingConsentResolverRef = useRef<
     ((accepted: boolean) => void) | null
   >(null);
+  const dataSharingConsentInFlightRef = useRef(false);
   useEffect(
     () => () => {
       const resolve = dataSharingConsentResolverRef.current;
@@ -479,28 +480,29 @@ export function useBackupSyncSessionCore({
   async function ensureDataSharingConsent(
     purpose: DataSharingConsentPurpose,
   ): Promise<boolean> {
+    // Held from the first read until the answer is recorded: a second request
+    // in that window is dropped rather than racing the first.
+    if (dataSharingConsentInFlightRef.current) {
+      return false;
+    }
+    dataSharingConsentInFlightRef.current = true;
     try {
       if (await hasCurrentDataSharingConsent(storage, purpose)) {
         return true;
       }
-    } catch {
-      return false;
-    }
-    if (dataSharingConsentResolverRef.current) {
-      return false;
-    }
-    const accepted = await new Promise<boolean>((resolve) => {
-      dataSharingConsentResolverRef.current = resolve;
-      setPendingDataSharingConsent(purpose);
-    });
-    if (!accepted) {
-      return false;
-    }
-    try {
+      const accepted = await new Promise<boolean>((resolve) => {
+        dataSharingConsentResolverRef.current = resolve;
+        setPendingDataSharingConsent(purpose);
+      });
+      if (!accepted) {
+        return false;
+      }
       await recordDataSharingConsent(storage, purpose, now ?? new Date());
       return true;
     } catch {
       return false;
+    } finally {
+      dataSharingConsentInFlightRef.current = false;
     }
   }
 

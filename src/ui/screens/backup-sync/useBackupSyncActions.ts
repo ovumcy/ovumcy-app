@@ -73,14 +73,6 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
 
   async function handleSyncNow() {
     setPendingStepUp(null);
-    if (
-      state &&
-      !(await core.ensureDataSharingConsent(
-        resolveSyncConsentPurpose(state.syncPreferences.mode),
-      ))
-    ) {
-      return;
-    }
     await runUpload();
   }
 
@@ -107,6 +99,16 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
 
     const syncReadyState = await saveSyncDraftIfNeeded("sync");
     if (!syncReadyState) {
+      setIsSyncingNow(false);
+      return;
+    }
+    // Asked after the draft is saved, so the consent names the destination
+    // the request goes to.
+    if (
+      !(await core.ensureDataSharingConsent(
+        resolveSyncConsentPurpose(syncReadyState.syncPreferences.mode),
+      ))
+    ) {
       setIsSyncingNow(false);
       return;
     }

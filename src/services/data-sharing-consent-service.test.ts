@@ -2,6 +2,7 @@ import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-s
 import {
   DATA_SHARING_CONSENT_PURPOSES,
   normalizeDataSharingConsentRecord,
+  resolveSyncModeConsentPurposes,
 } from "../sync/sync-contract";
 import { SUPPORTED_INTERFACE_LANGUAGES } from "../models/profile";
 import {
@@ -9,7 +10,6 @@ import {
   buildDataSharingConsentViewData,
   hasCurrentDataSharingConsent,
   recordDataSharingConsent,
-  resolveDisconnectConsentPurposes,
   resolveSyncConsentPurpose,
   withdrawDataSharingConsent,
 } from "./data-sharing-consent-service";
@@ -72,7 +72,7 @@ describe("data-sharing consent record", () => {
     await recordDataSharingConsent(storage, "partner_share", NOW);
     await recordDataSharingConsent(storage, "self_hosted_sync", NOW);
 
-    await withdrawDataSharingConsent(storage, resolveDisconnectConsentPurposes("managed"));
+    await withdrawDataSharingConsent(storage, resolveSyncModeConsentPurposes("managed"));
 
     await expect(hasCurrentDataSharingConsent(storage, "managed_sync")).resolves.toBe(false);
     await expect(hasCurrentDataSharingConsent(storage, "partner_share")).resolves.toBe(false);
@@ -104,7 +104,7 @@ describe("data-sharing consent record", () => {
   it("maps the sync mode to its own consent purpose", () => {
     expect(resolveSyncConsentPurpose("managed")).toBe("managed_sync");
     expect(resolveSyncConsentPurpose("self_hosted")).toBe("self_hosted_sync");
-    expect(resolveDisconnectConsentPurposes("self_hosted")).toEqual(["self_hosted_sync"]);
+    expect(resolveSyncModeConsentPurposes("self_hosted")).toEqual(["self_hosted_sync"]);
   });
 });
 

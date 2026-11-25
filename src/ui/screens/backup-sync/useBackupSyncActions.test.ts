@@ -77,7 +77,7 @@ describe("useBackupSyncActions", () => {
       });
 
       expect(core.ensureDataSharingConsent).toHaveBeenCalledWith("managed_sync");
-      expect(core.saveSyncDraftIfNeeded).not.toHaveBeenCalled();
+      expect(core.saveSyncDraftIfNeeded).toHaveBeenCalledTimes(1);
       expect(mockUploadBackupSyncSnapshot).not.toHaveBeenCalled();
       expect(result.current.isSyncingNow).toBe(false);
     });

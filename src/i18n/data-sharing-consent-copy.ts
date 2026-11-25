@@ -59,8 +59,8 @@ const consentCopyEn: DataSharingConsentCopy = {
     login: "Your login; the server keeps only a hash of your password",
   },
   partnerItems: {
-    summary: "Summary level: period days, cycle starts and uncertainty markers only",
-    full: "Full level: also flow, mood, ovulation tests, cycle factors, symptoms and notes, plus sexual activity, temperature and cervical mucus unless you hide them",
+    summary: "Summary level: only a cycle summary computed on your device: current cycle day, next-period estimate, average and last cycle length, average period length, number of logged days, plus your age group and cycle settings; no day-by-day entries",
+    full: "Full level: your age group, cycle settings and last period start, plus day-by-day entries: period days, flow, mood, ovulation tests, cycle factors, symptoms and notes, and also sexual activity, temperature and cervical mucus unless you hide them or turn their tracking off",
     never:
       "Never shared: pregnancy tests, pregnancy, postpartum and screening data, weight, blood pressure and your crisis-support contact",
   },
@@ -107,8 +107,8 @@ const consentCopyRu: DataSharingConsentCopy = {
   },
   partnerItems: {
     summary:
-      "Краткий уровень: только дни месячных, начала циклов и отметки неопределённости",
-    full: "Полный уровень: также выделения, настроение, тесты на овуляцию, факторы цикла, симптомы и заметки, а ещё сексуальная активность, температура и цервикальная слизь, если вы их не скрыли",
+      "Краткий уровень: только сводка цикла, посчитанная на устройстве: текущий день цикла, прогноз следующих месячных, средняя и последняя длина цикла, средняя длина месячных, число отмеченных дней, а также возрастная группа и настройки цикла; без записей по дням",
+    full: "Полный уровень: возрастная группа, настройки цикла и начало последних месячных, а также записи по дням: дни месячных, выделения, настроение, тесты на овуляцию, факторы цикла, симптомы и заметки, а ещё сексуальная активность, температура и цервикальная слизь, если вы их не скрыли и не выключили их отслеживание",
     never:
       "Никогда не передаются: тесты на беременность, данные о беременности, послеродовом периоде и скринингах, вес, давление и ваш контакт для экстренной поддержки",
   },
@@ -155,8 +155,8 @@ const consentCopyDe: DataSharingConsentCopy = {
   },
   partnerItems: {
     summary:
-      "Übersicht: nur Periodentage, Zyklusbeginne und Unsicherheitsmarkierungen",
-    full: "Vollständig: zusätzlich Blutungsstärke, Stimmung, Ovulationstests, Zyklusfaktoren, Symptome und Notizen sowie sexuelle Aktivität, Temperatur und Zervixschleim, sofern Sie sie nicht ausblenden",
+      "Übersicht: nur eine auf Ihrem Gerät berechnete Zykluszusammenfassung: aktueller Zyklustag, Prognose der nächsten Periode, durchschnittliche und letzte Zykluslänge, durchschnittliche Periodenlänge, Anzahl der erfassten Tage sowie Ihre Altersgruppe und Zykluseinstellungen; keine tagesgenauen Einträge",
+    full: "Vollständig: Ihre Altersgruppe, Zykluseinstellungen und der Beginn der letzten Periode sowie tagesgenaue Einträge: Periodentage, Blutungsstärke, Stimmung, Ovulationstests, Zyklusfaktoren, Symptome und Notizen, außerdem sexuelle Aktivität, Temperatur und Zervixschleim, sofern Sie sie nicht ausblenden oder deren Erfassung abschalten",
     never:
       "Nie geteilt: Schwangerschaftstests, Schwangerschafts-, Wochenbett- und Screening-Daten, Gewicht, Blutdruck und Ihr Krisenkontakt",
   },
@@ -203,8 +203,8 @@ const consentCopyFr: DataSharingConsentCopy = {
   },
   partnerItems: {
     summary:
-      "Niveau résumé : uniquement les jours de règles, les débuts de cycle et les marqueurs d'incertitude",
-    full: "Niveau complet : aussi le flux, l'humeur, les tests d'ovulation, les facteurs de cycle, les symptômes et les notes, ainsi que l'activité sexuelle, la température et la glaire cervicale si vous ne les masquez pas",
+      "Niveau résumé : uniquement un résumé du cycle calculé sur votre appareil : jour actuel du cycle, estimation des prochaines règles, durée moyenne et dernière durée du cycle, durée moyenne des règles, nombre de jours renseignés, ainsi que votre tranche d'âge et vos réglages de cycle ; aucune saisie jour par jour",
+    full: "Niveau complet : votre tranche d'âge, vos réglages de cycle et le début des dernières règles, plus les saisies jour par jour : jours de règles, flux, humeur, tests d'ovulation, facteurs de cycle, symptômes et notes, ainsi que l'activité sexuelle, la température et la glaire cervicale si vous ne les masquez pas et n'en désactivez pas le suivi",
     never:
       "Jamais partagés : tests de grossesse, données de grossesse, de post-partum et de dépistage, poids, tension artérielle et votre contact de soutien en cas de crise",
   },
@@ -251,8 +251,8 @@ const consentCopyEs: DataSharingConsentCopy = {
   },
   partnerItems: {
     summary:
-      "Nivel resumen: solo días de regla, inicios de ciclo y marcas de incertidumbre",
-    full: "Nivel completo: además flujo, estado de ánimo, pruebas de ovulación, factores del ciclo, síntomas y notas, y también actividad sexual, temperatura y moco cervical si no los ocultas",
+      "Nivel resumen: solo un resumen del ciclo calculado en tu dispositivo: día actual del ciclo, estimación de la próxima regla, duración media y última del ciclo, duración media de la regla, número de días registrados, además de tu grupo de edad y ajustes del ciclo; sin registros día a día",
+    full: "Nivel completo: tu grupo de edad, ajustes del ciclo e inicio de la última regla, más los registros día a día: días de regla, flujo, estado de ánimo, pruebas de ovulación, factores del ciclo, síntomas y notas, y también actividad sexual, temperatura y moco cervical si no los ocultas ni desactivas su seguimiento",
     never:
       "Nunca se comparten: pruebas de embarazo, datos de embarazo, posparto y cribado, peso, tensión arterial y tu contacto de apoyo en crisis",
   },
@@ -299,8 +299,8 @@ const consentCopyIt: DataSharingConsentCopy = {
   },
   partnerItems: {
     summary:
-      "Livello riepilogo: solo giorni di mestruazione, inizi del ciclo e indicatori di incertezza",
-    full: "Livello completo: anche flusso, umore, test di ovulazione, fattori del ciclo, sintomi e note, oltre ad attività sessuale, temperatura e muco cervicale se non li nascondi",
+      "Livello riepilogo: solo un riepilogo del ciclo calcolato sul tuo dispositivo: giorno attuale del ciclo, stima delle prossime mestruazioni, durata media e ultima del ciclo, durata media delle mestruazioni, numero di giorni registrati, oltre alla tua fascia d'età e alle impostazioni del ciclo; nessuna registrazione giorno per giorno",
+    full: "Livello completo: la tua fascia d'età, le impostazioni del ciclo e l'inizio delle ultime mestruazioni, più le registrazioni giorno per giorno: giorni di mestruazione, flusso, umore, test di ovulazione, fattori del ciclo, sintomi e note, oltre ad attività sessuale, temperatura e muco cervicale se non li nascondi e non ne disattivi il monitoraggio",
     never:
       "Mai condivisi: test di gravidanza, dati su gravidanza, post-partum e screening, peso, pressione arteriosa e il tuo contatto di supporto in caso di crisi",
   },

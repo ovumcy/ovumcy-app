@@ -256,6 +256,53 @@ describe("sync-setup-service", () => {
     },
   );
 
+  it("drops the old destination's data-sharing consent when the mode or endpoint changes", async () => {
+    const storage = createLocalAppStorageMock();
+    const grant = { revision: "2026-11-25", givenAt: "2026-11-25T10:00:00.000Z" };
+    const saved = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted" as const,
+      endpointInput: "https://sync-a.example.com",
+      normalizedEndpoint: "https://sync-a.example.com",
+      deviceLabel: "Phone",
+    };
+    jest.mocked(storage.readSyncPreferencesRecord).mockResolvedValue({
+      ...saved,
+      dataSharingConsent: { self_hosted_sync: grant, managed_sync: grant },
+    });
+
+    const result = await saveSyncPreferencesDraft(
+      storage,
+      createSyncSecretStoreMock(),
+      saved,
+      { ...saved, endpointInput: "https://sync-b.example.com" },
+      false,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ normalizedEndpoint: "https://sync-b.example.com" }),
+      expect.objectContaining({ dataSharingConsent: { managed_sync: grant } }),
+    );
+  });
+
+  it("keeps the data-sharing consent when only the device label changes", async () => {
+    const storage = createLocalAppStorageMock();
+    const saved = { ...createDefaultSyncPreferencesRecord(), mode: "managed" as const, deviceLabel: "Phone" };
+
+    await saveSyncPreferencesDraft(
+      storage,
+      createSyncSecretStoreMock(),
+      saved,
+      { ...saved, deviceLabel: "Tablet" },
+      false,
+    );
+
+    expect(storage.readSyncPreferencesRecord).not.toHaveBeenCalled();
+    const options = jest.mocked(storage.writeSyncPreferencesRecord).mock.calls[0]?.[1];
+    expect(options?.dataSharingConsent).toBeUndefined();
+  });
+
   it("refuses to save a draft whose device label is outside 2-64 bytes", async () => {
     const storage = createLocalAppStorageMock();
 

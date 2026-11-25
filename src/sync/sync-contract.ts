@@ -200,6 +200,30 @@ export function withDataSharingConsent<
   return next;
 }
 
+/**
+ * The consent purposes that end with the sync relationship of `mode`: a
+ * managed relationship also carries partner sharing, which runs only under the
+ * managed account.
+ */
+export function resolveSyncModeConsentPurposes(
+  mode: SyncMode,
+): DataSharingConsentPurpose[] {
+  return mode === "self_hosted"
+    ? ["self_hosted_sync"]
+    : ["managed_sync", "partner_share"];
+}
+
+export function withoutDataSharingConsent(
+  consent: DataSharingConsentRecord | undefined,
+  purposes: readonly DataSharingConsentPurpose[],
+): DataSharingConsentRecord {
+  const next = { ...consent };
+  for (const purpose of purposes) {
+    delete next[purpose];
+  }
+  return next;
+}
+
 export type SyncAuthResult = {
   accountID: string;
   sessionToken: string;
