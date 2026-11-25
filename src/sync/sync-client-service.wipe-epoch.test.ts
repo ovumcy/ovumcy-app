@@ -358,6 +358,84 @@ describe("sign-in flows superseded by a local wipe", () => {
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 
+  it("hands back the Account ID and recovery code when a wipe lands during a managed register", async () => {
+    const storage = storageFor(managedPreferences());
+    const secretStore = createSyncSecretStoreMock(preparedSecrets({ authSessionToken: null }));
+    const writeSyncSecrets = jest.spyOn(secretStore, "writeSyncSecrets");
+    const managed = {
+      register: jest.fn().mockImplementation(async () => {
+        advanceSyncWipeEpoch();
+        return {
+          ok: true,
+          auth: {
+            accountID: "acct-1",
+            login: "a3f9-0c12-77be-4d01",
+            sessionToken: "managed-1",
+            sessionExpiresAt: "",
+            recoveryCode: "recovery-code-1",
+          },
+        };
+      }),
+    } as unknown as ManagedCloudAPIClient;
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      managedPreferences(),
+      { login: "", password: "correct horse battery" },
+      "register",
+      NOW,
+      jest.fn(),
+      () => managed,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "sync_not_prepared",
+      recoveryCode: "recovery-code-1",
+      accountLogin: "a3f9-0c12-77be-4d01",
+    });
+    expect(writeSyncSecrets).not.toHaveBeenCalled();
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("omits an empty Account ID when a wipe lands during a managed register", async () => {
+    const storage = storageFor(managedPreferences());
+    const secretStore = createSyncSecretStoreMock(preparedSecrets({ authSessionToken: null }));
+    const managed = {
+      register: jest.fn().mockImplementation(async () => {
+        advanceSyncWipeEpoch();
+        return {
+          ok: true,
+          auth: {
+            accountID: "acct-1",
+            login: "",
+            sessionToken: "managed-1",
+            sessionExpiresAt: "",
+            recoveryCode: "recovery-code-1",
+          },
+        };
+      }),
+    } as unknown as ManagedCloudAPIClient;
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      managedPreferences(),
+      { login: "", password: "correct horse battery" },
+      "register",
+      NOW,
+      jest.fn(),
+      () => managed,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "sync_not_prepared",
+      recoveryCode: "recovery-code-1",
+    });
+  });
+
   it("writes nothing when a wipe lands during the managed TOTP session read", async () => {
     const storage = storageFor(managedPreferences());
     const secretStore = createSyncSecretStoreMock(preparedSecrets({ authSessionToken: null }));

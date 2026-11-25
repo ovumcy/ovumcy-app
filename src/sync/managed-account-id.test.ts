@@ -25,6 +25,12 @@ describe("normalizeManagedAccountId", () => {
     );
   });
 
+  it("strips typographic dashes from smart punctuation and pasted text", () => {
+    expect(normalizeManagedAccountId("a3f9‑0c12–77be−4d01")).toBe(
+      "a3f90c1277be4d01",
+    );
+  });
+
   it("rejects a wrong length", () => {
     expect(normalizeManagedAccountId("a3f9-0c12-77be-4d0")).toBeNull();
     expect(normalizeManagedAccountId("a3f9-0c12-77be-4d012")).toBeNull();

@@ -389,6 +389,9 @@ export type ConnectSyncAccountResult =
       // Set when register created the account but a later step failed: the
       // only copy of the recovery code, to be shown like a successful one.
       recoveryCode?: string;
+      // The managed Account ID issued with that recovery code; without it the
+      // new account cannot be signed in to. Memory only.
+      accountLogin?: string;
       retryAfterSeconds?: number;
     };
 
@@ -494,7 +497,18 @@ export async function connectSyncAccount(
       now,
     );
     if (readSyncWipeEpoch() !== wipeEpoch) {
-      return { ok: false, errorCode: "sync_not_prepared" };
+      // A register has already created the account: its recovery code and
+      // Account ID are issued once, so they still reach the caller.
+      const { recoveryCode, login: issuedLogin } = authResult.auth;
+      if (!recoveryCode) {
+        return { ok: false, errorCode: "sync_not_prepared" };
+      }
+      return {
+        ok: false,
+        errorCode: "sync_not_prepared",
+        recoveryCode,
+        ...(issuedLogin.length > 0 ? { accountLogin: issuedLogin } : {}),
+      };
     }
     // New managed session (possibly a different account): drop billing-cache
     // state derived under the previous session BEFORE the new session is
