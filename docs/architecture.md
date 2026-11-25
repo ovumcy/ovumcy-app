@@ -280,12 +280,20 @@ are in [`SECURITY.md`](../SECURITY.md) and
 - **Pregnancy module.** Ownership is a one-time on-device unlock resolved by
   `loadPregnancyModuleOwned` in `src/services/pregnancy-entitlement-service.ts`.
   It fails closed: a source error or any non-`true` answer reads as not owned.
-  The only source today is a build flag honored in development builds only; a
-  release build resolves to not owned. It gates starting new pregnancy data and
-  rendering pregnancy-mode surfaces, not reads or exports of data already logged.
-  The store source — a one-time store purchase read on-device, with no server
-  and no billing snapshot in the chain — is modeled in the same *Purchase flows*
-  section and not implemented yet.
+  The source is the store's record of a one-time `pregnancy_module` purchase,
+  read on the device by `src/services/pregnancy-store-entitlement-source.ts`
+  with no server, no billing snapshot and no stored copy in the chain; a build
+  flag can add ownership in development builds only. It gates starting new
+  pregnancy data and rendering pregnancy-mode surfaces, not reads or exports of
+  data already logged.
+  `src/billing` holds the store boundary: `store-contract.ts` is the
+  transport-free contract (no consume operation, no purchase token), and
+  `store-client.native.ts` is the only file that imports the store library
+  (`expo-iap`, pinned exactly) — Google Play today, every other platform
+  answers "store unavailable". `src/services/pregnancy-purchase-service.ts`
+  buys, restores and acknowledges; the unlock screen is `/pregnancy-unlock`,
+  the only route a locked pregnancy surface opens. The model is the
+  *Purchase flows* section of `docs/sync-trust-model.md`.
 
 ## Optional sync
 

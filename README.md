@@ -142,7 +142,7 @@ Optional, on top of the free core:
 
 - **Encrypted backup and sync** between your own devices through a self-hosted [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community) server, or through Ovumcy Cloud.
 - **Ovumcy Cloud** (paid): advanced fertility signals, premium cycle insights, extended reports, a doctor-friendly PDF, and read-only partner sharing. See [Tiers](#tiers).
-- **Pregnancy, postpartum, and mood check-in module**: pregnancy mode with due-date tracking, a kick counter and contraction timer, postpartum recovery tracking, and an EPDS mood check-in with crisis-support information. It is planned as a one-time unlock rather than a subscription; the purchase path is not live yet, see [Project Status](#project-status).
+- **Pregnancy, postpartum, and mood check-in module**: pregnancy mode with due-date tracking, a kick counter and contraction timer, postpartum recovery tracking, and an EPDS mood check-in with crisis-support information. It is a one-time unlock rather than a subscription, bought through the app store with no account; the purchase is built for Google Play and not yet released, see [Project Status](#project-status).
 
 The free owner flows follow `ovumcy-web` as their UX reference; the contract the app is checked against is in [docs/web-parity-checklist.md](docs/web-parity-checklist.md).
 
@@ -292,11 +292,12 @@ Period and fertile-window predictions in particular are statistical estimates de
 - every free owner flow works as a local-first slice on-device: onboarding, dashboard, calendar, day logging, statistics, custom symptoms, reminders, settings, export, and offline import;
 - Ovumcy Cloud premium surfaces are wired client-side: without an active plan they show as cleanly locked (never a silent hide, never an error), and they render fully when the managed billing snapshot reports premium features active;
 - community and managed sync have encrypted round-trip integration suites; those live suites run only against a configured server (`OVUMCY_SYNC_LIVE_BASE_URL` / `OVUMCY_MANAGED_LIVE_BASE_URL`) and are skipped by default; CI runs the community suite against a server built from the pinned `ovumcy-sync-community` commit and, on a schedule, the managed suite against pinned managed + community servers;
-- the pregnancy, postpartum, and mood check-in module is implemented and tested end to end, including backup, sync, and export of its records.
+- the pregnancy, postpartum, and mood check-in module is implemented and tested end to end, including backup, sync, and export of its records;
+- the module's one-time unlock is a Google Play purchase read on the device: no account, no server, and nothing about it stored by the app. The store library is confined to one adapter and never asked to verify, report, or send anything.
 
 What the repository does **not** claim yet:
 
-- **in-app purchases.** Paid Ovumcy Cloud plans are to be provisioned by app-store billing, Google Play Billing first and App Store second (see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)); until that lands, premium cannot be purchased on-device. The same applies to the pregnancy module's one-time unlock: release builds cannot unlock it yet, and only development builds can exercise it;
+- **in-app purchases.** Paid Ovumcy Cloud plans are to be provisioned by app-store billing, Google Play Billing first and App Store second (see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)); until that lands, premium cannot be purchased on-device. The pregnancy module's one-time purchase is built for Google Play but has not been through a store release or its device checklist yet, and there is no App Store path: on iOS the module cannot be unlocked;
 - validated non-English wording for the EPDS mood check-in; until it exists, the check-in is ready for English only;
 - a production-enabled no-account guest landing for partner sharing (see the FAQ above);
 - completed Android and iOS manual smoke discipline for every release candidate, and release-store readiness for broad distribution.
@@ -306,7 +307,7 @@ What the repository does **not** claim yet:
 Near-term:
 
 - Google Play Billing, then App Store, so a real subscription drives the managed billing snapshot and TestFlight / Play internal testing can validate premium with sandbox purchases;
-- the store purchase path for the pregnancy module's one-time unlock;
+- device verification and release of the pregnancy module's Google Play purchase, then its App Store counterpart;
 - validated EPDS translations for the five non-English locales;
 - enabling the already-built no-account guest acceptance flow once platform-verified deep links are live;
 - closing the remaining free-tier feature gaps against `ovumcy-web`;

@@ -134,7 +134,7 @@ no expensive lifetime tier.
 | Door | Grants | Account | Trust anchor |
 | --- | --- | --- | --- |
 | **Free** | Core tracking, predictions, stats, local CSV/JSON export | none | none — data lives only on the device and dies with it |
-| **One-time pregnancy-module unlock** (store non-consumable `pregnancy_module`, **target**) | The pregnancy / postpartum / check-in module only — no premium feature, no sync, no account, no server round-trip | none | The store's own purchase record read on-device (Play Billing first, StoreKit 2 later); restored through the store account |
+| **One-time pregnancy-module unlock** (store non-consumable `pregnancy_module`; implemented for Google Play, App Store is **target**) | The pregnancy / postpartum / check-in module only — no premium feature, no sync, no account, no server round-trip | none | The store's own purchase record read on-device (Play Billing first, StoreKit 2 later); restored through the store account |
 | **Monthly + yearly subscription** (`ovumcy_cloud`, base plans `monthly` / `yearly`; the store purchase is **target**) | Premium features + sync included | none to pay — the purchase may precede the account; premium turns on only after sign-in or registration, and enabling sync stays a separate choice | Managed billing snapshot under a managed session (the shipped premium authority) |
 
 Door rules:
@@ -169,12 +169,15 @@ Door rules:
 
 Current state vs target: today every premium surface reads the managed billing
 snapshot, the token overlay is dormant (`SECURITY.md`, Accepted Residual
-Risks), nothing in the app can buy either product, and a release build cannot
-unlock the pregnancy module. The two purchase flows below are the target work
-this section models ahead of implementation. The device-anchored `sub` class
-stays a target of its own; neither purchase flow depends on it.
+Risks), and nothing in the app can buy the subscription. The one-time door is
+implemented for Google Play (`src/billing`, `pregnancy-purchase-service`, the
+`/pregnancy-unlock` screen; claims pinned in `SECURITY.md`); on iOS and web the
+store reads as unavailable and the module stays locked. The subscription flow
+below is the target work this section models ahead of implementation. The
+device-anchored `sub` class stays a target of its own; neither purchase flow
+depends on it.
 
-### Purchase flows (target)
+### Purchase flows (one-time door implemented, subscription door target)
 
 Both products are bought through the platform store, Google Play first. The
 store library is imported in exactly one adapter under `src/billing`; services

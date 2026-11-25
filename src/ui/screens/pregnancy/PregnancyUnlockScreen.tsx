@@ -45,9 +45,7 @@ export function PregnancyUnlockScreen({
   const [isBusy, setIsBusy] = useState(false);
   const isMounted = useRef(true);
 
-  const reloadOffer = useCallback(async () => {
-    setNotice(null);
-    setOffer(null);
+  const readOffer = useCallback(async () => {
     const next = await loadOffer();
     if (isMounted.current) {
       setOffer(next);
@@ -56,12 +54,18 @@ export function PregnancyUnlockScreen({
 
   useEffect(() => {
     isMounted.current = true;
-    void reloadOffer();
+    void readOffer();
 
     return () => {
       isMounted.current = false;
     };
-  }, [reloadOffer]);
+  }, [readOffer]);
+
+  async function reloadOffer() {
+    setNotice(null);
+    setOffer(null);
+    await readOffer();
+  }
 
   async function handleBuy() {
     setIsBusy(true);
