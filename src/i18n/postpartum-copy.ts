@@ -136,6 +136,11 @@ const postpartumCopyEn = {
       "Follow your recovery week by week, with a few gentle reminders. You can turn it off anytime.",
     endRow: "End postpartum tracking",
     endHint: "Switch back to cycle tracking only.",
+    editRow: "Edit birth details",
+    editHint: "Correct the date of birth or how your baby was born.",
+    editSaveCta: "Save changes",
+    editCancelCta: "Cancel",
+    editFailed: "We couldn't save these changes just now. Please try again.",
     endDialog: {
       title: "End postpartum tracking?",
       body: "Ovumcy will stop postpartum tracking and return to your cycle. Your entries stay saved on this device.",
@@ -251,6 +256,11 @@ const postpartumCopyRu: PostpartumCopy = {
       "Следите за восстановлением неделя за неделей с несколькими мягкими напоминаниями. Отключить можно в любой момент.",
     endRow: "Завершить отслеживание послеродового периода",
     endHint: "Вернуться только к отслеживанию цикла.",
+    editRow: "Изменить данные о родах",
+    editHint: "Исправьте дату родов или то, как прошли роды.",
+    editSaveCta: "Сохранить изменения",
+    editCancelCta: "Отмена",
+    editFailed: "Не удалось сохранить изменения сейчас. Попробуйте снова.",
     endDialog: {
       title: "Завершить отслеживание послеродового периода?",
       body: "Ovumcy остановит послеродовое отслеживание и вернётся к вашему циклу. Ваши записи останутся на этом устройстве.",
@@ -366,6 +376,12 @@ const postpartumCopyDe: PostpartumCopy = {
       "Verfolgen Sie Ihre Erholung Woche für Woche mit einigen sanften Erinnerungen. Sie können es jederzeit ausschalten.",
     endRow: "Wochenbett-Tracking beenden",
     endHint: "Nur zum Zyklus-Tracking zurückkehren.",
+    editRow: "Angaben zur Geburt bearbeiten",
+    editHint: "Korrigieren Sie das Geburtsdatum oder die Art der Geburt.",
+    editSaveCta: "Änderungen speichern",
+    editCancelCta: "Abbrechen",
+    editFailed:
+      "Wir konnten die Änderungen gerade nicht speichern. Bitte versuchen Sie es erneut.",
     endDialog: {
       title: "Wochenbett-Tracking beenden?",
       body: "Ovumcy beendet das Wochenbett-Tracking und kehrt zu Ihrem Zyklus zurück. Ihre Einträge bleiben auf diesem Gerät gespeichert.",
@@ -483,6 +499,12 @@ const postpartumCopyFr: PostpartumCopy = {
       "Suivez votre récupération semaine après semaine, avec quelques rappels doux. Vous pouvez le désactiver quand vous voulez.",
     endRow: "Terminer le suivi post-partum",
     endHint: "Revenir au suivi du cycle uniquement.",
+    editRow: "Modifier les informations de naissance",
+    editHint: "Corrigez la date de naissance ou le mode d'accouchement.",
+    editSaveCta: "Enregistrer les modifications",
+    editCancelCta: "Annuler",
+    editFailed:
+      "Nous n'avons pas pu enregistrer ces modifications pour le moment. Veuillez réessayer.",
     endDialog: {
       title: "Terminer le suivi post-partum ?",
       body: "Ovumcy arrêtera le suivi post-partum et reviendra à votre cycle. Vos entrées restent enregistrées sur cet appareil.",
@@ -600,6 +622,12 @@ const postpartumCopyEs: PostpartumCopy = {
       "Sigue tu recuperación semana a semana, con algunos recordatorios suaves. Puedes desactivarlo cuando quieras.",
     endRow: "Finalizar el seguimiento posparto",
     endHint: "Volver solo al seguimiento del ciclo.",
+    editRow: "Editar los datos del parto",
+    editHint: "Corrige la fecha de nacimiento o cómo nació tu bebé.",
+    editSaveCta: "Guardar cambios",
+    editCancelCta: "Cancelar",
+    editFailed:
+      "No pudimos guardar los cambios ahora mismo. Inténtalo de nuevo.",
     endDialog: {
       title: "¿Finalizar el seguimiento posparto?",
       body: "Ovumcy detendrá el seguimiento posparto y volverá a tu ciclo. Tus entradas se mantienen guardadas en este dispositivo.",
@@ -715,6 +743,12 @@ const postpartumCopyIt: PostpartumCopy = {
       "Segui la tua ripresa settimana per settimana, con qualche promemoria delicato. Puoi disattivarlo quando vuoi.",
     endRow: "Termina il monitoraggio post-partum",
     endHint: "Tornare solo al monitoraggio del ciclo.",
+    editRow: "Modifica i dati della nascita",
+    editHint: "Correggi la data della nascita o il tipo di parto.",
+    editSaveCta: "Salva le modifiche",
+    editCancelCta: "Annulla",
+    editFailed:
+      "Non siamo riusciti a salvare le modifiche adesso. Riprova.",
     endDialog: {
       title: "Terminare il monitoraggio post-partum?",
       body: "Ovumcy interromperà il monitoraggio post-partum e tornerà al tuo ciclo. Le tue voci restano salvate su questo dispositivo.",

@@ -102,6 +102,20 @@ const pregnancyEndCopyEn = {
     stepTitle: "Update your due date",
     confirmCta: "Save due date",
   },
+  // The end date asked on every end step (prefilled with today). Also reused
+  // by the postpartum birth-details edit form, so the error wording is
+  // phrased for both.
+  endDate: {
+    birthLabel: "Date of birth",
+    label: "End date",
+    hint: "Change it if this happened on an earlier day.",
+    errors: {
+      missingDate: "Enter a date.",
+      invalidDate: "Enter a valid date as YYYY-MM-DD.",
+      future: "The date can't be in the future.",
+      beforeStart: "The date can't be before this pregnancy began.",
+    },
+  },
   delete: {
     cta: "Delete pregnancy data",
     title: "Delete pregnancy data",
@@ -210,6 +224,17 @@ const pregnancyEndCopyRu: PregnancyEndCopy = {
     rowLabel: "Обновить дату родов",
     stepTitle: "Обновление даты родов",
     confirmCta: "Сохранить дату родов",
+  },
+  endDate: {
+    birthLabel: "Дата родов",
+    label: "Дата окончания",
+    hint: "Измените её, если это произошло в один из прошлых дней.",
+    errors: {
+      missingDate: "Введите дату.",
+      invalidDate: "Введите корректную дату в формате ГГГГ-ММ-ДД.",
+      future: "Дата не может быть в будущем.",
+      beforeStart: "Дата не может быть раньше начала этой беременности.",
+    },
   },
   delete: {
     cta: "Удалить данные о беременности",
@@ -320,6 +345,18 @@ const pregnancyEndCopyDe: PregnancyEndCopy = {
     rowLabel: "Termin aktualisieren",
     stepTitle: "Ihren Termin aktualisieren",
     confirmCta: "Termin speichern",
+  },
+  endDate: {
+    birthLabel: "Geburtsdatum",
+    label: "Enddatum",
+    hint: "Ändern Sie es, wenn es an einem früheren Tag war.",
+    errors: {
+      missingDate: "Bitte geben Sie ein Datum ein.",
+      invalidDate: "Bitte geben Sie ein gültiges Datum als JJJJ-MM-TT ein.",
+      future: "Das Datum darf nicht in der Zukunft liegen.",
+      beforeStart:
+        "Das Datum darf nicht vor dem Beginn dieser Schwangerschaft liegen.",
+    },
   },
   delete: {
     cta: "Schwangerschaftsdaten löschen",
@@ -432,6 +469,17 @@ const pregnancyEndCopyFr: PregnancyEndCopy = {
     stepTitle: "Mettre à jour votre date prévue",
     confirmCta: "Enregistrer la date",
   },
+  endDate: {
+    birthLabel: "Date de naissance",
+    label: "Date de fin",
+    hint: "Modifiez-la si cela s'est passé un jour précédent.",
+    errors: {
+      missingDate: "Saisissez une date.",
+      invalidDate: "Saisissez une date valide au format AAAA-MM-JJ.",
+      future: "La date ne peut pas être dans le futur.",
+      beforeStart: "La date ne peut pas précéder le début de cette grossesse.",
+    },
+  },
   delete: {
     cta: "Supprimer les données de grossesse",
     title: "Supprimer les données de grossesse",
@@ -543,6 +591,17 @@ const pregnancyEndCopyEs: PregnancyEndCopy = {
     stepTitle: "Actualiza tu fecha de parto",
     confirmCta: "Guardar fecha",
   },
+  endDate: {
+    birthLabel: "Fecha de nacimiento",
+    label: "Fecha de finalización",
+    hint: "Cámbiala si ocurrió en un día anterior.",
+    errors: {
+      missingDate: "Introduce una fecha.",
+      invalidDate: "Introduce una fecha válida con el formato AAAA-MM-DD.",
+      future: "La fecha no puede estar en el futuro.",
+      beforeStart: "La fecha no puede ser anterior al inicio de este embarazo.",
+    },
+  },
   delete: {
     cta: "Eliminar datos del embarazo",
     title: "Eliminar datos del embarazo",
@@ -652,6 +711,18 @@ const pregnancyEndCopyIt: PregnancyEndCopy = {
     rowLabel: "Aggiorna la data del parto",
     stepTitle: "Aggiorna la tua data del parto",
     confirmCta: "Salva la data",
+  },
+  endDate: {
+    birthLabel: "Data della nascita",
+    label: "Data di fine",
+    hint: "Modificala se è successo in un giorno precedente.",
+    errors: {
+      missingDate: "Inserisci una data.",
+      invalidDate: "Inserisci una data valida nel formato AAAA-MM-GG.",
+      future: "La data non può essere nel futuro.",
+      beforeStart:
+        "La data non può essere precedente all'inizio di questa gravidanza.",
+    },
   },
   delete: {
     cta: "Elimina i dati sulla gravidanza",

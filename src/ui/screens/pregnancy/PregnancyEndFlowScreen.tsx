@@ -106,6 +106,21 @@ export type PregnancyEndFlowScreenProps = {
   isDeletingScreening: boolean;
   screeningDeleteError: string;
   onDeleteScreening: () => void | Promise<void>;
+  // End date asked on every end step (YYYY-MM-DD text, prefilled with today).
+  endDateValue: string;
+  onEndDateChange: (value: string) => void;
+  // Postpartum birth-details edit: an inline form on the manage state while a
+  // postpartum record is active (birth date + delivery mode).
+  editBirthActive: boolean;
+  editBirthDate: string;
+  editBirthMode: ModeOfDelivery | null;
+  editBirthError: string;
+  isSavingBirthEdit: boolean;
+  onEditBirthPress: () => void;
+  onEditBirthDateChange: (value: string) => void;
+  onEditBirthModeSelect: (mode: ModeOfDelivery | null) => void;
+  onSaveBirthEdit: () => void | Promise<void>;
+  onCancelBirthEdit: () => void;
 };
 
 export function PregnancyEndFlowScreen({
@@ -155,6 +170,18 @@ export function PregnancyEndFlowScreen({
   isDeletingScreening,
   screeningDeleteError,
   onDeleteScreening,
+  endDateValue,
+  onEndDateChange,
+  editBirthActive,
+  editBirthDate,
+  editBirthMode,
+  editBirthError,
+  isSavingBirthEdit,
+  onEditBirthPress,
+  onEditBirthDateChange,
+  onEditBirthModeSelect,
+  onSaveBirthEdit,
+  onCancelBirthEdit,
 }: PregnancyEndFlowScreenProps) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useAppPreferences();
@@ -254,6 +281,31 @@ export function PregnancyEndFlowScreen({
     </FeatureCard>
   );
 
+  const renderDateInput = (
+    label: string,
+    value: string,
+    onChange: (next: string) => void,
+    testID: string,
+    hint?: string,
+  ) => (
+    <View style={styles.formGroup}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      {hint ? <Text style={styles.helperText}>{hint}</Text> : null}
+      <AppTextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        inputMode="numeric"
+        keyboardType="number-pad"
+        maxLength={10}
+        onChangeText={onChange}
+        placeholder={pregnancyCopy.wizard.datePlaceholder}
+        style={styles.dateInput}
+        testID={testID}
+        value={value}
+      />
+    </View>
+  );
+
   let content: ReactNode;
 
   if (postpartumOfferActive) {
@@ -321,6 +373,75 @@ export function PregnancyEndFlowScreen({
                 label={postpartumCopy.manage.endRow}
                 onPress={onEndPostpartum}
                 testID="pregnancy-end-postpartum-end-button"
+              />
+            </View>
+          </FeatureCard>
+        ) : null}
+
+        {hasActivePostpartum && !editBirthActive ? (
+          <FeatureCard
+            testID="pregnancy-end-postpartum-edit-card"
+            title={postpartumCopy.manage.editRow}
+          >
+            <Text style={styles.bodyText}>{postpartumCopy.manage.editHint}</Text>
+            <View style={styles.actionsRow}>
+              <AppButton
+                label={postpartumCopy.manage.editRow}
+                onPress={onEditBirthPress}
+                testID="pregnancy-end-postpartum-edit-button"
+                variant="secondary"
+              />
+            </View>
+          </FeatureCard>
+        ) : null}
+
+        {hasActivePostpartum && editBirthActive ? (
+          <FeatureCard
+            testID="pregnancy-end-postpartum-edit-form"
+            title={postpartumCopy.manage.editRow}
+          >
+            {renderDateInput(
+              copy.endDate.birthLabel,
+              editBirthDate,
+              onEditBirthDateChange,
+              "pregnancy-end-postpartum-edit-date-input",
+            )}
+            <View style={styles.formGroup}>
+              <Text style={styles.fieldLabel}>{copy.birth.modeQuestion}</Text>
+              <ChoiceGroup<ModeChoice>
+                groupLabel={copy.birth.modeQuestion}
+                layout="grid3"
+                onSelect={(value) =>
+                  onEditBirthModeSelect(value === "skip" ? null : value)
+                }
+                options={[
+                  { value: "vaginal", label: copy.birth.modeOptions.vaginal },
+                  { value: "cesarean", label: copy.birth.modeOptions.cesarean },
+                  { value: "skip", label: copy.birth.modeOptions.skip },
+                ]}
+                selectedValue={editBirthMode ?? "skip"}
+                testIDPrefix="pregnancy-end-postpartum-edit-mode"
+              />
+            </View>
+            {editBirthError ? (
+              <StatusBanner
+                message={editBirthError}
+                testID="pregnancy-end-postpartum-edit-error"
+                tone="error"
+              />
+            ) : null}
+            <View style={styles.actionsRow}>
+              <AppButton
+                label={postpartumCopy.manage.editCancelCta}
+                onPress={onCancelBirthEdit}
+                testID="pregnancy-end-postpartum-edit-cancel-button"
+                variant="secondary"
+              />
+              <AppButton
+                disabled={isSavingBirthEdit}
+                label={postpartumCopy.manage.editSaveCta}
+                onPress={onSaveBirthEdit}
+                testID="pregnancy-end-postpartum-edit-save-button"
               />
             </View>
           </FeatureCard>
@@ -556,6 +677,13 @@ export function PregnancyEndFlowScreen({
         <Text style={styles.leadText} testID="pregnancy-end-birth-congratulations">
           {congratulations}
         </Text>
+        {renderDateInput(
+          copy.endDate.birthLabel,
+          endDateValue,
+          onEndDateChange,
+          "pregnancy-end-date-input",
+          copy.endDate.hint,
+        )}
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{modeQuestion}</Text>
           <Text style={styles.helperText}>{copy.birth.modeHint}</Text>
@@ -612,6 +740,13 @@ export function PregnancyEndFlowScreen({
           {section.acknowledgment}
         </Text>
         <Text style={styles.bodyText}>{section.body}</Text>
+        {renderDateInput(
+          copy.endDate.label,
+          endDateValue,
+          onEndDateChange,
+          "pregnancy-end-date-input",
+          copy.endDate.hint,
+        )}
         {error ? (
           <StatusBanner
             message={error}
