@@ -7,8 +7,10 @@
 // offline, and a refunded or revoked purchase drops out of it on its own.
 //
 // The store is asked only from the pregnancy surfaces that call this source or
-// the purchase service — never at launch: starting the store's billing client
-// also starts the store vendor's own diagnostics (docs/privacy.md, Egress).
+// the purchase service, never by the launch tasks: starting the store's
+// billing client also starts the store vendor's own diagnostics
+// (docs/privacy.md, Egress). One of those surfaces is the dashboard, which
+// asks only while a positive test is logged and no pregnancy record exists.
 
 import { storeClient } from "../billing/store-client";
 import {
@@ -58,9 +60,11 @@ export function acknowledgeOwedPregnancyPurchase(
       !purchase.acknowledged,
   );
   if (owed) {
-    client.acknowledge(PREGNANCY_MODULE_PRODUCT_ID).catch(() => {
-      // Best effort: the next read of the store retries.
-    });
+    // Deferred a tick so that neither a rejection nor a synchronous throw can
+    // reach the ownership answer. Best effort: the next store read retries.
+    void Promise.resolve()
+      .then(() => client.acknowledge(PREGNANCY_MODULE_PRODUCT_ID))
+      .catch(() => undefined);
   }
 }
 

@@ -194,8 +194,10 @@ operation at all.
   refunded by Google after three days — and never consumes it. The
   acknowledgment an owned purchase still owes is started on every read of the
   store, never awaited.
-- The store is asked only from the pregnancy surfaces, never at launch:
-  starting its billing client also starts the store vendor's own diagnostics,
+- The store is asked only from the pregnancy surfaces, never by the launch
+  tasks. The dashboard is one of them while a positive test is logged and no
+  pregnancy record exists, so for that user it is asked on every dashboard
+  load. Starting its billing client also starts the store vendor's own diagnostics,
   the one accepted exception to the no-telemetry posture (`SECURITY.md`,
   `docs/privacy.md`).
 - Ownership is not written to app storage: the store's own cache answers

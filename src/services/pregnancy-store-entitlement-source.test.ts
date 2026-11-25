@@ -108,6 +108,15 @@ describe("store pregnancy entitlement source", () => {
     await expect(
       loadPregnancyModuleOwned(createStorePregnancyEntitlementSource(client)),
     ).resolves.toBe(true);
+
+    // Nor a client whose acknowledge throws before returning a promise.
+    client.acknowledge.mockImplementation(() => {
+      throw new Error("store_unavailable");
+    });
+    await expect(
+      loadPregnancyModuleOwned(createStorePregnancyEntitlementSource(client)),
+    ).resolves.toBe(true);
+    expect(client.acknowledge).toHaveBeenCalledTimes(2);
   });
 
   it("defaults to the platform store client, which has no store under Jest", async () => {

@@ -27,9 +27,10 @@ import type {
 } from "./store-contract";
 
 // A store that does not answer must not hold a screen: the dashboard awaits
-// the ownership read, which the store serves from its on-device cache. The
-// product lookup and the acknowledgment go to the network through the store,
-// so they get three times as long.
+// the ownership read, which the store serves from its on-device cache. This
+// is the whole budget of one call — connecting, the read, and its one retry.
+// The product lookup and the acknowledgment go to the network through the
+// store, so they get three times as long.
 export const STORE_CALL_TIMEOUT_MS = 5_000;
 const NETWORK_CALL_TIMEOUT_FACTOR = 3;
 
@@ -108,30 +109,29 @@ export function createStoreClient(
     return connection;
   }
 
-  async function attempt<T>(
-    operation: () => Promise<T>,
-    limitMs: number,
-  ): Promise<T> {
+  async function attempt<T>(operation: () => Promise<T>): Promise<T> {
     await connect();
-    return withTimeout(operation(), limitMs);
+    return operation();
   }
 
   // The billing service can drop a connection it reported as ready, so a
-  // failed call is retried once on a fresh one. A timeout is not retried.
+  // failed call is retried once on a fresh one. Both tries share one
+  // deadline: that deadline, not a per-step one, is what a screen waits on.
   async function call<T>(
     operation: () => Promise<T>,
     limitMs: number = timeoutMs,
   ): Promise<T> {
-    try {
-      return await attempt(operation, limitMs);
-    } catch (error) {
-      connection = null;
-      if (!supported || error === TIMED_OUT) {
-        throw storeUnavailable();
-      }
+    if (!supported) {
+      throw storeUnavailable();
     }
     try {
-      return await attempt(operation, limitMs);
+      return await withTimeout(
+        attempt(operation).catch(() => {
+          connection = null;
+          return attempt(operation);
+        }),
+        limitMs,
+      );
     } catch {
       connection = null;
       throw storeUnavailable();
