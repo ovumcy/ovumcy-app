@@ -24,6 +24,7 @@ import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
   buildStatsFactorContext,
+  collectCycleStartDates,
   buildStatsReliability,
   hasDataDrivenPredictionSpan,
   resolveDisplayCycleDay,
@@ -369,6 +370,9 @@ export async function loadStatsScreenState(
         // loadCalendarScreenState.
         suppressPredictions: activePregnancy !== null,
         endedPregnancies,
+        ...(activePostpartum
+          ? { postpartumBirthDate: activePostpartum.startedAt }
+          : {}),
       },
     ),
   };
@@ -409,6 +413,9 @@ export function buildStatsViewData(
     // post-pregnancy hint instead of the positive-test one. Wording only --
     // suppression above never reads this.
     endedPregnancies?: readonly Pick<PregnancyRecord, "endedAt">[];
+    // The active postpartum record's birth date. With no cycle start logged
+    // after it, suppression widens as on the dashboard; never narrows it.
+    postpartumBirthDate?: string;
   } = {},
 ): StatsViewData {
   const hasActivePregnancy = options.suppressPredictions ?? false;
@@ -465,7 +472,24 @@ export function buildStatsViewData(
   // would keep rendering without this OR. predictionExplanation is the one
   // deliberate exception: it stays keyed on hasActivePregnancy so the plain
   // pause keeps its own pregnancyPausedHint (same split as the dashboard).
-  const suppressPredictions = hasActivePregnancy || projection.isPregnancyPaused;
+  const pausedTestConcluded =
+    !hasActivePregnancy &&
+    projection.isPregnancyPaused &&
+    isPausedTestConcluded(projection, options.endedPregnancies ?? []);
+  // Postpartum with no cycle start after the birth: the projection may still be
+  // anchored before the pregnancy (an LMP-dated one sets no day-log pause).
+  // Same signal as the dashboard; a positive test logged after the birth is a
+  // new event and keeps its own pause wording.
+  const birthDate = options.postpartumBirthDate;
+  const postpartumAwaitingCycle =
+    birthDate !== undefined &&
+    !hasActivePregnancy &&
+    !(projection.isPregnancyPaused && !pausedTestConcluded) &&
+    !collectCycleStartDates(profile, records, formatLocalDate(now)).some(
+      (startDate) => startDate > birthDate,
+    );
+  const suppressPredictions =
+    hasActivePregnancy || projection.isPregnancyPaused || postpartumAwaitingCycle;
   // Overdue gate (projection.cycleDayLooksLong, web PredictionsSuppressed):
   // past it the personal forecasts, the one stats surface naming something
   // still to come from the projection, are withheld (the current-phase label
@@ -682,9 +706,11 @@ export function buildStatsViewData(
     // itself. Dedicated pregnancy-mode notice copy is still open.
     predictionExplanation: hasActivePregnancy
       ? ""
-      : isPausedTestConcluded(projection, options.endedPregnancies ?? [])
-        ? dashboardCopy.pregnancyConcludedPausedHint
-        : buildPredictionExplanation(profile, projection, locale),
+      : postpartumAwaitingCycle
+        ? dashboardCopy.postpartumCycleHint
+        : pausedTestConcluded
+          ? dashboardCopy.pregnancyConcludedPausedHint
+          : buildPredictionExplanation(profile, projection, locale),
     notices: buildStatsNotices(profile, history, statsCopy),
     trendChart: {
       title: statsCopy.cycleTrend,

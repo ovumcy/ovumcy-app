@@ -1338,7 +1338,7 @@ describe("buildStatsViewData day-log pause prediction suppression", () => {
     expect(state.viewData.bbtTrend).toBeUndefined();
   });
 
-  it("shows the neutral pause hint via loadStatsScreenState while postpartum after the test", async () => {
+  it("frames the pause around the first period after birth via loadStatsScreenState while postpartum after the test", async () => {
     const storage = await seedPausedStorage();
     await storage.writePostpartumRecord(
       createPostpartumRecord({ startedAt: "2026-03-28" }),
@@ -1347,7 +1347,8 @@ describe("buildStatsViewData day-log pause prediction suppression", () => {
 
     const state = await loadStatsScreenState(storage, activePauseNow);
 
-    expect(state.viewData.predictionExplanation).toBe(concludedHint);
+    expect(state.viewData.predictionExplanation).toBe(postpartumCycleHint);
+    expect(state.viewData.bbtTrend).toBeUndefined();
     expect(listPregnancyRecords).not.toHaveBeenCalled();
   });
 
@@ -1377,5 +1378,148 @@ describe("buildStatsViewData day-log pause prediction suppression", () => {
 
     expect(listPregnancyRecords).not.toHaveBeenCalled();
     expect(state.viewData.predictionExplanation).not.toBe(concludedHint);
+  });
+});
+
+const postpartumCycleHint =
+  "Your first period after birth may take weeks or months to return, often longer while breastfeeding. Log it when it starts to resume cycle predictions.";
+
+describe("buildStatsViewData postpartum awaiting-cycle suppression", () => {
+  // No positive test, so no day-log pause: an LMP-dated pregnancy never sets
+  // one. The latest cycle start (2026-03-14) predates the birth, so every
+  // current-cycle surface would read the pre-pregnancy anchor.
+  const profile = createProfileRecord({
+    lastPeriodStart: "2025-12-20",
+    trackBBT: true,
+  });
+  const records: DayLogRecord[] = [
+    createPeriodRecord("2025-12-20"),
+    { ...createEmptyDayLogRecord("2025-12-29"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-01-15"),
+    { ...createEmptyDayLogRecord("2026-01-24"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-02-14"),
+    { ...createEmptyDayLogRecord("2026-02-23"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-03-14"),
+    { ...createEmptyDayLogRecord("2026-03-25"), bbt: 36.4 },
+    { ...createEmptyDayLogRecord("2026-03-26"), bbt: 36.5 },
+    {
+      ...createEmptyDayLogRecord("2026-03-27"),
+      bbt: 36.45,
+      cervicalMucus: "eggwhite",
+    },
+    { ...createEmptyDayLogRecord("2026-03-28"), bbt: 36.6, lhTest: "peak" },
+    { ...createEmptyDayLogRecord("2026-03-29"), bbt: 36.55 },
+  ];
+  const now = new Date(2026, 2, 29);
+  const premiumFeatures = {
+    advancedFertility: true,
+    advancedInsights: true,
+    doctorPDF: false,
+    extendedReports: false,
+    partnerAccess: false,
+    reminders: false,
+  };
+
+  function build(
+    options: Parameters<typeof buildStatsViewData>[6],
+    dayLogs: DayLogRecord[] = records,
+  ) {
+    return buildStatsViewData(
+      profile,
+      dayLogs,
+      createDefaultSymptomRecords(),
+      now,
+      "en",
+      premiumFeatures,
+      options,
+    );
+  }
+
+  function expectCurrentCycleSuppressed(
+    viewData: ReturnType<typeof buildStatsViewData>,
+  ) {
+    expect(viewData.bbtTrend).toBeUndefined();
+    expect(viewData.personalForecasts).toBeUndefined();
+    expect(viewData.topCards).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "mucus-fertility" }),
+      ]),
+    );
+    expect(
+      viewData.topCards.find((card) => card.key === "current-phase")?.value,
+    ).toContain("Unknown");
+    expect(viewData.advancedFertility?.items).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
+    );
+  }
+
+  it("renders the current-cycle sections from this fixture without a postpartum record (regression guard)", () => {
+    const viewData = build({});
+
+    expect(viewData.bbtTrend?.points).toHaveLength(5);
+    expect(viewData.advancedFertility?.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
+    );
+    expect(viewData.predictionExplanation).not.toBe(postpartumCycleHint);
+  });
+
+  it("suppresses current-cycle sections and shows the first-period-after-birth hint while no cycle start follows the birth", () => {
+    const viewData = build({ postpartumBirthDate: "2026-03-20" });
+
+    expectCurrentCycleSuppressed(viewData);
+    expect(viewData.predictionExplanation).toBe(postpartumCycleHint);
+    // Completed-cycle facts stay.
+    expect(viewData.hasInsights).toBe(true);
+    expect(viewData.trendChart?.points).toHaveLength(3);
+    expect(viewData.advancedFertility?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "signal-coverage" }),
+      ]),
+    );
+  });
+
+  it("lifts the postpartum gate once a cycle start is logged after the birth", () => {
+    const viewData = build({ postpartumBirthDate: "2026-03-01" });
+
+    expect(viewData.bbtTrend?.points).toHaveLength(5);
+    expect(viewData.predictionExplanation).not.toBe(postpartumCycleHint);
+  });
+
+  it("keeps the positive-test wording, and the pause, for a positive test logged after the birth", () => {
+    const viewData = build({ postpartumBirthDate: "2026-03-16" }, [
+      ...records,
+      { ...createEmptyDayLogRecord("2026-03-20"), pregnancyTest: "positive" },
+    ]);
+
+    expectCurrentCycleSuppressed(viewData);
+    expect(viewData.predictionExplanation).toBe(
+      "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
+    );
+  });
+
+  it("blanks the hint for an active pregnancy even while postpartum", () => {
+    const viewData = build({
+      postpartumBirthDate: "2026-03-20",
+      suppressPredictions: true,
+    });
+
+    expectCurrentCycleSuppressed(viewData);
+    expect(viewData.predictionExplanation).toBe("");
+  });
+
+  it("applies the gate end-to-end via loadStatsScreenState for an active postpartum record", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord(profile);
+    for (const record of records) {
+      await storage.writeDayLogRecord(record);
+    }
+    await storage.writePostpartumRecord(
+      createPostpartumRecord({ startedAt: "2026-03-20" }),
+    );
+
+    const state = await loadStatsScreenState(storage, now, "en", premiumFeatures);
+
+    expectCurrentCycleSuppressed(state.viewData);
+    expect(state.viewData.predictionExplanation).toBe(postpartumCycleHint);
   });
 });
