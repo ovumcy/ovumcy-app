@@ -1,0 +1,70 @@
+# EAS uses this file INSTEAD of .gitignore: keep it a superset of .gitignore.
+# Local tooling directory with Windows junctions: it cannot be symlinked into the
+# upload clone (EPERM) and no build needs it.
+.claude/
+
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.expo-shared/
+.tmp/
+playwright-report/
+test-results/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+android/
+ios/
+
+# Metro
+.metro-health-check*
+.metro/
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# macOS
+.DS_Store
+*.pem
+Thumbs.db
+
+# local env files
+.env
+.env*.local
+.env.development
+.env.production
+
+# typescript
+*.tsbuildinfo
+coverage/
+*.tmp
+*.bak
+.idea/
+.vscode/
+
+app-example
+
+# Visual regression diagnostic screenshots (regenerated each run)
+e2e/screenshots/
+
+# Stryker mutation testing (advisory lane)
+.stryker-tmp/
+reports/mutation/
+
+# Maestro e2e (local run artifacts)
+.maestro-output/
