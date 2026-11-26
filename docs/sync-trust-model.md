@@ -169,7 +169,9 @@ Door rules:
 
 Current state vs target: today every premium surface reads the managed billing
 snapshot, the token overlay is dormant (`SECURITY.md`, Accepted Residual
-Risks), and nothing in the app can buy the subscription. The one-time door is
+Risks), and nothing in the app can buy the subscription: the plan choice and
+the store purchase are built but switched off until the managed cloud can take
+the purchase over (see the subscription door below). The one-time door is
 implemented for Google Play (`src/billing`, `pregnancy-purchase-service`, the
 `/pregnancy-unlock` screen; claims pinned in `SECURITY.md`); on iOS and web no
 store is wired, so the module stays locked and its lock card informational. The subscription flow
@@ -177,7 +179,7 @@ below is the target work this section models ahead of implementation. The
 device-anchored `sub` class stays a target of its own; neither purchase flow
 depends on it.
 
-### Purchase flows (one-time door implemented, subscription door target)
+### Purchase flows (one-time door implemented, subscription door partly built and switched off)
 
 Both products are bought through the platform store, Google Play first. The
 store library is imported in exactly one adapter under `src/billing`; services
@@ -240,6 +242,26 @@ operation at all.
   (`SECURITY.md`) is unchanged and is filled only from a billing snapshot.
 - "Manage subscription" opens the store's own subscription page; it is not an
   external checkout.
+
+Plan choice and the store purchase (built, switched off):
+
+- The plan step offers only the base plans `monthly` and `yearly` of
+  `ovumcy_cloud` that the store itself returns; any other base plan is dropped,
+  and a plan the store does not return is not offered. Each plan shows the
+  store's formatted recurring price verbatim — no amount is written in the app —
+  and a free-trial note only when the store returned a free-trial offer for this
+  store account (the store decides eligibility).
+- The adapter picks the offer: the free-trial offer when the store returned one
+  for that base plan, otherwise the base plan itself. Offers are re-read from
+  the store at purchase time, and the offer token stays inside the adapter like
+  the purchase token.
+- A completed purchase sheet grants nothing on the device: the app re-reads the
+  billing snapshot and premium follows only that answer.
+- The whole affordance stays off (`CLOUD_SUBSCRIPTION_PURCHASE_ENABLED`) until
+  the handoff endpoint above exists; while it is off the plan step never contacts
+  the store. Turning it on is a change of its own: the handoff, the opaque
+  per-account reference, and the in-app privacy notice naming the plan step as a
+  store contact point land with it.
 
 ### Out of scope in v1 (decided)
 

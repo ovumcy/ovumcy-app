@@ -26,6 +26,7 @@ import { AppTextInput } from "../../components/AppTextInput";
 import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { FeatureCard } from "../../components/FeatureCard";
 import { OfferCard } from "../../components/OfferCard";
+import { CloudPlanPicker } from "./CloudPlanPicker";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { AppThemeColors } from "../../theme/tokens";
 import { fontScale, spacing } from "../../theme/tokens";
@@ -609,6 +610,12 @@ export function SettingsSyncSetupSection({
                 testID={`settings-sync-offer-${offer.id}`}
               />
             ))}
+            {hasSyncSession && !presentation.hasManagedPlan ? (
+              <CloudPlanPicker
+                disabled={presentation.accountActionsDisabled}
+                onPurchaseCompleted={onRetryPlanCheck}
+              />
+            ) : null}
             <Text style={styles.helperText}>{viewData.planUnavailable}</Text>
             {hasSyncSession &&
             (!presentation.hasManagedPlan ||

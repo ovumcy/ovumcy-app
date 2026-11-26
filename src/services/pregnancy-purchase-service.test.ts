@@ -20,6 +20,8 @@ function createClient(overrides: Partial<MockStoreClient> = {}): MockStoreClient
     listPurchases: jest.fn().mockResolvedValue([]),
     purchase: jest.fn().mockResolvedValue("completed"),
     acknowledge: jest.fn().mockResolvedValue(undefined),
+    loadSubscriptionPlans: jest.fn(),
+    purchaseSubscription: jest.fn(),
     ...overrides,
   };
 }
@@ -50,7 +52,9 @@ describe("purchasePregnancyModule", () => {
       "acknowledge",
       "listPurchases",
       "loadProduct",
+      "loadSubscriptionPlans",
       "purchase",
+      "purchaseSubscription",
       "supported",
     ]);
   });

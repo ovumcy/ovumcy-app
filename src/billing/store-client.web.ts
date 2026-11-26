@@ -12,4 +12,6 @@ export const storeClient: StoreClient = {
   listPurchases: unavailable,
   purchase: unavailable,
   acknowledge: unavailable,
+  loadSubscriptionPlans: unavailable,
+  purchaseSubscription: unavailable,
 };
