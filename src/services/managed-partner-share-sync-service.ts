@@ -4,6 +4,7 @@ import {
 } from "../security/partner-share-secret-store";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { isDataSharingConsentCurrent } from "./data-sharing-consent-service";
 import { loadManagedPremiumFeatures } from "./managed-premium-features-service";
 import { loadManagedPartnerAccess } from "./managed-partner-access-service";
 import {
@@ -91,6 +92,11 @@ async function runManagedPartnerProjectionPass(
     // The rate limit is per account: a back-off armed by a previous session
     // must not hold the next account's pushes.
     resetManagedPartnerProjectionPushBackoff();
+    return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
+  }
+  // Every caller (app-active refresh, screen saves, Backup & Sync) lands here,
+  // so this is the one gate: without partner-share consent nothing leaves.
+  if (!isDataSharingConsentCurrent(syncState.preferences, "partner_share")) {
     return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
   }
   if (isManagedPartnerProjectionPushBackedOff()) {

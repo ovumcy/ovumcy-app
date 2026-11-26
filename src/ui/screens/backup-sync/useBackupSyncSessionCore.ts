@@ -168,6 +168,10 @@ export function useBackupSyncSessionCore({
     ((accepted: boolean) => void) | null
   >(null);
   const dataSharingConsentInFlightRef = useRef(false);
+  // The focus load is memoized; this hands it the current consent prompt.
+  const askPartnerShareConsentRef = useRef<
+    (nextState: LoadedSettingsState) => Promise<void>
+  >(async () => {});
   useEffect(
     () => () => {
       const resolve = dataSharingConsentResolverRef.current;
@@ -275,6 +279,7 @@ export function useBackupSyncSessionCore({
           overview: null as ManagedCloudPartnerAccessOverview | null,
           reshareRequiredGrantIDs: [] as string[],
           showOwnerControls: false,
+          needsPartnerShareConsent: false,
         };
       }
 
@@ -301,6 +306,7 @@ export function useBackupSyncSessionCore({
           overview: null as ManagedCloudPartnerAccessOverview | null,
           reshareRequiredGrantIDs: [] as string[],
           showOwnerControls: premiumFeatures.partnerAccess,
+          needsPartnerShareConsent: false,
         };
       }
 
@@ -321,10 +327,16 @@ export function useBackupSyncSessionCore({
             overview: null as ManagedCloudPartnerAccessOverview | null,
             reshareRequiredGrantIDs: [] as string[],
             showOwnerControls: false,
+            needsPartnerShareConsent: false,
           };
         }
         throw error;
       }
+      // The push itself refuses without consent; this only decides whether
+      // the screen asks for it once it has rendered.
+      const needsPartnerShareConsent =
+        partnerResult.value.owned.grants.some((grant) => grant.revokedAt === null) &&
+        !(await hasCurrentDataSharingConsent(storage, "partner_share"));
       // The push re-lists grants and may meet a re-share this listing missed.
       let pushedReshareGrantIDs: string[] = [];
       if (partnerResult.value.owned.grants.length > 0) {
@@ -347,6 +359,7 @@ export function useBackupSyncSessionCore({
           ]),
         ],
         showOwnerControls: premiumFeatures.partnerAccess,
+        needsPartnerShareConsent,
       };
     },
     [effectiveNow, partnerCopy, partnerShareSecretStore, storage, syncSecretStore],
@@ -431,6 +444,10 @@ export function useBackupSyncSessionCore({
         setPartnerErrorMessage(partnerState.errorMessage);
         setDismissedOfferIDs(dismissedIDs);
         setIsLoading(false);
+        // Asked only after the screen renders: the dialog is part of it.
+        if (partnerState.needsPartnerShareConsent) {
+          void askPartnerShareConsentRef.current(loadedState);
+        }
       }
 
       setIsLoading(true);
@@ -476,7 +493,25 @@ export function useBackupSyncSessionCore({
     setPartnerOverview(partnerState.overview);
     setPartnerReshareRequiredGrantIDs(partnerState.reshareRequiredGrantIDs);
     setPartnerErrorMessage(partnerState.errorMessage);
+    if (partnerState.needsPartnerShareConsent) {
+      void askPartnerShareConsent(nextState);
+    }
   }
+
+  // Live grants without partner-share consent: ask, and push only on yes.
+  async function askPartnerShareConsent(nextState: LoadedSettingsState) {
+    if (!(await ensureDataSharingConsent("partner_share"))) {
+      return;
+    }
+    try {
+      await reloadPartnerAccess(nextState);
+    } catch {
+      setPartnerErrorMessage(partnerCopy.errors.generic);
+    }
+  }
+  useEffect(() => {
+    askPartnerShareConsentRef.current = askPartnerShareConsent;
+  });
 
   // Resolves true only when consent for `purpose` at the current revision is
   // stored, or the user accepts the consent dialog now and the acceptance is

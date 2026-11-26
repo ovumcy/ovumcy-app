@@ -17,6 +17,7 @@ import {
 import * as partnerSharedProjectionService from "./partner-shared-projection-service";
 import { syncManagedPartnerSharedProjections } from "./managed-partner-share-sync-service";
 import * as syncSetupService from "../sync/sync-setup-service";
+import { DATA_SHARING_CONSENT_REVISION } from "./data-sharing-consent-service";
 
 const FIXED_NOW = new Date("2026-03-20T08:00:00.000Z");
 
@@ -24,15 +25,55 @@ function createStoreStub(): PartnerShareSecretStore {
   return { readPartnerShareClearEpoch: () => 0 } as unknown as PartnerShareSecretStore;
 }
 
+function consentedManagedPreferences() {
+  return {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    dataSharingConsent: {
+      partner_share: {
+        revision: DATA_SHARING_CONSENT_REVISION,
+        givenAt: FIXED_NOW.toISOString(),
+      },
+    },
+  };
+}
+
 describe("syncManagedPartnerSharedProjections", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
+  it.each([
+    ["no partner-share consent", {}],
+    ["a consent for an older revision", { partner_share: { revision: "2000-01-01", givenAt: FIXED_NOW.toISOString() } }],
+    ["only a sync consent", { managed_sync: { revision: DATA_SHARING_CONSENT_REVISION, givenAt: FIXED_NOW.toISOString() } }],
+  ])("pushes nothing and makes no request with %s", async (_label, dataSharingConsent) => {
+    jest.spyOn(syncSetupService, "loadSyncSetupState").mockResolvedValue({
+      hasAuthSession: true,
+      preferences: { ...consentedManagedPreferences(), dataSharingConsent },
+    } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
+    const premiumSpy = jest.spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures");
+    const accessSpy = jest.spyOn(managedPartnerAccessService, "loadManagedPartnerAccess");
+    const uploadSpy = jest.spyOn(managedPartnerShareService, "uploadManagedPartnerProjection");
+
+    await expect(
+      syncManagedPartnerSharedProjections(
+        createLocalAppStorageMock(),
+        createSyncSecretStoreMock(),
+        createStoreStub(),
+        FIXED_NOW,
+      ),
+    ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
+
+    expect(premiumSpy).not.toHaveBeenCalled();
+    expect(accessSpy).not.toHaveBeenCalled();
+    expect(uploadSpy).not.toHaveBeenCalled();
+  });
+
   it("reads the live billing snapshot only and stops when partner access is not live-confirmed", async () => {
     jest.spyOn(syncSetupService, "loadSyncSetupState").mockResolvedValue({
       hasAuthSession: true,
-      preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+      preferences: consentedManagedPreferences(),
     } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
     const premiumSpy = jest
       .spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures")
@@ -78,7 +119,7 @@ describe("syncManagedPartnerSharedProjections", () => {
     ) {
       jest.spyOn(syncSetupService, "loadSyncSetupState").mockResolvedValue({
         hasAuthSession: true,
-        preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+        preferences: consentedManagedPreferences(),
       } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
       jest
         .spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures")
@@ -204,7 +245,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         .spyOn(syncSetupService, "loadSyncSetupState")
         .mockResolvedValue({
           hasAuthSession: true,
-          preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+          preferences: consentedManagedPreferences(),
         } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
       jest
         .spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures")
@@ -295,7 +336,7 @@ describe("syncManagedPartnerSharedProjections", () => {
 
       setupSpy.mockResolvedValueOnce({
         hasAuthSession: false,
-        preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+        preferences: consentedManagedPreferences(),
       } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
       await syncManagedPartnerSharedProjections(
         storage,
@@ -588,7 +629,7 @@ describe("syncManagedPartnerSharedProjections across a partner-share clear", () 
   function mockPassUpToReconcile(reconcileError: Error) {
     jest.spyOn(syncSetupService, "loadSyncSetupState").mockResolvedValue({
       hasAuthSession: true,
-      preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+      preferences: consentedManagedPreferences(),
     } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
     jest
       .spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures")
