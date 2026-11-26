@@ -344,4 +344,35 @@ describe("useBackupSyncSessionCore partner-share consent for live grants", () =>
     expect(result.current.pendingDataSharingConsent).toBeNull();
     await unmount();
   });
+
+  it("asks again when the partner list reloads without consent, as after a revoke", async () => {
+    const { result, unmount } = await renderWithLiveGrantAndNoConsent();
+    await act(async () => {
+      result.current.answerDataSharingConsent(false);
+    });
+    expect(result.current.pendingDataSharingConsent).toBeNull();
+
+    await act(async () => {
+      await result.current.reloadPartnerAccess(result.current.state!);
+    });
+
+    await waitFor(() =>
+      expect(result.current.pendingDataSharingConsent).toBe("partner_share"),
+    );
+    await unmount();
+  });
+
+  it("shows the generic partner error when the reload after an acceptance fails", async () => {
+    const { result, unmount } = await renderWithLiveGrantAndNoConsent();
+    jest
+      .mocked(managedPartnerShareService.reconcileManagedPartnerShareKeys)
+      .mockRejectedValue(new Error("keystore unavailable"));
+
+    await act(async () => {
+      result.current.answerDataSharingConsent(true);
+    });
+
+    await waitFor(() => expect(result.current.partnerErrorMessage).not.toBe(""));
+    await unmount();
+  });
 });
