@@ -31,6 +31,7 @@ describe("cloud subscription service", () => {
     await expect(purchaseCloudSubscription("yearly", { client })).resolves.toBe(
       "unavailable",
     );
+    await expect(purchaseCloudSubscription("monthly")).resolves.toBe("unavailable");
     for (const call of Object.values(client)) {
       if (typeof call === "function") {
         expect(call).not.toHaveBeenCalled();
