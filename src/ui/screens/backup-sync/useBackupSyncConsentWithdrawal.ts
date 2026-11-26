@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   buildDataSharingConsentWithdrawalViewData,
@@ -7,6 +7,8 @@ import {
 } from "../../../services/data-sharing-consent-service";
 import type { DataSharingConsentPurpose } from "../../../sync/sync-contract";
 import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
+
+type WithdrawalOutcome = "none" | "withdrawn" | "failed";
 
 /**
  * Standalone withdrawal of the data-sharing consent: one tap, no confirm, as
@@ -24,9 +26,10 @@ export function useBackupSyncConsentWithdrawal(core: BackupSyncSessionCore) {
   const [currentPurposes, setCurrentPurposes] = useState<
     DataSharingConsentPurpose[]
   >([]);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [outcome, setOutcome] = useState<WithdrawalOutcome>("none");
   const [isBusy, setIsBusy] = useState(false);
+  // A load started before a withdrawal must not repaint the purposes it cleared.
+  const loadSequenceRef = useRef(0);
   const viewData = buildDataSharingConsentWithdrawalViewData(
     currentPurposes,
     language,
@@ -38,21 +41,21 @@ export function useBackupSyncConsentWithdrawal(core: BackupSyncSessionCore) {
     if (!state) {
       return;
     }
-    let isMounted = true;
+    const sequence = ++loadSequenceRef.current;
     loadCurrentDataSharingConsentPurposes(storage).then(
       (purposes) => {
-        if (!isMounted) {
+        if (sequence !== loadSequenceRef.current) {
           return;
         }
         setCurrentPurposes(purposes);
         if (purposes.length > 0) {
-          setStatusMessage("");
+          setOutcome("none");
         }
       },
       () => undefined,
     );
     return () => {
-      isMounted = false;
+      loadSequenceRef.current += 1;
     };
   }, [dataSharingConsentChangeCount, partnerOverview, state, storage]);
 
@@ -60,15 +63,15 @@ export function useBackupSyncConsentWithdrawal(core: BackupSyncSessionCore) {
     if (isBusy) {
       return;
     }
+    loadSequenceRef.current += 1;
     setIsBusy(true);
-    setStatusMessage("");
-    setErrorMessage("");
+    setOutcome("none");
     try {
       await withdrawAllDataSharingConsent(storage);
       setCurrentPurposes([]);
-      setStatusMessage(viewData.withdrawn);
+      setOutcome("withdrawn");
     } catch {
-      setErrorMessage(viewData.failed);
+      setOutcome("failed");
     } finally {
       setIsBusy(false);
     }
@@ -78,8 +81,8 @@ export function useBackupSyncConsentWithdrawal(core: BackupSyncSessionCore) {
     dataSharingConsentWithdrawal: {
       viewData,
       hasConsent: currentPurposes.length > 0,
-      statusMessage,
-      errorMessage,
+      statusMessage: outcome === "withdrawn" ? viewData.withdrawn : "",
+      errorMessage: outcome === "failed" ? viewData.failed : "",
       isBusy,
     },
     handleWithdrawDataSharingConsent,
