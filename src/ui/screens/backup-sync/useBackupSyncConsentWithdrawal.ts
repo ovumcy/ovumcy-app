@@ -22,8 +22,8 @@ type WithdrawalOutcome =
   | "failed";
 
 type ConsentWithdrawalOptions = {
-  /** Called once any grant was revoked: the server dropped its pending invites. */
-  onPartnerGrantsRevoked?: () => void;
+  /** Cleared once any grant was revoked: the server dropped its pending invites. */
+  setPartnerInviteLink?: (link: string) => void;
 };
 
 /**
@@ -35,7 +35,7 @@ type ConsentWithdrawalOptions = {
  */
 export function useBackupSyncConsentWithdrawal(
   core: BackupSyncSessionCore,
-  { onPartnerGrantsRevoked }: ConsentWithdrawalOptions = {},
+  { setPartnerInviteLink }: ConsentWithdrawalOptions = {},
 ) {
   const {
     dataSharingConsentChangeCount,
@@ -138,7 +138,7 @@ export function useBackupSyncConsentWithdrawal(
             : "withdrawn",
       );
       if (result.revokedGrantIDs.length > 0) {
-        onPartnerGrantsRevoked?.();
+        setPartnerInviteLink?.("");
       }
       if (grants.length > 0) {
         await reloadPartnerAccess(state, { askPartnerShareConsent: false }).catch(
