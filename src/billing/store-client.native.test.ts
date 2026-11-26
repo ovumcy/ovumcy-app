@@ -340,6 +340,157 @@ describe("store client (native adapter)", () => {
     await expect(actual.initConnection()).rejects.toBeDefined();
   });
 
+  describe("cloud subscription plans", () => {
+    type Phase = {
+      priceAmountMicros: string;
+      formattedPrice: string;
+      recurrenceMode: number;
+    };
+    const phase = (price: string, micros: string, recurrenceMode = 1): Phase => ({
+      priceAmountMicros: micros,
+      formattedPrice: price,
+      recurrenceMode,
+    });
+    const FREE_MONTH = phase("Free", "0", 2);
+
+    function offer(basePlanId: string, offerToken: string, phases: Phase[], id = basePlanId) {
+      return {
+        id,
+        basePlanIdAndroid: basePlanId,
+        offerTokenAndroid: offerToken,
+        displayPrice: phases.at(-1)!.formattedPrice,
+        price: 0,
+        type: "introductory",
+        pricingPhasesAndroid: { pricingPhaseList: phases },
+      };
+    }
+
+    function storeReturns(offers: unknown[], productId = "ovumcy_cloud") {
+      mockFetchProducts.mockResolvedValue([
+        { id: productId, type: "subs", platform: "android", subscriptionOffers: offers },
+      ] as unknown as Awaited<ReturnType<typeof fetchProducts>>);
+    }
+
+    const MONTHLY = offer("monthly", "offer-token-monthly", [phase("€3.99", "3990000")]);
+    const MONTHLY_TRIAL = offer(
+      "monthly",
+      "offer-token-monthly-trial",
+      [FREE_MONTH, phase("€3.99", "3990000")],
+      "trial-1m-monthly",
+    );
+    const YEARLY = offer("yearly", "offer-token-yearly", [phase("€34.99", "34990000")]);
+    const YEARLY_TRIAL = offer(
+      "yearly",
+      "offer-token-yearly-trial",
+      [FREE_MONTH, phase("€34.99", "34990000")],
+      "trial-1m-yearly",
+    );
+
+    it("offers only the allowlisted monthly and yearly base plans, at the store's renewing price", async () => {
+      storeReturns([
+        offer("weekly", "offer-token-weekly", [phase("€1.49", "1490000")]),
+        YEARLY_TRIAL,
+        MONTHLY,
+        YEARLY,
+        MONTHLY_TRIAL,
+      ]);
+
+      const plans = await androidClient().loadSubscriptionPlans();
+
+      expect(plans).toEqual([
+        { basePlanId: "monthly", displayPrice: "€3.99", freeTrial: true },
+        { basePlanId: "yearly", displayPrice: "€34.99", freeTrial: true },
+      ]);
+      expect(mockFetchProducts).toHaveBeenCalledWith({
+        skus: ["ovumcy_cloud"],
+        type: "subs",
+      });
+      expect(JSON.stringify(plans)).not.toMatch(/offer-token/);
+    });
+
+    it("notes a free trial only when the store returns a free-trial offer", async () => {
+      storeReturns([MONTHLY, YEARLY]);
+
+      await expect(androidClient().loadSubscriptionPlans()).resolves.toEqual([
+        { basePlanId: "monthly", displayPrice: "€3.99", freeTrial: false },
+        { basePlanId: "yearly", displayPrice: "€34.99", freeTrial: false },
+      ]);
+    });
+
+    it("offers nothing for another product, an offer without a token, or a store error", async () => {
+      storeReturns([MONTHLY], "pregnancy_module");
+      await expect(androidClient().loadSubscriptionPlans()).resolves.toEqual([]);
+
+      storeReturns([offer("yearly", "", [phase("€34.99", "34990000")])]);
+      await expect(androidClient().loadSubscriptionPlans()).resolves.toEqual([]);
+
+      mockFetchProducts.mockRejectedValue(new Error("debug text from the store"));
+      await expect(androidClient().loadSubscriptionPlans()).rejects.toThrow(
+        /^store_unavailable$/,
+      );
+    });
+
+    it("buys the chosen base plan with its free-trial offer when the store returns one, otherwise with the base plan", async () => {
+      storeReturns([MONTHLY, MONTHLY_TRIAL, YEARLY]);
+      const client = androidClient();
+
+      await expect(client.purchaseSubscription("monthly")).resolves.toBe("completed");
+      await expect(client.purchaseSubscription("yearly")).resolves.toBe("completed");
+
+      expect(mockRequestPurchase.mock.calls).toEqual([
+        [
+          {
+            request: {
+              google: {
+                skus: ["ovumcy_cloud"],
+                subscriptionOffers: [
+                  { sku: "ovumcy_cloud", offerToken: "offer-token-monthly-trial" },
+                ],
+              },
+            },
+            type: "subs",
+          },
+        ],
+        [
+          {
+            request: {
+              google: {
+                skus: ["ovumcy_cloud"],
+                subscriptionOffers: [
+                  { sku: "ovumcy_cloud", offerToken: "offer-token-yearly" },
+                ],
+              },
+            },
+            type: "subs",
+          },
+        ],
+      ]);
+      expect(mockFinish).not.toHaveBeenCalled();
+    });
+
+    it("never opens the sheet for a base plan the store does not return", async () => {
+      storeReturns([MONTHLY]);
+
+      await expect(androidClient().purchaseSubscription("yearly")).rejects.toThrow(
+        /^store_unavailable$/,
+      );
+      expect(mockRequestPurchase).not.toHaveBeenCalled();
+    });
+
+    it("reports a cancelled subscription sheet as cancelled and a failed one as store unavailable", async () => {
+      storeReturns([YEARLY]);
+      mockRequestPurchase.mockRejectedValueOnce({ code: "user-cancelled" });
+      await expect(androidClient().purchaseSubscription("yearly")).resolves.toBe(
+        "cancelled",
+      );
+
+      mockRequestPurchase.mockRejectedValueOnce(new Error("debug text from the store"));
+      await expect(androidClient().purchaseSubscription("yearly")).rejects.toThrow(
+        /^store_unavailable$/,
+      );
+    });
+  });
+
   it("exports a default client bound to the running platform", async () => {
     // Jest runs as iOS, where no store is wired.
     await expect(storeClient.listPurchases()).rejects.toThrow(

@@ -15,6 +15,8 @@ function clientWith(
     listPurchases: jest.fn(listPurchases),
     purchase: jest.fn(),
     acknowledge: jest.fn().mockResolvedValue(undefined),
+    loadSubscriptionPlans: jest.fn(),
+    purchaseSubscription: jest.fn(),
   };
 }
 

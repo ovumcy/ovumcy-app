@@ -36,6 +36,10 @@ const PURCHASE_CHAIN_IMPORTS: Record<string, string[]> = {
   "src/services/pregnancy-entitlement-service.ts": [
     "./pregnancy-store-entitlement-source",
   ],
+  "src/services/cloud-subscription-service.ts": [
+    "../billing/store-client",
+    "../billing/store-contract",
+  ],
 };
 
 function listSourceFiles(directory: string): string[] {
@@ -143,6 +147,13 @@ describe("store library import boundary", () => {
       "listPurchases",
       "purchase",
       "acknowledge",
+      "loadSubscriptionPlans",
+      "purchaseSubscription",
+    ]);
+    expect(typeMembers(contract, "StoreSubscriptionPlan")).toEqual([
+      "basePlanId",
+      "displayPrice",
+      "freeTrial",
     ]);
     expect(typeMembers(contract, "StorePurchase")).toEqual([
       "productId",
@@ -174,7 +185,7 @@ describe("store library import boundary", () => {
     expect(actual).toEqual(allowed);
   });
 
-  it("contacts the store only from the pregnancy surfaces, never from the launch tasks", () => {
+  it("contacts the store only from the pregnancy surfaces and the cloud plan step, never from the launch tasks", () => {
     // Starting the store's billing client also starts the store vendor's own
     // diagnostics, so who can reach the store is an exact, reviewed list. A
     // platform-suffixed path (`store-client.native`) counts as the module.
@@ -190,8 +201,15 @@ describe("store library import boundary", () => {
         .sort();
 
     expect(importersOf("store-client")).toEqual([
+      "src/services/cloud-subscription-service.ts",
       "src/services/pregnancy-purchase-service.ts",
       "src/services/pregnancy-store-entitlement-source.ts",
+    ]);
+    expect(importersOf("cloud-subscription-service")).toEqual([
+      "src/ui/screens/backup-sync/CloudPlanPicker.tsx",
+    ]);
+    expect(importersOf("CloudPlanPicker")).toEqual([
+      "src/ui/screens/backup-sync/SettingsSyncSetupSection.tsx",
     ]);
     expect(importersOf("pregnancy-store-entitlement-source")).toEqual([
       "src/services/pregnancy-entitlement-service.ts",

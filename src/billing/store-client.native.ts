@@ -15,15 +15,20 @@ import {
   requestPurchase,
   type ErrorCode,
   type Purchase,
+  type SubscriptionOffer,
 } from "expo-iap";
 import { Platform } from "react-native";
 
-import type {
-  StoreClient,
-  StoreProduct,
-  StorePurchase,
-  StorePurchaseOutcome,
-  StorePurchaseState,
+import {
+  CLOUD_SUBSCRIPTION_BASE_PLAN_IDS,
+  CLOUD_SUBSCRIPTION_PRODUCT_ID,
+  type CloudSubscriptionBasePlanId,
+  type StoreClient,
+  type StoreProduct,
+  type StorePurchase,
+  type StorePurchaseOutcome,
+  type StorePurchaseState,
+  type StoreSubscriptionPlan,
 } from "./store-contract";
 
 // A store that does not answer must not hold a screen: the dashboard awaits
@@ -86,6 +91,64 @@ function errorCodeOf(error: unknown): unknown {
     : undefined;
 }
 
+// Play Billing's recurrence mode for the phase that renews until cancelled.
+const INFINITE_RECURRING = 1;
+
+type ChosenPlan = {
+  plan: StoreSubscriptionPlan;
+  offerToken: string;
+};
+
+function phasesOf(offer: SubscriptionOffer) {
+  return offer.pricingPhasesAndroid?.pricingPhaseList ?? [];
+}
+
+function hasFreePhase(offer: SubscriptionOffer): boolean {
+  return phasesOf(offer).some((phase) => phase.priceAmountMicros === "0");
+}
+
+// Per base plan: the free-trial offer when the store returned one (it returns
+// one only to an eligible account), otherwise the plain base plan. The shown
+// price is the renewing phase, never the trial's zero.
+function choosePlans(offers: readonly SubscriptionOffer[]): ChosenPlan[] {
+  return CLOUD_SUBSCRIPTION_BASE_PLAN_IDS.flatMap((basePlanId) => {
+    const candidates = offers.filter(
+      (offer) =>
+        offer.basePlanIdAndroid === basePlanId &&
+        typeof offer.offerTokenAndroid === "string" &&
+        offer.offerTokenAndroid !== "" &&
+        phasesOf(offer).length > 0,
+    );
+    const trial = candidates.find(hasFreePhase);
+    const base =
+      candidates.find(
+        (offer) => !hasFreePhase(offer) && phasesOf(offer).length === 1,
+      ) ?? candidates.find((offer) => !hasFreePhase(offer));
+    const priced = base ?? trial;
+    const chosen = trial ?? base;
+    if (!priced || !chosen) {
+      return [];
+    }
+    const phases = phasesOf(priced);
+    const renewing =
+      phases.find((phase) => phase.recurrenceMode === INFINITE_RECURRING) ??
+      phases[phases.length - 1]!;
+    if (renewing.priceAmountMicros === "0" || renewing.formattedPrice === "") {
+      return [];
+    }
+    return [
+      {
+        plan: {
+          basePlanId,
+          displayPrice: renewing.formattedPrice,
+          freeTrial: trial !== undefined,
+        },
+        offerToken: chosen.offerTokenAndroid!,
+      },
+    ];
+  });
+}
+
 export function createStoreClient(
   options: { platformOS?: string; timeoutMs?: number } = {},
 ): StoreClient {
@@ -139,6 +202,22 @@ export function createStoreClient(
   }
 
   const networkTimeoutMs = timeoutMs * NETWORK_CALL_TIMEOUT_FACTOR;
+
+  async function loadCloudPlans(): Promise<ChosenPlan[]> {
+    const products = await call(
+      () =>
+        fetchProducts({ skus: [CLOUD_SUBSCRIPTION_PRODUCT_ID], type: "subs" }),
+      networkTimeoutMs,
+    );
+    const product = (products ?? []).find(
+      (item) => item.id === CLOUD_SUBSCRIPTION_PRODUCT_ID,
+    );
+    const offers =
+      product && "subscriptionOffers" in product
+        ? (product.subscriptionOffers ?? [])
+        : [];
+    return choosePlans(offers);
+  }
 
   return {
     supported,
@@ -201,6 +280,47 @@ export function createStoreClient(
         () => finishTransaction({ purchase: owed, isConsumable: false }),
         networkTimeoutMs,
       );
+    },
+
+    async loadSubscriptionPlans(): Promise<readonly StoreSubscriptionPlan[]> {
+      return (await loadCloudPlans()).map(({ plan }) => plan);
+    },
+
+    // Offers are re-read here so the sheet opens with an offer the store just
+    // returned. Like `purchase`, the sheet itself is neither retried nor timed.
+    async purchaseSubscription(
+      basePlanId: CloudSubscriptionBasePlanId,
+    ): Promise<StorePurchaseOutcome> {
+      const chosen = (await loadCloudPlans()).find(
+        ({ plan }) => plan.basePlanId === basePlanId,
+      );
+      if (!chosen) {
+        throw storeUnavailable();
+      }
+      try {
+        await connect();
+        await requestPurchase({
+          request: {
+            google: {
+              skus: [CLOUD_SUBSCRIPTION_PRODUCT_ID],
+              subscriptionOffers: [
+                {
+                  sku: CLOUD_SUBSCRIPTION_PRODUCT_ID,
+                  offerToken: chosen.offerToken,
+                },
+              ],
+            },
+          },
+          type: "subs",
+        });
+        return "completed";
+      } catch (error) {
+        if (errorCodeOf(error) === USER_CANCELLED) {
+          return "cancelled";
+        }
+        connection = null;
+        throw storeUnavailable();
+      }
     },
   };
 }
