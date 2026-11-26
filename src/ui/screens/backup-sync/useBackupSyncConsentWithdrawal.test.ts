@@ -87,16 +87,16 @@ async function renderWithLiveGrants() {
     },
   });
   const core = createBackupSyncSessionCoreMock({ storage });
-  const onPartnerGrantsRevoked = jest.fn();
+  const setPartnerInviteLink = jest.fn();
   const { result } = await renderHook(() =>
-    useBackupSyncConsentWithdrawal(core, { onPartnerGrantsRevoked }),
+    useBackupSyncConsentWithdrawal(core, { setPartnerInviteLink }),
   );
   await waitFor(() =>
     expect(result.current.dataSharingConsentWithdrawal.hasConsent).toBe(true),
   );
   return {
     core,
-    onPartnerGrantsRevoked,
+    setPartnerInviteLink,
     readRecord: () => record,
     result,
     storage,
@@ -202,7 +202,7 @@ describe("useBackupSyncConsentWithdrawal", () => {
       ok: true,
       value: liveGrant(grantID),
     }));
-    const { core, onPartnerGrantsRevoked, readRecord, result } =
+    const { core, setPartnerInviteLink, readRecord, result } =
       await renderWithLiveGrants();
 
     await act(async () => {
@@ -212,7 +212,8 @@ describe("useBackupSyncConsentWithdrawal", () => {
     expect(mockRevokeGrant.mock.calls.map((call) => call[2])).toEqual(["g1", "g2"]);
     expect(mockClearGrantKey.mock.calls.map((call) => call[1])).toEqual(["g1", "g2"]);
     expect(readRecord().dataSharingConsent).toEqual({});
-    expect(onPartnerGrantsRevoked).toHaveBeenCalledTimes(1);
+    expect(setPartnerInviteLink).toHaveBeenCalledTimes(1);
+    expect(setPartnerInviteLink).toHaveBeenCalledWith("");
     expect(core.reloadPartnerAccess).toHaveBeenCalledWith(core.state, {
       askPartnerShareConsent: false,
     });
@@ -259,6 +260,39 @@ describe("useBackupSyncConsentWithdrawal", () => {
     expect(result.current.dataSharingConsentWithdrawal.errorMessage).toMatch(
       /^Consent withdrawn, so nothing more is sent\. Access could not be revoked/,
     );
+  });
+
+  it("keeps the withdrawn outcome when the partner reload afterwards fails", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    mockRevokeGrant.mockImplementation(async (_store, _mode, grantID) => ({
+      ok: true,
+      value: liveGrant(grantID),
+    }));
+    const { core, result } = await renderWithLiveGrants();
+    jest.mocked(core.reloadPartnerAccess).mockRejectedValue(new Error("offline"));
+
+    await act(async () => {
+      await result.current.handleWithdrawDataSharingConsent();
+    });
+
+    expect(result.current.dataSharingConsentWithdrawal.statusMessage).toBe(
+      "Consent withdrawn and partner access revoked. Nothing more is sent until you agree again.",
+    );
+    expect(result.current.dataSharingConsentWithdrawal.isBusy).toBe(false);
+  });
+
+  it("does nothing before the settings state has loaded", async () => {
+    const storage = createLocalAppStorageMock();
+    const core = createBackupSyncSessionCoreMock({ state: null, storage });
+
+    const { result } = await renderHook(() => useBackupSyncConsentWithdrawal(core));
+    await act(async () => {
+      await result.current.handleWithdrawDataSharingConsent();
+    });
+
+    expect(storage.readSyncPreferencesRecord).not.toHaveBeenCalled();
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    expect(result.current.dataSharingConsentWithdrawal.statusMessage).toBe("");
   });
 
   it("adds the generic error when a revoked grant's key could not be cleared", async () => {

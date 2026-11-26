@@ -116,6 +116,19 @@ describe("loadPartnerGrantsToRevokeOnWithdrawal", () => {
     expect(mockLoad).toHaveBeenCalledWith(d.syncSecretStore, "self_hosted");
   });
 
+  it("falls back to the last listing when the fresh one throws", async () => {
+    const d = deps();
+    await recordDataSharingConsent(d.storage, "partner_share", NOW);
+    mockLoad.mockRejectedValueOnce(new Error("offline"));
+
+    const plan = await loadPartnerGrantsToRevokeOnWithdrawal(
+      d,
+      overview([grant("stale")]),
+    );
+    expect(plan.grants.map((g) => g.id)).toEqual(["stale"]);
+    expect(plan.listingFailed).toBe(false);
+  });
+
   it("names nothing to revoke without a managed session", async () => {
     const d = deps();
     await recordDataSharingConsent(d.storage, "partner_share", NOW);
