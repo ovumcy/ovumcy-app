@@ -59,10 +59,8 @@ export function useBackupSyncConsentWithdrawal(core: BackupSyncSessionCore) {
     };
   }, [dataSharingConsentChangeCount, partnerOverview, state, storage]);
 
+  // The button is disabled while busy; a repeated withdrawal is a no-op anyway.
   async function handleWithdrawDataSharingConsent() {
-    if (isBusy) {
-      return;
-    }
     loadSequenceRef.current += 1;
     setIsBusy(true);
     setOutcome("none");
