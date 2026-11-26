@@ -44,6 +44,9 @@ export type BackupSyncSetupPresentation = {
   guidanceMessage: string;
   guidanceStepNumber: number;
   hasManagedPlan: boolean;
+  // A live billing answer said this signed-in account has no plan; false on a
+  // failed or offline check, so a subscriber is never offered a second one.
+  planConfirmedInactive: boolean;
   isManaged: boolean;
   // Why managed sync actions are locked for a signed-in account, or null when
   // they are not locked (`resolveManagedSyncBlockedMessage`).
@@ -320,6 +323,8 @@ export function buildBackupSyncSetupPresentation({
     canShowSyncActions,
     endpointSummary,
     hasManagedPlan,
+    planConfirmedInactive:
+      isManaged && hasSyncSession && managedPlanStatus === "inactive",
     isManaged,
     managedSyncBlockedMessage,
     lastSyncValue: preferences.lastSyncedAt

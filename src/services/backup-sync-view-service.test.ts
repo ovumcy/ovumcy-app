@@ -1111,6 +1111,27 @@ describe("managed sync gate from sync_allowed", () => {
     expect(presentation.hasManagedPlan).toBe(false);
   });
 
+  it("confirms no plan only from a live inactive answer, never from a failed check", () => {
+    const flagFor = (managedPlanStatus: "active" | "inactive" | "unknown") =>
+      buildBackupSyncSetupPresentation({
+        ...input,
+        managedPlanStatus,
+        syncCapabilities: capabilities(false),
+      }).planConfirmedInactive;
+
+    expect(flagFor("inactive")).toBe(true);
+    expect(flagFor("unknown")).toBe(false);
+    expect(flagFor("active")).toBe(false);
+    expect(
+      buildBackupSyncSetupPresentation({
+        ...input,
+        hasSyncSession: false,
+        managedPlanStatus: "inactive",
+        syncCapabilities: capabilities(false),
+      }).planConfirmedInactive,
+    ).toBe(false);
+  });
+
   it("shows the plan copy only when the billing snapshot reports no active plan", () => {
     expect(
       buildBackupSyncSetupPresentation({

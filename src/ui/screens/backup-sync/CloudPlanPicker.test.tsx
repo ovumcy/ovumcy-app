@@ -67,6 +67,63 @@ describe("CloudPlanPicker", () => {
     expect(screen.queryByTestId("settings-sync-cloud-plan-monthly")).toBeNull();
   });
 
+  it("leaves the trial note out when only one plan comes with a trial", async () => {
+    mockLoadPlans.mockResolvedValue([
+      { basePlanId: "monthly", displayPrice: "€3.99", freeTrial: true },
+      { basePlanId: "yearly", displayPrice: "€34.99", freeTrial: false },
+    ]);
+
+    await renderPicker();
+
+    expect(screen.queryByTestId("settings-sync-cloud-plan-trial")).toBeNull();
+  });
+
+  it("keeps the purchase-received message when the billing re-read fails", async () => {
+    mockLoadPlans.mockResolvedValue([
+      { basePlanId: "yearly", displayPrice: "€34.99", freeTrial: false },
+    ]);
+    mockPurchase.mockResolvedValue("completed");
+    const onPurchaseCompleted = jest.fn().mockRejectedValue(new Error("offline"));
+    await render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <CloudPlanPicker onPurchaseCompleted={onPurchaseCompleted} />
+      </AppPreferencesTestProvider>,
+    );
+    await act(async () => {});
+
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("settings-sync-cloud-plan-yearly"));
+    });
+
+    expect(onPurchaseCompleted).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(copy.purchaseCompleted)).toBeTruthy();
+  });
+
+  it("opens one sheet for a double tap", async () => {
+    mockLoadPlans.mockResolvedValue([
+      { basePlanId: "yearly", displayPrice: "€34.99", freeTrial: false },
+    ]);
+    let finish: (value: "completed") => void = () => undefined;
+    mockPurchase.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    await renderPicker();
+
+    // Not awaited: the first press holds its sheet open until `finish`.
+    const button = screen.getByTestId("settings-sync-cloud-plan-yearly");
+    await act(async () => {
+      void fireEvent.press(button);
+      void fireEvent.press(button);
+    });
+    await act(async () => {
+      finish("completed");
+    });
+
+    expect(mockPurchase).toHaveBeenCalledTimes(1);
+  });
+
   it("re-reads the billing snapshot after a completed sheet instead of granting anything itself", async () => {
     mockLoadPlans.mockResolvedValue([
       { basePlanId: "yearly", displayPrice: "€34.99", freeTrial: true },

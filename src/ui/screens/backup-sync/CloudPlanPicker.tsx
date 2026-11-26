@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import type {
@@ -36,6 +36,7 @@ export function CloudPlanPicker({
   const [plans, setPlans] = useState<readonly StoreSubscriptionPlan[]>([]);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const inFlight = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -54,20 +55,33 @@ export function CloudPlanPicker({
   }
 
   async function handlePurchase(basePlanId: CloudSubscriptionBasePlanId) {
+    // State lags a re-render; a second tap in the same frame must not open a
+    // second sheet.
+    if (inFlight.current) {
+      return;
+    }
+    inFlight.current = true;
     setBusy(true);
     setFeedback(null);
     try {
       const result = await purchaseCloudSubscription(basePlanId);
       if (result === "completed") {
         setFeedback({ tone: "info", message: copy.purchaseCompleted });
-        await onPurchaseCompleted();
+        // The purchase stands whether or not this re-read succeeds; the plan
+        // step's own retry covers a failed one.
+        await Promise.resolve(onPurchaseCompleted()).catch(() => undefined);
       } else if (result === "unavailable") {
         setFeedback({ tone: "error", message: copy.purchaseUnavailable });
       }
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
+
+  // A trial note under both buttons would promise a trial on a plan the store
+  // offered without one.
+  const everyPlanHasTrial = plans.every((plan) => plan.freeTrial);
 
   return (
     <View style={styles.container} testID="settings-sync-cloud-plan-picker">
@@ -88,7 +102,7 @@ export function CloudPlanPicker({
           variant={plan.basePlanId === "yearly" ? "primary" : "secondary"}
         />
       ))}
-      {plans.some((plan) => plan.freeTrial) ? (
+      {everyPlanHasTrial ? (
         <Text style={styles.note} testID="settings-sync-cloud-plan-trial">{copy.freeTrialNote}</Text>
       ) : null}
       {feedback ? (
