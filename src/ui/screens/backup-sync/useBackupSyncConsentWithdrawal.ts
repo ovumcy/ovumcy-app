@@ -68,6 +68,8 @@ export function useBackupSyncConsentWithdrawal(core: BackupSyncSessionCore) {
     setOutcome("none");
     try {
       await withdrawAllDataSharingConsent(storage);
+      // A load started while the write was in flight may have read it unwritten.
+      loadSequenceRef.current += 1;
       setCurrentPurposes([]);
       setOutcome("withdrawn");
     } catch {
