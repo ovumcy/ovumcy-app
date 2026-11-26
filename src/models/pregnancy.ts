@@ -97,9 +97,8 @@ export const TRIMESTER_2_MAX_WEEK = 27;
 export const BIRTH_OPTION_MIN_WEEK = 20;
 
 // 5-1-1 rule parameters (contractions ~5 minutes apart, lasting ~1 minute
-// each, sustained for ~1 hour) for a future labor-contraction-pattern
-// service. Declared beside the other pregnancy constants; not yet consumed
-// by any function in this layer.
+// each, sustained for ~1 hour), consumed by `matches511Pattern` and
+// `computeWindowSummary` in contraction-timer-service.
 export const CONTRACTION_511_MAX_INTERVAL_MINUTES = 5;
 export const CONTRACTION_511_MIN_DURATION_SECONDS = 60;
 export const CONTRACTION_511_MIN_WINDOW_MINUTES = 60;

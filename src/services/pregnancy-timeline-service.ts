@@ -119,8 +119,8 @@ function resolveTrimester(weeks: number): 1 | 2 | 3 {
   return 3;
 }
 
-// Milestone windows are CONTENT anchors (catalog keys pointing at later i18n
-// copy, added in a follow-up task) -- not medical verdicts, diagnoses, or
+// Milestone windows are CONTENT anchors (catalog keys into the `milestones`
+// copy in i18n/pregnancy-copy.ts) -- not medical verdicts, diagnoses, or
 // personalized advice. This engine only reports which window(s) a given
 // gestational age falls inside.
 export type PregnancyMilestoneID =
