@@ -64,7 +64,9 @@ export function useBackupSyncScreenController(
   const deletion = useBackupSyncAccountDeletion(core);
   const deviceManagement = useBackupSyncDeviceManagement(core);
   const guestUpgrade = useBackupSyncGuestUpgrade(core);
-  const consentWithdrawal = useBackupSyncConsentWithdrawal(core);
+  const consentWithdrawal = useBackupSyncConsentWithdrawal(core, {
+    onPartnerGrantsRevoked: () => partner.setPartnerInviteLink(""),
+  });
 
   const {
     accountStatusMessage,

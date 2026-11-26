@@ -226,8 +226,13 @@ describe("buildDataSharingConsentWithdrawalViewData", () => {
         ...view.given,
         view.stops,
         view.keeps,
+        view.revokesPartners ?? "",
+        view.confirmRevoke,
+        view.confirmRevokeLabel,
         view.withdrawLabel,
         view.withdrawn,
+        view.withdrawnAndRevoked,
+        view.revokeFailed,
         view.failed,
       ];
       for (const text of texts) {
@@ -241,7 +246,14 @@ describe("buildDataSharingConsentWithdrawalViewData", () => {
     const view = buildDataSharingConsentWithdrawalViewData(["partner_share"], "en");
     expect(view.given).toEqual(["Sharing your cycle with a partner"]);
     expect(view.stops).toMatch(/stops new backups and partner updates/);
-    expect(view.keeps).toMatch(/deletes nothing/);
-    expect(view.keeps).toMatch(/revoke the partner/);
+    expect(view.keeps).toMatch(/does not delete your account or the backup/);
+    expect(view.revokesPartners).toMatch(/Partner access is revoked too/);
+  });
+
+  it("mentions revoking partners only while a partner-share consent is given", () => {
+    expect(
+      buildDataSharingConsentWithdrawalViewData(["managed_sync"], "en")
+        .revokesPartners,
+    ).toBeNull();
   });
 });
