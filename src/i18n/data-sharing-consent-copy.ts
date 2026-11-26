@@ -111,7 +111,7 @@ const consentCopyEn: DataSharingConsentCopy = {
     keeps:
       "Withdrawing does not delete your account or the backup already on the server: they stay until you disconnect sync or delete your account.",
     revokesPartners:
-      "Partner access is revoked too, once you confirm: each partner's copy is deleted from the server; anything they already downloaded may stay on their device.",
+      "If a partner can read your cycle, their access is revoked too, after a confirm: their copy is deleted from the server; anything they already downloaded may stay on their device.",
     confirmRevoke:
       "Withdraw consent and revoke access for these partners? Their copy is deleted from the server.",
     confirmRevokeLabel: "Withdraw and revoke",
@@ -184,7 +184,7 @@ const consentCopyRu: DataSharingConsentCopy = {
     keeps:
       "Отзыв не удаляет аккаунт и резервную копию на сервере: они остаются, пока вы не отключите синхронизацию или не удалите аккаунт.",
     revokesPartners:
-      "После подтверждения доступ партнёров тоже отзывается: их копия удаляется с сервера; уже загруженное может остаться на их устройствах.",
+      "Если у партнёра есть доступ к вашему циклу, он тоже отзывается после подтверждения: копия удаляется с сервера; уже загруженное может остаться на его устройстве.",
     confirmRevoke:
       "Отозвать согласие и доступ этих партнёров? Их копия будет удалена с сервера.",
     confirmRevokeLabel: "Отозвать согласие и доступ",
@@ -257,7 +257,7 @@ const consentCopyDe: DataSharingConsentCopy = {
     keeps:
       "Ein Widerruf löscht weder Ihr Konto noch die Sicherung auf dem Server: Beide bleiben bestehen, bis Sie die Synchronisierung trennen oder Ihr Konto löschen.",
     revokesPartners:
-      "Nach Ihrer Bestätigung wird auch der Partnerzugriff widerrufen: Die Kopie jeder Partnerperson wird vom Server gelöscht; bereits Heruntergeladenes kann auf ihrem Gerät bleiben.",
+      "Hat eine Partnerperson Zugriff auf Ihren Zyklus, wird dieser nach einer Bestätigung ebenfalls widerrufen: Die Kopie wird vom Server gelöscht; bereits Heruntergeladenes kann auf ihrem Gerät bleiben.",
     confirmRevoke:
       "Einwilligung und Zugriff dieser Partnerpersonen widerrufen? Ihre Kopie wird vom Server gelöscht.",
     confirmRevokeLabel: "Einwilligung und Zugriff widerrufen",
@@ -330,7 +330,7 @@ const consentCopyFr: DataSharingConsentCopy = {
     keeps:
       "Le retrait ne supprime ni votre compte ni la sauvegarde déjà présente sur le serveur : ils restent en place jusqu'à ce que vous déconnectiez la synchronisation ou supprimiez votre compte.",
     revokesPartners:
-      "Après votre confirmation, l'accès des partenaires est aussi révoqué : leur copie est supprimée du serveur ; ce qu'ils ont déjà téléchargé peut rester sur leur appareil.",
+      "Si un partenaire a accès à votre cycle, cet accès est aussi révoqué après confirmation : sa copie est supprimée du serveur ; ce qu'il a déjà téléchargé peut rester sur son appareil.",
     confirmRevoke:
       "Retirer le consentement et révoquer l'accès de ces partenaires ? Leur copie sera supprimée du serveur.",
     confirmRevokeLabel: "Retirer et révoquer",
@@ -403,7 +403,7 @@ const consentCopyEs: DataSharingConsentCopy = {
     keeps:
       "Retirarlo no borra tu cuenta ni la copia de seguridad que ya está en el servidor: se mantienen hasta que desconectes la sincronización o elimines tu cuenta.",
     revokesPartners:
-      "Cuando lo confirmes, también se revoca el acceso de cada pareja: su copia se borra del servidor; lo que ya haya descargado puede quedar en su dispositivo.",
+      "Si una pareja tiene acceso a tu ciclo, también se revoca tras una confirmación: su copia se borra del servidor; lo que ya haya descargado puede quedar en su dispositivo.",
     confirmRevoke:
       "¿Retirar el consentimiento y revocar el acceso de estas parejas? Su copia se borrará del servidor.",
     confirmRevokeLabel: "Retirar y revocar",
@@ -476,7 +476,7 @@ const consentCopyIt: DataSharingConsentCopy = {
     keeps:
       "La revoca non cancella l'account né il backup già sul server: restano finché non scolleghi la sincronizzazione o elimini l'account.",
     revokesPartners:
-      "Dopo la conferma viene revocato anche l'accesso dei partner: la loro copia viene cancellata dal server; ciò che hanno già scaricato può restare sul loro dispositivo.",
+      "Se un partner ha accesso al tuo ciclo, anche questo accesso viene revocato dopo una conferma: la sua copia viene cancellata dal server; ciò che ha già scaricato può restare sul suo dispositivo.",
     confirmRevoke:
       "Revocare il consenso e l'accesso di questi partner? La loro copia verrà cancellata dal server.",
     confirmRevokeLabel: "Revoca consenso e accesso",

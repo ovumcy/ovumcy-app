@@ -98,14 +98,14 @@ export function useBackupSyncConsentWithdrawal(
     const deps: DataSharingConsentWithdrawalDeps = {
       partnerShareSecretStore,
       storage,
-      syncMode: state.syncPreferences.mode,
       syncSecretStore,
     };
     try {
-      const grants = await loadPartnerGrantsToRevokeOnWithdrawal(
+      const plan = await loadPartnerGrantsToRevokeOnWithdrawal(
         deps,
         partnerOverview,
       );
+      const { grants } = plan;
       if (grants.length > 0) {
         const lines = buildPartnerRevokeConfirmLines(grants, language);
         const confirmed = await openConfirmation(
@@ -123,6 +123,7 @@ export function useBackupSyncConsentWithdrawal(
       loadSequenceRef.current += 1;
       const result = await withdrawDataSharingConsentAndRevokePartnerGrants(
         deps,
+        plan.syncMode,
         grants.map((grant) => grant.id),
       );
       // A load started while the write was in flight may have read it unwritten.
@@ -130,7 +131,7 @@ export function useBackupSyncConsentWithdrawal(
       setCurrentPurposes([]);
       setKeyCleanupFailed(result.keyCleanupFailed);
       setOutcome(
-        result.failedGrantIDs.length > 0
+        result.failedGrantIDs.length > 0 || plan.listingFailed
           ? "revokeFailed"
           : result.revokedGrantIDs.length > 0
             ? "withdrawnAndRevoked"

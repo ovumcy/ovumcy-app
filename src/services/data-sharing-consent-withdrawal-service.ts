@@ -19,8 +19,15 @@ import { clearManagedPartnerGrantKey } from "./managed-partner-share-service";
 export type DataSharingConsentWithdrawalDeps = {
   partnerShareSecretStore: PartnerShareSecretStore;
   storage: LocalAppStorage;
-  syncMode: SyncMode;
   syncSecretStore: SyncSecretStore;
+};
+
+export type PartnerGrantsToRevoke = {
+  grants: ManagedCloudPartnerAccessGrant[];
+  /** No listing could be read, so live grants may exist that are not named. */
+  listingFailed: boolean;
+  /** The saved mode, never the screen's unsaved draft. */
+  syncMode: SyncMode;
 };
 
 /**
@@ -32,17 +39,26 @@ export type DataSharingConsentWithdrawalDeps = {
 export async function loadPartnerGrantsToRevokeOnWithdrawal(
   deps: DataSharingConsentWithdrawalDeps,
   lastOverview: ManagedCloudPartnerAccessOverview | null,
-): Promise<ManagedCloudPartnerAccessGrant[]> {
+): Promise<PartnerGrantsToRevoke> {
   const record = await deps.storage.readSyncPreferencesRecord();
+  const syncMode = record.mode;
   if (record.dataSharingConsent?.partner_share === undefined) {
-    return [];
+    return { grants: [], listingFailed: false, syncMode };
   }
   const fresh = await loadManagedPartnerAccess(
     deps.syncSecretStore,
-    deps.syncMode,
+    syncMode,
   ).catch(() => null);
+  // Without a managed session there is nothing this device can revoke.
+  if (fresh && !fresh.ok && fresh.errorCode === "not_connected") {
+    return { grants: [], listingFailed: false, syncMode };
+  }
   const overview = fresh?.ok ? fresh.value : lastOverview;
-  return (overview?.owned.grants ?? []).filter((grant) => !grant.revokedAt);
+  return {
+    grants: (overview?.owned.grants ?? []).filter((grant) => !grant.revokedAt),
+    listingFailed: overview === null,
+    syncMode,
+  };
 }
 
 export type DataSharingConsentWithdrawalResult = {
@@ -60,6 +76,7 @@ export type DataSharingConsentWithdrawalResult = {
  */
 export async function withdrawDataSharingConsentAndRevokePartnerGrants(
   deps: DataSharingConsentWithdrawalDeps,
+  syncMode: SyncMode,
   grantIDs: readonly string[],
 ): Promise<DataSharingConsentWithdrawalResult> {
   await withdrawAllDataSharingConsent(deps.storage);
@@ -72,7 +89,7 @@ export async function withdrawDataSharingConsentAndRevokePartnerGrants(
   for (const grantID of grantIDs) {
     const revoked = await revokeManagedPartnerGrant(
       deps.syncSecretStore,
-      deps.syncMode,
+      syncMode,
       grantID,
     ).catch(() => null);
     if (!revoked?.ok) {

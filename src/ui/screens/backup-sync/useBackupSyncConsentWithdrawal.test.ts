@@ -242,6 +242,25 @@ describe("useBackupSyncConsentWithdrawal", () => {
     );
   });
 
+  it("does not report a clean withdrawal when no partner listing could be read", async () => {
+    const { readRecord, result } = await renderWithLiveGrants();
+    mockLoadPartnerAccess.mockResolvedValue({
+      ok: false,
+      errorCode: "network_failed",
+    });
+
+    await act(async () => {
+      await result.current.handleWithdrawDataSharingConsent();
+    });
+
+    expect(mockOpenConfirmation).not.toHaveBeenCalled();
+    expect(readRecord().dataSharingConsent).toEqual({});
+    expect(result.current.dataSharingConsentWithdrawal.statusMessage).toBe("");
+    expect(result.current.dataSharingConsentWithdrawal.errorMessage).toMatch(
+      /^Consent withdrawn, so nothing more is sent\. Access could not be revoked/,
+    );
+  });
+
   it("adds the generic error when a revoked grant's key could not be cleared", async () => {
     mockOpenConfirmation.mockResolvedValue(true);
     mockRevokeGrant.mockImplementation(async (_store, _mode, grantID) => ({
