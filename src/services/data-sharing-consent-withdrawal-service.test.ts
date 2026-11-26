@@ -54,7 +54,6 @@ function deps(): DataSharingConsentWithdrawalDeps {
   return {
     partnerShareSecretStore: {} as PartnerShareSecretStore,
     storage: createVolatileWebAppStorage(),
-    syncMode: "managed",
     syncSecretStore: {} as SyncSecretStore,
   };
 }
@@ -71,7 +70,7 @@ describe("loadPartnerGrantsToRevokeOnWithdrawal", () => {
 
     await expect(
       loadPartnerGrantsToRevokeOnWithdrawal(d, overview([grant("g1")])),
-    ).resolves.toEqual([]);
+    ).resolves.toMatchObject({ grants: [], listingFailed: false });
     expect(mockLoad).not.toHaveBeenCalled();
   });
 
@@ -90,14 +89,41 @@ describe("loadPartnerGrantsToRevokeOnWithdrawal", () => {
       d,
       overview([grant("stale")]),
     );
-    expect(fresh.map((g) => g.id)).toEqual(["fresh"]);
+    expect(fresh.grants.map((g) => g.id)).toEqual(["fresh"]);
+    expect(fresh.listingFailed).toBe(false);
 
     mockLoad.mockResolvedValueOnce({ ok: false, errorCode: "network_failed" });
     const fallback = await loadPartnerGrantsToRevokeOnWithdrawal(
       d,
       overview([grant("stale")]),
     );
-    expect(fallback.map((g) => g.id)).toEqual(["stale"]);
+    expect(fallback.grants.map((g) => g.id)).toEqual(["stale"]);
+    expect(fallback.listingFailed).toBe(false);
+  });
+
+  it("lists with the saved sync mode and flags a listing it could not read", async () => {
+    const d = deps();
+    await d.storage.writeSyncPreferencesRecord({
+      ...(await d.storage.readSyncPreferencesRecord()),
+      mode: "self_hosted",
+    });
+    await recordDataSharingConsent(d.storage, "partner_share", NOW);
+    mockLoad.mockResolvedValueOnce({ ok: false, errorCode: "network_failed" });
+
+    await expect(
+      loadPartnerGrantsToRevokeOnWithdrawal(d, null),
+    ).resolves.toEqual({ grants: [], listingFailed: true, syncMode: "self_hosted" });
+    expect(mockLoad).toHaveBeenCalledWith(d.syncSecretStore, "self_hosted");
+  });
+
+  it("names nothing to revoke without a managed session", async () => {
+    const d = deps();
+    await recordDataSharingConsent(d.storage, "partner_share", NOW);
+    mockLoad.mockResolvedValueOnce({ ok: false, errorCode: "not_connected" });
+
+    await expect(
+      loadPartnerGrantsToRevokeOnWithdrawal(d, overview([grant("stale")])),
+    ).resolves.toMatchObject({ grants: [], listingFailed: false });
   });
 });
 
@@ -109,7 +135,7 @@ describe("withdrawDataSharingConsentAndRevokePartnerGrants", () => {
       .mockRejectedValue(new Error("locked"));
 
     await expect(
-      withdrawDataSharingConsentAndRevokePartnerGrants(d, ["g1"]),
+      withdrawDataSharingConsentAndRevokePartnerGrants(d, "managed", ["g1"]),
     ).rejects.toThrow("locked");
     expect(mockRevoke).not.toHaveBeenCalled();
   });
@@ -123,7 +149,7 @@ describe("withdrawDataSharingConsentAndRevokePartnerGrants", () => {
       .mockResolvedValueOnce({ ok: false, errorCode: "network_failed" })
       .mockRejectedValueOnce(new Error("offline"));
 
-    const result = await withdrawDataSharingConsentAndRevokePartnerGrants(d, [
+    const result = await withdrawDataSharingConsentAndRevokePartnerGrants(d, "managed", [
       "g1",
       "g2",
       "g3",
@@ -146,7 +172,7 @@ describe("withdrawDataSharingConsentAndRevokePartnerGrants", () => {
     mockClearKey.mockRejectedValue(new Error("secure store"));
 
     await expect(
-      withdrawDataSharingConsentAndRevokePartnerGrants(d, ["g1"]),
+      withdrawDataSharingConsentAndRevokePartnerGrants(d, "managed", ["g1"]),
     ).resolves.toEqual({
       revokedGrantIDs: ["g1"],
       failedGrantIDs: [],

@@ -247,7 +247,7 @@ describe("buildDataSharingConsentWithdrawalViewData", () => {
     expect(view.given).toEqual(["Sharing your cycle with a partner"]);
     expect(view.stops).toMatch(/stops new backups and partner updates/);
     expect(view.keeps).toMatch(/does not delete your account or the backup/);
-    expect(view.revokesPartners).toMatch(/Partner access is revoked too/);
+    expect(view.revokesPartners).toMatch(/their access is revoked too, after a confirm/);
   });
 
   it("mentions revoking partners only while a partner-share consent is given", () => {
