@@ -23,6 +23,10 @@ describe("cloud plan copy", () => {
     }
   });
 
+  it("falls back to English for a language it has no copy for", () => {
+    expect(getCloudPlanCopy("pt" as InterfaceLanguage)).toBe(getCloudPlanCopy("en"));
+  });
+
   it("writes no price into any string", () => {
     for (const language of LANGUAGES) {
       const copy = getCloudPlanCopy(language);

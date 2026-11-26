@@ -43,6 +43,27 @@ describe("CloudPlanPicker", () => {
     expect(screen.queryByTestId("settings-sync-cloud-plan-picker")).toBeNull();
   });
 
+  it("drops plans that arrive after the picker is gone", async () => {
+    let resolvePlans: (plans: Awaited<ReturnType<typeof loadCloudSubscriptionPlans>>) => void = () => {};
+    mockLoadPlans.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePlans = resolve;
+      }),
+    );
+    const view = await render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <CloudPlanPicker onPurchaseCompleted={jest.fn()} />
+      </AppPreferencesTestProvider>,
+    );
+
+    await view.unmount();
+    await act(async () => {
+      resolvePlans([{ basePlanId: "yearly", displayPrice: "€34.99", freeTrial: false }]);
+    });
+
+    expect(screen.queryByTestId("settings-sync-cloud-plan-picker")).toBeNull();
+  });
+
   it("labels each plan with the store's price and notes a trial only when the store returned one", async () => {
     mockLoadPlans.mockResolvedValue([
       { basePlanId: "monthly", displayPrice: "€3.99", freeTrial: false },

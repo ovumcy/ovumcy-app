@@ -430,6 +430,46 @@ describe("store client (native adapter)", () => {
       );
     });
 
+    it("prices an intro-priced offer at its renewing phase, or its last phase when none renews forever", async () => {
+      storeReturns([
+        offer("monthly", "offer-token-monthly-intro", [
+          phase("€0.99", "990000", 2),
+          phase("€3.99", "3990000"),
+        ]),
+        offer("yearly", "offer-token-yearly-finite", [
+          phase("€9.99", "9990000", 2),
+          phase("€34.99", "34990000", 2),
+        ]),
+      ]);
+
+      await expect(androidClient().loadSubscriptionPlans()).resolves.toEqual([
+        { basePlanId: "monthly", displayPrice: "€3.99", freeTrial: false },
+        { basePlanId: "yearly", displayPrice: "€34.99", freeTrial: false },
+      ]);
+    });
+
+    it("offers nothing for a plan whose only price is free or blank, or a store answer without offers or phases", async () => {
+      storeReturns([
+        offer("monthly", "offer-token-free-only", [FREE_MONTH]),
+        offer("yearly", "offer-token-unpriced", [phase("", "34990000")]),
+      ]);
+      await expect(androidClient().loadSubscriptionPlans()).resolves.toEqual([]);
+
+      const { pricingPhasesAndroid: _phases, ...withoutPhases } = MONTHLY;
+      storeReturns([withoutPhases]);
+      await expect(androidClient().loadSubscriptionPlans()).resolves.toEqual([]);
+
+      mockFetchProducts.mockResolvedValue([
+        { id: "ovumcy_cloud", type: "subs", platform: "android", subscriptionOffers: null },
+      ] as unknown as Awaited<ReturnType<typeof fetchProducts>>);
+      await expect(androidClient().loadSubscriptionPlans()).resolves.toEqual([]);
+
+      mockFetchProducts.mockResolvedValue(
+        null as unknown as Awaited<ReturnType<typeof fetchProducts>>,
+      );
+      await expect(androidClient().loadSubscriptionPlans()).resolves.toEqual([]);
+    });
+
     it("buys the chosen base plan with its free-trial offer when the store returns one, otherwise with the base plan", async () => {
       storeReturns([MONTHLY, MONTHLY_TRIAL, YEARLY]);
       const client = androidClient();
