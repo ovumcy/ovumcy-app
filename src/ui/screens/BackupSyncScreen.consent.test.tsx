@@ -286,6 +286,9 @@ describe("BackupSyncScreen data-sharing consent", () => {
     expect(
       screen.getByText(/stops new backups and partner updates from leaving this device/),
     ).toBeTruthy();
+    expect(
+      screen.getByTestId("data-sharing-consent-withdrawal-revokes-partners"),
+    ).toBeTruthy();
 
     await fireEvent.press(screen.getByTestId("data-sharing-consent-withdraw-button"));
 

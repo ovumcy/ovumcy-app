@@ -42,9 +42,14 @@ export type DataSharingConsentCopy = {
     };
     stops: string;
     keeps: string;
+    revokesPartners: string;
+    confirmRevoke: string;
+    confirmRevokeLabel: string;
     withdrawLabel: string;
     withdrawn: string;
     failed: string;
+    withdrawnAndRevoked: string;
+    revokeFailed: string;
   };
   legalBasis: string;
   policyLinkLabel: string;
@@ -104,10 +109,19 @@ const consentCopyEn: DataSharingConsentCopy = {
     stops:
       "Withdrawing it stops new backups and partner updates from leaving this device. A backup, sign-in, recovery or partner invite asks for your consent again first.",
     keeps:
-      "Withdrawing deletes nothing: your account, the backup already on the server and the copy your partner can already read stay until you disconnect sync, revoke the partner or delete your account.",
+      "Withdrawing does not delete your account or the backup already on the server: they stay until you disconnect sync or delete your account.",
+    revokesPartners:
+      "Partner access is revoked too, once you confirm: each partner's copy is deleted from the server; anything they already downloaded may stay on their device.",
+    confirmRevoke:
+      "Withdraw consent and revoke access for these partners? Their copy is deleted from the server.",
+    confirmRevokeLabel: "Withdraw and revoke",
     withdrawLabel: "Withdraw consent",
     withdrawn: "Consent withdrawn. Nothing more is sent until you agree again.",
     failed: "Could not withdraw the consent. Try again.",
+    withdrawnAndRevoked:
+      "Consent withdrawn and partner access revoked. Nothing more is sent until you agree again.",
+    revokeFailed:
+      "Consent withdrawn, so nothing more is sent. Access could not be revoked for every partner: a partner still listed under “Active partner access” can read the last copy until you revoke them there.",
   },
   legalBasis: "Legal basis: your explicit consent (GDPR Art. 9(2)(a)).",
   policyLinkLabel: "Read the privacy policy",
@@ -168,10 +182,19 @@ const consentCopyRu: DataSharingConsentCopy = {
     stops:
       "После отзыва новые резервные копии и обновления для партнёра перестают покидать это устройство. Резервная копия, вход, восстановление доступа или приглашение партнёра сначала снова спросят согласие.",
     keeps:
-      "Отзыв ничего не удаляет: аккаунт, резервная копия на сервере и копия, которую партнёр уже может прочитать, остаются, пока вы не отключите синхронизацию, не отзовёте доступ партнёра или не удалите аккаунт.",
+      "Отзыв не удаляет аккаунт и резервную копию на сервере: они остаются, пока вы не отключите синхронизацию или не удалите аккаунт.",
+    revokesPartners:
+      "После подтверждения доступ партнёров тоже отзывается: их копия удаляется с сервера; уже загруженное может остаться на их устройствах.",
+    confirmRevoke:
+      "Отозвать согласие и доступ этих партнёров? Их копия будет удалена с сервера.",
+    confirmRevokeLabel: "Отозвать согласие и доступ",
     withdrawLabel: "Отозвать согласие",
     withdrawn: "Согласие отозвано. Ничего не отправляется, пока вы снова не согласитесь.",
     failed: "Не удалось отозвать согласие. Попробуйте ещё раз.",
+    withdrawnAndRevoked:
+      "Согласие и доступ партнёров отозваны. Ничего не отправляется, пока вы снова не согласитесь.",
+    revokeFailed:
+      "Согласие отозвано, новые данные не отправляются. Доступ удалось отозвать не у всех партнёров: партнёр, который остался в списке «Активный доступ партнёров», может читать последнюю копию, пока вы не отзовёте его доступ там.",
   },
   legalBasis: "Правовое основание: ваше явное согласие (GDPR, ст. 9(2)(a)).",
   policyLinkLabel: "Политика конфиденциальности",
@@ -232,10 +255,19 @@ const consentCopyDe: DataSharingConsentCopy = {
     stops:
       "Nach einem Widerruf verlassen keine neuen Sicherungen und keine Aktualisierungen für Ihre Partnerperson mehr dieses Gerät. Vor einer Sicherung, Anmeldung, Wiederherstellung oder Einladung werden Sie erneut um Ihre Einwilligung gebeten.",
     keeps:
-      "Ein Widerruf löscht nichts: Ihr Konto, die Sicherung auf dem Server und die Kopie, die Ihre Partnerperson bereits lesen kann, bleiben bestehen, bis Sie die Synchronisierung trennen, die Freigabe widerrufen oder Ihr Konto löschen.",
+      "Ein Widerruf löscht weder Ihr Konto noch die Sicherung auf dem Server: Beide bleiben bestehen, bis Sie die Synchronisierung trennen oder Ihr Konto löschen.",
+    revokesPartners:
+      "Nach Ihrer Bestätigung wird auch der Partnerzugriff widerrufen: Die Kopie jeder Partnerperson wird vom Server gelöscht; bereits Heruntergeladenes kann auf ihrem Gerät bleiben.",
+    confirmRevoke:
+      "Einwilligung und Zugriff dieser Partnerpersonen widerrufen? Ihre Kopie wird vom Server gelöscht.",
+    confirmRevokeLabel: "Einwilligung und Zugriff widerrufen",
     withdrawLabel: "Einwilligung widerrufen",
     withdrawn: "Einwilligung widerrufen. Es wird nichts mehr gesendet, bis Sie erneut zustimmen.",
     failed: "Die Einwilligung konnte nicht widerrufen werden. Bitte versuchen Sie es erneut.",
+    withdrawnAndRevoked:
+      "Einwilligung und Partnerzugriff widerrufen. Es wird nichts mehr gesendet, bis Sie erneut zustimmen.",
+    revokeFailed:
+      "Einwilligung widerrufen, es wird nichts mehr gesendet. Der Zugriff konnte nicht für alle Partnerpersonen widerrufen werden: Wer unter „Aktive Partnerzugriffe“ noch aufgeführt ist, kann die letzte Kopie lesen, bis Sie den Zugriff dort widerrufen.",
   },
   legalBasis: "Rechtsgrundlage: Ihre ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO).",
   policyLinkLabel: "Datenschutzerklärung lesen",
@@ -296,10 +328,19 @@ const consentCopyFr: DataSharingConsentCopy = {
     stops:
       "Une fois le consentement retiré, les nouvelles sauvegardes et les mises à jour pour votre partenaire ne quittent plus cet appareil. Une sauvegarde, une connexion, une récupération ou une invitation vous redemandera d'abord votre consentement.",
     keeps:
-      "Le retrait ne supprime rien : votre compte, la sauvegarde déjà présente sur le serveur et la copie que votre partenaire peut déjà lire restent en place jusqu'à ce que vous déconnectiez la synchronisation, révoquiez le partage ou supprimiez votre compte.",
+      "Le retrait ne supprime ni votre compte ni la sauvegarde déjà présente sur le serveur : ils restent en place jusqu'à ce que vous déconnectiez la synchronisation ou supprimiez votre compte.",
+    revokesPartners:
+      "Après votre confirmation, l'accès des partenaires est aussi révoqué : leur copie est supprimée du serveur ; ce qu'ils ont déjà téléchargé peut rester sur leur appareil.",
+    confirmRevoke:
+      "Retirer le consentement et révoquer l'accès de ces partenaires ? Leur copie sera supprimée du serveur.",
+    confirmRevokeLabel: "Retirer et révoquer",
     withdrawLabel: "Retirer le consentement",
     withdrawn: "Consentement retiré. Rien d'autre n'est envoyé tant que vous n'acceptez pas à nouveau.",
     failed: "Impossible de retirer le consentement. Réessayez.",
+    withdrawnAndRevoked:
+      "Consentement retiré et accès des partenaires révoqué. Rien d'autre n'est envoyé tant que vous n'acceptez pas à nouveau.",
+    revokeFailed:
+      "Consentement retiré : plus rien n'est envoyé. L'accès n'a pas pu être révoqué pour tous les partenaires : un partenaire encore listé dans « Accès partenaires actifs » peut lire la dernière copie jusqu'à ce que vous y révoquiez son accès.",
   },
   legalBasis: "Base légale : votre consentement explicite (RGPD, art. 9, par. 2, a).",
   policyLinkLabel: "Lire la politique de confidentialité",
@@ -360,10 +401,19 @@ const consentCopyEs: DataSharingConsentCopy = {
     stops:
       "Al retirarlo, las nuevas copias de seguridad y las actualizaciones para tu pareja dejan de salir de este dispositivo. Antes de una copia de seguridad, un inicio de sesión, una recuperación o una invitación, se te volverá a pedir el consentimiento.",
     keeps:
-      "Retirarlo no borra nada: tu cuenta, la copia de seguridad que ya está en el servidor y la copia que tu pareja ya puede leer se mantienen hasta que desconectes la sincronización, revoques el acceso o elimines tu cuenta.",
+      "Retirarlo no borra tu cuenta ni la copia de seguridad que ya está en el servidor: se mantienen hasta que desconectes la sincronización o elimines tu cuenta.",
+    revokesPartners:
+      "Cuando lo confirmes, también se revoca el acceso de cada pareja: su copia se borra del servidor; lo que ya haya descargado puede quedar en su dispositivo.",
+    confirmRevoke:
+      "¿Retirar el consentimiento y revocar el acceso de estas parejas? Su copia se borrará del servidor.",
+    confirmRevokeLabel: "Retirar y revocar",
     withdrawLabel: "Retirar el consentimiento",
     withdrawn: "Consentimiento retirado. No se envía nada más hasta que vuelvas a aceptar.",
     failed: "No se pudo retirar el consentimiento. Inténtalo de nuevo.",
+    withdrawnAndRevoked:
+      "Consentimiento retirado y acceso de pareja revocado. No se envía nada más hasta que vuelvas a aceptar.",
+    revokeFailed:
+      "Consentimiento retirado: ya no se envía nada. No se pudo revocar el acceso de todas las parejas: quien siga en «Accesos de pareja activos» puede leer la última copia hasta que revoques ahí su acceso.",
   },
   legalBasis: "Base jurídica: tu consentimiento explícito (RGPD, art. 9.2.a).",
   policyLinkLabel: "Leer la política de privacidad",
@@ -424,10 +474,19 @@ const consentCopyIt: DataSharingConsentCopy = {
     stops:
       "Dopo la revoca, i nuovi backup e gli aggiornamenti per il partner non lasciano più questo dispositivo. Prima di un backup, un accesso, un recupero o un invito, ti verrà chiesto di nuovo il consenso.",
     keeps:
-      "La revoca non cancella nulla: l'account, il backup già sul server e la copia che il partner può già leggere restano finché non scolleghi la sincronizzazione, revochi l'accesso o elimini l'account.",
+      "La revoca non cancella l'account né il backup già sul server: restano finché non scolleghi la sincronizzazione o elimini l'account.",
+    revokesPartners:
+      "Dopo la conferma viene revocato anche l'accesso dei partner: la loro copia viene cancellata dal server; ciò che hanno già scaricato può restare sul loro dispositivo.",
+    confirmRevoke:
+      "Revocare il consenso e l'accesso di questi partner? La loro copia verrà cancellata dal server.",
+    confirmRevokeLabel: "Revoca consenso e accesso",
     withdrawLabel: "Revoca il consenso",
     withdrawn: "Consenso revocato. Non viene inviato altro finché non accetti di nuovo.",
     failed: "Impossibile revocare il consenso. Riprova.",
+    withdrawnAndRevoked:
+      "Consenso e accesso dei partner revocati. Non viene inviato altro finché non accetti di nuovo.",
+    revokeFailed:
+      "Consenso revocato: non viene inviato altro. Non è stato possibile revocare l'accesso di tutti i partner: chi è ancora elencato in «Accessi partner attivi» può leggere l'ultima copia finché non revochi lì il suo accesso.",
   },
   legalBasis: "Base giuridica: il tuo consenso esplicito (art. 9, par. 2, lett. a GDPR).",
   policyLinkLabel: "Leggi l'informativa sulla privacy",

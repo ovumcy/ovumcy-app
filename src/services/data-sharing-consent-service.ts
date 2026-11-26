@@ -86,9 +86,9 @@ export async function loadCurrentDataSharingConsentPurposes(
 }
 
 /**
- * The standalone withdrawal: drops every stored consent, current or not. The
- * send gates then refuse until the user agrees again; nothing on a server is
- * touched.
+ * Drops every stored consent, current or not. The send gates then refuse until
+ * the user agrees again. The standalone withdrawal also revokes live partner
+ * grants (data-sharing-consent-withdrawal-service); the server backup stays.
  */
 export async function withdrawAllDataSharingConsent(
   storage: LocalAppStorage,
@@ -102,8 +102,14 @@ export type DataSharingConsentWithdrawalViewData = {
   given: string[];
   stops: string;
   keeps: string;
+  /** Shown only while a partner-share consent is among the given purposes. */
+  revokesPartners: string | null;
+  confirmRevoke: string;
+  confirmRevokeLabel: string;
   withdrawLabel: string;
   withdrawn: string;
+  withdrawnAndRevoked: string;
+  revokeFailed: string;
   failed: string;
 };
 
@@ -123,8 +129,15 @@ export function buildDataSharingConsentWithdrawalViewData(
     given: purposes.map((purpose) => labels[purpose]),
     stops: copy.stops,
     keeps: copy.keeps,
+    revokesPartners: purposes.includes("partner_share")
+      ? copy.revokesPartners
+      : null,
+    confirmRevoke: copy.confirmRevoke,
+    confirmRevokeLabel: copy.confirmRevokeLabel,
     withdrawLabel: copy.withdrawLabel,
     withdrawn: copy.withdrawn,
+    withdrawnAndRevoked: copy.withdrawnAndRevoked,
+    revokeFailed: copy.revokeFailed,
     failed: copy.failed,
   };
 }

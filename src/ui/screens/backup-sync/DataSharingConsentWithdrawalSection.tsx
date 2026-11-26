@@ -62,6 +62,14 @@ export function DataSharingConsentWithdrawalSection({
             ))}
             <Text style={styles.body}>{viewData.stops}</Text>
             <Text style={styles.muted}>{viewData.keeps}</Text>
+            {viewData.revokesPartners ? (
+              <Text
+                style={styles.muted}
+                testID="data-sharing-consent-withdrawal-revokes-partners"
+              >
+                {viewData.revokesPartners}
+              </Text>
+            ) : null}
             <AppButton
               disabled={isBusy}
               label={viewData.withdrawLabel}

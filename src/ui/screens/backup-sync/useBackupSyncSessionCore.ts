@@ -491,13 +491,21 @@ export function useBackupSyncSessionCore({
     );
   }, [resetFeedbackMessages]);
 
-  async function reloadPartnerAccess(nextState: LoadedSettingsState) {
+  // A reload right after a consent withdrawal passes askPartnerShareConsent
+  // false: a grant whose revoke failed must not reopen the dialog at once.
+  async function reloadPartnerAccess(
+    nextState: LoadedSettingsState,
+    options: { askPartnerShareConsent?: boolean } = {},
+  ) {
     const partnerState = await loadPartnerState(nextState);
     setShowPartnerOwnerControls(partnerState.showOwnerControls);
     setPartnerOverview(partnerState.overview);
     setPartnerReshareRequiredGrantIDs(partnerState.reshareRequiredGrantIDs);
     setPartnerErrorMessage(partnerState.errorMessage);
-    if (partnerState.needsPartnerShareConsent) {
+    if (
+      partnerState.needsPartnerShareConsent &&
+      options.askPartnerShareConsent !== false
+    ) {
       void askPartnerShareConsent(nextState);
     }
   }
