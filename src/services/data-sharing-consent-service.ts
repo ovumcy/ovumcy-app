@@ -5,6 +5,7 @@ import {
   withoutDataSharingConsent,
   type DataSharingConsentPurpose,
   type SyncMode,
+  type SyncPreferencesRecord,
 } from "../sync/sync-contract";
 import { PRIVACY_POLICY_URL } from "./privacy-notice-service";
 
@@ -21,14 +22,23 @@ export function resolveSyncConsentPurpose(
   return mode === "self_hosted" ? "self_hosted_sync" : "managed_sync";
 }
 
+export function isDataSharingConsentCurrent(
+  record: Pick<SyncPreferencesRecord, "dataSharingConsent">,
+  purpose: DataSharingConsentPurpose,
+): boolean {
+  return (
+    record.dataSharingConsent?.[purpose]?.revision ===
+    DATA_SHARING_CONSENT_REVISION
+  );
+}
+
 export async function hasCurrentDataSharingConsent(
   storage: LocalAppStorage,
   purpose: DataSharingConsentPurpose,
 ): Promise<boolean> {
-  const record = await storage.readSyncPreferencesRecord();
-  return (
-    record.dataSharingConsent?.[purpose]?.revision ===
-    DATA_SHARING_CONSENT_REVISION
+  return isDataSharingConsentCurrent(
+    await storage.readSyncPreferencesRecord(),
+    purpose,
   );
 }
 

@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
+
+import { DATA_SHARING_CONSENT_REVISION } from "../../../services/data-sharing-consent-service";
+import {
+  createDefaultSyncPreferencesRecord,
+  type SyncPreferencesRecord,
+} from "../../../sync/sync-contract";
 
 import * as managedPartnerAccessService from "../../../services/managed-partner-access-service";
 import * as managedPremiumFeaturesService from "../../../services/managed-premium-features-service";
@@ -246,6 +252,96 @@ describe("useBackupSyncSessionCore partner-access pre-check", () => {
       }),
     ).rejects.toBe(storeFailure);
     expect(pushSpy).not.toHaveBeenCalled();
+    await unmount();
+  });
+});
+
+describe("useBackupSyncSessionCore partner-share consent for live grants", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  async function renderWithLiveGrantAndNoConsent() {
+    const loaded = createLoadedSettingsStateFixture();
+    jest.spyOn(settingsStateService, "loadSettingsScreenState").mockResolvedValue({
+      ...loaded,
+      hasSyncSession: true,
+      syncPreferences: { ...loaded.syncPreferences, mode: "managed" },
+    });
+    jest.spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures").mockResolvedValue({
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: true,
+      reminders: false,
+    });
+    jest.spyOn(managedPartnerAccessService, "loadManagedPartnerAccess").mockResolvedValue({
+      ok: true,
+      value: {
+        owned: {
+          invites: [],
+          grants: [{ id: "grant-1", ownerAccountID: "owner-1", revokedAt: null, sourceInviteID: "invite-1" } as never],
+        },
+        sharedWithMe: [],
+      },
+    });
+    jest
+      .spyOn(managedPartnerShareService, "reconcileManagedPartnerShareKeys")
+      .mockResolvedValue({ grantKeysByGrantID: {} } as never);
+    const pushSpy = jest
+      .spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections")
+      .mockResolvedValue({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
+
+    // The stored record persists, as the real storage does.
+    let preferences: SyncPreferencesRecord = createDefaultSyncPreferencesRecord();
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn(async () => preferences),
+      writeSyncPreferencesRecord: jest.fn(
+        async (record: SyncPreferencesRecord, options?: Partial<SyncPreferencesRecord>) => {
+          preferences = { ...record, ...options };
+        },
+      ),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    const partnerShareSecretStore = { readPartnerShareClearEpoch: () => 0 } as never;
+    const rendered = await renderHook(() =>
+      useBackupSyncSessionCore({ storage, syncSecretStore, partnerShareSecretStore, now: FIXED_NOW }),
+    );
+    await waitFor(() =>
+      expect(rendered.result.current.pendingDataSharingConsent).toBe("partner_share"),
+    );
+    expect(rendered.result.current.isLoading).toBe(false);
+    return { ...rendered, pushSpy, storage, readPreferences: () => preferences };
+  }
+
+  it("asks after the screen renders and, on a decline, records nothing and pushes no more", async () => {
+    const { result, pushSpy, readPreferences, unmount } = await renderWithLiveGrantAndNoConsent();
+    const pushesBeforeAnswer = pushSpy.mock.calls.length;
+
+    await act(async () => {
+      result.current.answerDataSharingConsent(false);
+    });
+
+    expect(result.current.pendingDataSharingConsent).toBeNull();
+    expect(readPreferences().dataSharingConsent?.partner_share).toBeUndefined();
+    expect(pushSpy).toHaveBeenCalledTimes(pushesBeforeAnswer);
+    await unmount();
+  });
+
+  it("on an acceptance records the consent, pushes again and does not ask twice", async () => {
+    const { result, pushSpy, readPreferences, unmount } = await renderWithLiveGrantAndNoConsent();
+    const pushesBeforeAnswer = pushSpy.mock.calls.length;
+
+    await act(async () => {
+      result.current.answerDataSharingConsent(true);
+    });
+
+    await waitFor(() => expect(pushSpy).toHaveBeenCalledTimes(pushesBeforeAnswer + 1));
+    expect(readPreferences().dataSharingConsent?.partner_share?.revision).toBe(
+      DATA_SHARING_CONSENT_REVISION,
+    );
+    expect(result.current.pendingDataSharingConsent).toBeNull();
     await unmount();
   });
 });
