@@ -32,6 +32,20 @@ export type DataSharingConsentCopy = {
     sync: string;
     partnerShare: string;
   };
+  withdrawControl: {
+    title: string;
+    givenHeading: string;
+    purposes: {
+      managedSync: string;
+      selfHostedSync: string;
+      partnerShare: string;
+    };
+    stops: string;
+    keeps: string;
+    withdrawLabel: string;
+    withdrawn: string;
+    failed: string;
+  };
   legalBasis: string;
   policyLinkLabel: string;
   policyUnavailable: string;
@@ -75,9 +89,25 @@ const consentCopyEn: DataSharingConsentCopy = {
   encryption:
     "It is end-to-end encrypted on this device before it is sent. Your recovery phrase never leaves the device, so the server cannot decrypt it.",
   withdrawal: {
-    sync: "You can withdraw this consent at any time by disconnecting sync or deleting your account.",
+    sync: "You can withdraw this consent at any time on this screen, or by disconnecting sync or deleting your account.",
     partnerShare:
-      "You can withdraw this consent at any time by revoking the partner or deleting your account. Revoking deletes their copy from the server; anything they already downloaded may stay on their device.",
+      "You can withdraw this consent at any time on this screen, or by revoking the partner or deleting your account. Revoking deletes their copy from the server; anything they already downloaded may stay on their device.",
+  },
+  withdrawControl: {
+    title: "Data-sharing consent",
+    givenHeading: "You agreed to:",
+    purposes: {
+      managedSync: "Encrypted sync with Ovumcy Cloud",
+      selfHostedSync: "Encrypted sync with your server",
+      partnerShare: "Sharing your cycle with a partner",
+    },
+    stops:
+      "Withdrawing it stops new backups and partner updates from leaving this device. Before anything sends your data again, you are asked for consent again.",
+    keeps:
+      "Withdrawing deletes nothing: your account, the backup already on the server and the copy your partner can already read stay until you disconnect sync, revoke the partner or delete your account.",
+    withdrawLabel: "Withdraw consent",
+    withdrawn: "Consent withdrawn. Nothing more is sent until you agree again.",
+    failed: "Could not withdraw the consent. Try again.",
   },
   legalBasis: "Legal basis: your explicit consent (GDPR Art. 9(2)(a)).",
   policyLinkLabel: "Read the privacy policy",
@@ -123,9 +153,25 @@ const consentCopyRu: DataSharingConsentCopy = {
   encryption:
     "Данные шифруются сквозным шифрованием на этом устройстве до отправки. Фраза восстановления никогда не покидает устройство, поэтому сервер не может их расшифровать.",
   withdrawal: {
-    sync: "Вы можете отозвать согласие в любой момент: отключите синхронизацию или удалите аккаунт.",
+    sync: "Вы можете отозвать согласие в любой момент на этом экране, а также отключив синхронизацию или удалив аккаунт.",
     partnerShare:
-      "Вы можете отозвать согласие в любой момент: отзовите доступ партнёра или удалите аккаунт. Отзыв удаляет его копию с сервера; уже загруженное может остаться на его устройстве.",
+      "Вы можете отозвать согласие в любой момент на этом экране, а также отозвав доступ партнёра или удалив аккаунт. Отзыв доступа удаляет его копию с сервера; уже загруженное может остаться на его устройстве.",
+  },
+  withdrawControl: {
+    title: "Согласие на передачу данных",
+    givenHeading: "Вы дали согласие на:",
+    purposes: {
+      managedSync: "зашифрованную синхронизацию с Ovumcy Cloud",
+      selfHostedSync: "зашифрованную синхронизацию с вашим сервером",
+      partnerShare: "доступ партнёра к вашему циклу",
+    },
+    stops:
+      "После отзыва новые резервные копии и обновления для партнёра перестают покидать это устройство. Прежде чем ваши данные снова будут отправлены, согласие спросят заново.",
+    keeps:
+      "Отзыв ничего не удаляет: аккаунт, резервная копия на сервере и копия, которую партнёр уже может прочитать, остаются, пока вы не отключите синхронизацию, не отзовёте доступ партнёра или не удалите аккаунт.",
+    withdrawLabel: "Отозвать согласие",
+    withdrawn: "Согласие отозвано. Ничего не отправляется, пока вы снова не согласитесь.",
+    failed: "Не удалось отозвать согласие. Попробуйте ещё раз.",
   },
   legalBasis: "Правовое основание: ваше явное согласие (GDPR, ст. 9(2)(a)).",
   policyLinkLabel: "Политика конфиденциальности",
@@ -171,9 +217,25 @@ const consentCopyDe: DataSharingConsentCopy = {
   encryption:
     "Alles wird auf diesem Gerät Ende-zu-Ende verschlüsselt, bevor es gesendet wird. Ihre Wiederherstellungsphrase verlässt das Gerät nie, daher kann der Server nichts entschlüsseln.",
   withdrawal: {
-    sync: "Sie können diese Einwilligung jederzeit widerrufen, indem Sie die Synchronisierung trennen oder Ihr Konto löschen.",
+    sync: "Sie können diese Einwilligung jederzeit auf diesem Bildschirm widerrufen oder indem Sie die Synchronisierung trennen oder Ihr Konto löschen.",
     partnerShare:
-      "Sie können diese Einwilligung jederzeit widerrufen, indem Sie die Freigabe widerrufen oder Ihr Konto löschen. Der Widerruf löscht die Kopie vom Server; bereits Heruntergeladenes kann auf dem Gerät der Person bleiben.",
+      "Sie können diese Einwilligung jederzeit auf diesem Bildschirm widerrufen oder indem Sie die Freigabe widerrufen oder Ihr Konto löschen. Der Widerruf der Freigabe löscht die Kopie vom Server; bereits Heruntergeladenes kann auf dem Gerät der Person bleiben.",
+  },
+  withdrawControl: {
+    title: "Einwilligung zur Datenweitergabe",
+    givenHeading: "Sie haben eingewilligt in:",
+    purposes: {
+      managedSync: "Verschlüsselte Synchronisierung mit Ovumcy Cloud",
+      selfHostedSync: "Verschlüsselte Synchronisierung mit Ihrem Server",
+      partnerShare: "Teilen Ihres Zyklus mit einer Partnerperson",
+    },
+    stops:
+      "Nach einem Widerruf verlassen keine neuen Sicherungen und keine Aktualisierungen für Ihre Partnerperson mehr dieses Gerät. Bevor Ihre Daten wieder gesendet werden, werden Sie erneut um Ihre Einwilligung gebeten.",
+    keeps:
+      "Ein Widerruf löscht nichts: Ihr Konto, die Sicherung auf dem Server und die Kopie, die Ihre Partnerperson bereits lesen kann, bleiben bestehen, bis Sie die Synchronisierung trennen, die Freigabe widerrufen oder Ihr Konto löschen.",
+    withdrawLabel: "Einwilligung widerrufen",
+    withdrawn: "Einwilligung widerrufen. Es wird nichts mehr gesendet, bis Sie erneut zustimmen.",
+    failed: "Die Einwilligung konnte nicht widerrufen werden. Bitte versuchen Sie es erneut.",
   },
   legalBasis: "Rechtsgrundlage: Ihre ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO).",
   policyLinkLabel: "Datenschutzerklärung lesen",
@@ -219,9 +281,25 @@ const consentCopyFr: DataSharingConsentCopy = {
   encryption:
     "Tout est chiffré de bout en bout sur cet appareil avant l'envoi. Votre phrase de récupération ne quitte jamais l'appareil : le serveur ne peut donc rien déchiffrer.",
   withdrawal: {
-    sync: "Vous pouvez retirer ce consentement à tout moment en déconnectant la synchronisation ou en supprimant votre compte.",
+    sync: "Vous pouvez retirer ce consentement à tout moment sur cet écran, ou en déconnectant la synchronisation ou en supprimant votre compte.",
     partnerShare:
-      "Vous pouvez retirer ce consentement à tout moment en révoquant le partage ou en supprimant votre compte. La révocation supprime sa copie du serveur ; ce qui a déjà été téléchargé peut rester sur son appareil.",
+      "Vous pouvez retirer ce consentement à tout moment sur cet écran, ou en révoquant le partage ou en supprimant votre compte. La révocation supprime sa copie du serveur ; ce qui a déjà été téléchargé peut rester sur son appareil.",
+  },
+  withdrawControl: {
+    title: "Consentement au partage des données",
+    givenHeading: "Vous avez consenti à :",
+    purposes: {
+      managedSync: "La synchronisation chiffrée avec Ovumcy Cloud",
+      selfHostedSync: "La synchronisation chiffrée avec votre serveur",
+      partnerShare: "Le partage de votre cycle avec un·e partenaire",
+    },
+    stops:
+      "Une fois le consentement retiré, les nouvelles sauvegardes et les mises à jour pour votre partenaire ne quittent plus cet appareil. Avant tout nouvel envoi de vos données, votre consentement vous est redemandé.",
+    keeps:
+      "Le retrait ne supprime rien : votre compte, la sauvegarde déjà présente sur le serveur et la copie que votre partenaire peut déjà lire restent en place jusqu'à ce que vous déconnectiez la synchronisation, révoquiez le partage ou supprimiez votre compte.",
+    withdrawLabel: "Retirer le consentement",
+    withdrawn: "Consentement retiré. Rien d'autre n'est envoyé tant que vous n'acceptez pas à nouveau.",
+    failed: "Impossible de retirer le consentement. Réessayez.",
   },
   legalBasis: "Base légale : votre consentement explicite (RGPD, art. 9, par. 2, a).",
   policyLinkLabel: "Lire la politique de confidentialité",
@@ -267,9 +345,25 @@ const consentCopyEs: DataSharingConsentCopy = {
   encryption:
     "Todo se cifra de extremo a extremo en este dispositivo antes de enviarse. Tu frase de recuperación nunca sale del dispositivo, así que el servidor no puede descifrarlo.",
   withdrawal: {
-    sync: "Puedes retirar este consentimiento en cualquier momento desconectando la sincronización o eliminando tu cuenta.",
+    sync: "Puedes retirar este consentimiento en cualquier momento en esta pantalla, o desconectando la sincronización o eliminando tu cuenta.",
     partnerShare:
-      "Puedes retirar este consentimiento en cualquier momento revocando el acceso o eliminando tu cuenta. Al revocarlo se borra su copia del servidor; lo que ya haya descargado puede quedar en su dispositivo.",
+      "Puedes retirar este consentimiento en cualquier momento en esta pantalla, o revocando el acceso o eliminando tu cuenta. Al revocarlo se borra su copia del servidor; lo que ya haya descargado puede quedar en su dispositivo.",
+  },
+  withdrawControl: {
+    title: "Consentimiento para compartir datos",
+    givenHeading: "Diste tu consentimiento para:",
+    purposes: {
+      managedSync: "La sincronización cifrada con Ovumcy Cloud",
+      selfHostedSync: "La sincronización cifrada con tu servidor",
+      partnerShare: "Compartir tu ciclo con tu pareja",
+    },
+    stops:
+      "Al retirarlo, las nuevas copias de seguridad y las actualizaciones para tu pareja dejan de salir de este dispositivo. Antes de volver a enviar tus datos, se te pedirá de nuevo el consentimiento.",
+    keeps:
+      "Retirarlo no borra nada: tu cuenta, la copia de seguridad que ya está en el servidor y la copia que tu pareja ya puede leer se mantienen hasta que desconectes la sincronización, revoques el acceso o elimines tu cuenta.",
+    withdrawLabel: "Retirar el consentimiento",
+    withdrawn: "Consentimiento retirado. No se envía nada más hasta que vuelvas a aceptar.",
+    failed: "No se pudo retirar el consentimiento. Inténtalo de nuevo.",
   },
   legalBasis: "Base jurídica: tu consentimiento explícito (RGPD, art. 9.2.a).",
   policyLinkLabel: "Leer la política de privacidad",
@@ -315,9 +409,25 @@ const consentCopyIt: DataSharingConsentCopy = {
   encryption:
     "Tutto viene cifrato end-to-end su questo dispositivo prima dell'invio. La frase di recupero non lascia mai il dispositivo, quindi il server non può decifrare nulla.",
   withdrawal: {
-    sync: "Puoi revocare questo consenso in qualsiasi momento scollegando la sincronizzazione o eliminando l'account.",
+    sync: "Puoi revocare questo consenso in qualsiasi momento da questa schermata, oppure scollegando la sincronizzazione o eliminando l'account.",
     partnerShare:
-      "Puoi revocare questo consenso in qualsiasi momento revocando l'accesso o eliminando l'account. La revoca cancella la sua copia dal server; ciò che ha già scaricato può restare sul suo dispositivo.",
+      "Puoi revocare questo consenso in qualsiasi momento da questa schermata, oppure revocando l'accesso o eliminando l'account. La revoca dell'accesso cancella la sua copia dal server; ciò che ha già scaricato può restare sul suo dispositivo.",
+  },
+  withdrawControl: {
+    title: "Consenso alla condivisione dei dati",
+    givenHeading: "Hai dato il consenso a:",
+    purposes: {
+      managedSync: "Sincronizzazione cifrata con Ovumcy Cloud",
+      selfHostedSync: "Sincronizzazione cifrata con il tuo server",
+      partnerShare: "Condivisione del tuo ciclo con il partner",
+    },
+    stops:
+      "Dopo la revoca, i nuovi backup e gli aggiornamenti per il partner non lasciano più questo dispositivo. Prima di inviare di nuovo i tuoi dati, ti verrà chiesto di nuovo il consenso.",
+    keeps:
+      "La revoca non cancella nulla: l'account, il backup già sul server e la copia che il partner può già leggere restano finché non scolleghi la sincronizzazione, revochi l'accesso o elimini l'account.",
+    withdrawLabel: "Revoca il consenso",
+    withdrawn: "Consenso revocato. Non viene inviato altro finché non accetti di nuovo.",
+    failed: "Impossibile revocare il consenso. Riprova.",
   },
   legalBasis: "Base giuridica: il tuo consenso esplicito (art. 9, par. 2, lett. a GDPR).",
   policyLinkLabel: "Leggi l'informativa sulla privacy",

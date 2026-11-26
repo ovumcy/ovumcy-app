@@ -32,6 +32,7 @@ import { useBackupSyncPartnerAccess } from "./useBackupSyncPartnerAccess";
 import { useBackupSyncAccountDeletion } from "./useBackupSyncAccountDeletion";
 import { useBackupSyncDeviceManagement } from "./useBackupSyncDeviceManagement";
 import { useBackupSyncGuestUpgrade } from "./useBackupSyncGuestUpgrade";
+import { useBackupSyncConsentWithdrawal } from "./useBackupSyncConsentWithdrawal";
 
 type BackupSyncScreenControllerOptions = BackupSyncSessionCoreOptions;
 
@@ -63,6 +64,7 @@ export function useBackupSyncScreenController(
   const deletion = useBackupSyncAccountDeletion(core);
   const deviceManagement = useBackupSyncDeviceManagement(core);
   const guestUpgrade = useBackupSyncGuestUpgrade(core);
+  const consentWithdrawal = useBackupSyncConsentWithdrawal(core);
 
   const {
     accountStatusMessage,
@@ -230,6 +232,8 @@ export function useBackupSyncScreenController(
         ? buildDataSharingConsentViewData(core.pendingDataSharingConsent, language)
         : null,
       onAnswerDataSharingConsent: core.answerDataSharingConsent,
+      dataSharingConsentWithdrawal: consentWithdrawal.dataSharingConsentWithdrawal,
+      onWithdrawDataSharingConsent: consentWithdrawal.handleWithdrawDataSharingConsent,
       deviceErrorMessage: deviceManagement.deviceErrorMessage,
       deviceListItems: deviceManagement.deviceListItems,
       deviceStatusMessage: deviceManagement.deviceStatusMessage,
