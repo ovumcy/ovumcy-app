@@ -610,7 +610,7 @@ export function SettingsSyncSetupSection({
                 testID={`settings-sync-offer-${offer.id}`}
               />
             ))}
-            {hasSyncSession && !presentation.hasManagedPlan ? (
+            {presentation.planConfirmedInactive ? (
               <CloudPlanPicker
                 disabled={presentation.accountActionsDisabled}
                 onPurchaseCompleted={onRetryPlanCheck}
