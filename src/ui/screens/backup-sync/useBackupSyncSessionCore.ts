@@ -335,6 +335,7 @@ export function useBackupSyncSessionCore({
       // The push itself refuses without consent; this only decides whether
       // the screen asks for it once it has rendered.
       const needsPartnerShareConsent =
+        premiumFeatures.partnerAccess &&
         partnerResult.value.owned.grants.some((grant) => grant.revokedAt === null) &&
         !(await hasCurrentDataSharingConsent(storage, "partner_share"));
       // The push re-lists grants and may meet a re-share this listing missed.
