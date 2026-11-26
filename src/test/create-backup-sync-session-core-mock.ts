@@ -112,6 +112,7 @@ export function createBackupSyncSessionCoreMock(
     pendingDataSharingConsent: null,
     ensureDataSharingConsent: jest.fn().mockResolvedValue(true),
     answerDataSharingConsent: jest.fn(),
+    dataSharingConsentChangeCount: 0,
     // Root state
     effectiveNow,
     isLoading: false,

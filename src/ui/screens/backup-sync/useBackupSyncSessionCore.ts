@@ -164,6 +164,9 @@ export function useBackupSyncSessionCore({
   const [dismissedOfferIDs, setDismissedOfferIDs] = useState<string[]>([]);
   const [pendingDataSharingConsent, setPendingDataSharingConsent] =
     useState<DataSharingConsentPurpose | null>(null);
+  // Bumped after a consent is recorded, so views of the stored consent reload.
+  const [dataSharingConsentChangeCount, setDataSharingConsentChangeCount] =
+    useState(0);
   const dataSharingConsentResolverRef = useRef<
     ((accepted: boolean) => void) | null
   >(null);
@@ -538,6 +541,7 @@ export function useBackupSyncSessionCore({
         return false;
       }
       await recordDataSharingConsent(storage, purpose, now ?? new Date());
+      setDataSharingConsentChangeCount((count) => count + 1);
       return true;
     } catch {
       return false;
@@ -604,6 +608,7 @@ export function useBackupSyncSessionCore({
     pendingDataSharingConsent,
     ensureDataSharingConsent,
     answerDataSharingConsent,
+    dataSharingConsentChangeCount,
     // Root state
     effectiveNow,
     isLoading,

@@ -8,9 +8,12 @@ import { SUPPORTED_INTERFACE_LANGUAGES } from "../models/profile";
 import {
   DATA_SHARING_CONSENT_REVISION,
   buildDataSharingConsentViewData,
+  buildDataSharingConsentWithdrawalViewData,
   hasCurrentDataSharingConsent,
+  loadCurrentDataSharingConsentPurposes,
   recordDataSharingConsent,
   resolveSyncConsentPurpose,
+  withdrawAllDataSharingConsent,
   withdrawDataSharingConsent,
 } from "./data-sharing-consent-service";
 import { PRIVACY_POLICY_URL } from "./privacy-notice-service";
@@ -77,6 +80,33 @@ describe("data-sharing consent record", () => {
     await expect(hasCurrentDataSharingConsent(storage, "managed_sync")).resolves.toBe(false);
     await expect(hasCurrentDataSharingConsent(storage, "partner_share")).resolves.toBe(false);
     await expect(hasCurrentDataSharingConsent(storage, "self_hosted_sync")).resolves.toBe(true);
+  });
+
+  it("lists only the purposes whose consent counts at the current revision", async () => {
+    const storage = createVolatileWebAppStorage();
+    const record = await storage.readSyncPreferencesRecord();
+    await storage.writeSyncPreferencesRecord(record, {
+      dataSharingConsent: {
+        managed_sync: { revision: "2020-01-01", givenAt: "2020-01-01T08:00:00.000Z" },
+      },
+    });
+    await recordDataSharingConsent(storage, "partner_share", NOW);
+
+    await expect(loadCurrentDataSharingConsentPurposes(storage)).resolves.toEqual([
+      "partner_share",
+    ]);
+  });
+
+  it("withdraws every stored consent, current or older, in one call", async () => {
+    const storage = createVolatileWebAppStorage();
+    await recordDataSharingConsent(storage, "managed_sync", NOW);
+    await recordDataSharingConsent(storage, "self_hosted_sync", NOW);
+    await recordDataSharingConsent(storage, "partner_share", NOW);
+
+    await withdrawAllDataSharingConsent(storage);
+
+    await expect(loadCurrentDataSharingConsentPurposes(storage)).resolves.toEqual([]);
+    expect((await storage.readSyncPreferencesRecord()).dataSharingConsent).toBeUndefined();
   });
 
   it("is cleared by the local data reset", async () => {
@@ -155,11 +185,63 @@ describe("buildDataSharingConsentViewData", () => {
     expect(partner.withdrawal).toMatch(/revoking the partner or deleting your account/);
   });
 
+  it("points the dialog's withdrawal sentence at this screen in every language", () => {
+    const markers: Record<(typeof SUPPORTED_INTERFACE_LANGUAGES)[number], RegExp> = {
+      en: /on this screen/,
+      ru: /на этом экране/,
+      de: /auf diesem Bildschirm/,
+      fr: /sur cet écran/,
+      es: /en esta pantalla/,
+      it: /da questa schermata/,
+    };
+    for (const language of SUPPORTED_INTERFACE_LANGUAGES) {
+      for (const purpose of DATA_SHARING_CONSENT_PURPOSES) {
+        expect(buildDataSharingConsentViewData(purpose, language).withdrawal).toMatch(
+          markers[language],
+        );
+      }
+    }
+  });
+
   it("names a different recipient for managed and self-hosted sync", () => {
     const managed = buildDataSharingConsentViewData("managed_sync", "en");
     const selfHosted = buildDataSharingConsentViewData("self_hosted_sync", "en");
     expect(managed.title).not.toBe(selfHosted.title);
     expect(managed.recipient).toMatch(/Ovumcy Cloud/);
     expect(selfHosted.recipient).toMatch(/self-hosted server/);
+  });
+});
+
+describe("buildDataSharingConsentWithdrawalViewData", () => {
+  it.each(SUPPORTED_INTERFACE_LANGUAGES)(
+    "fills every field and names each stored purpose in %s",
+    (language) => {
+      const view = buildDataSharingConsentWithdrawalViewData(
+        DATA_SHARING_CONSENT_PURPOSES,
+        language,
+      );
+      const texts = [
+        view.title,
+        view.givenHeading,
+        ...view.given,
+        view.stops,
+        view.keeps,
+        view.withdrawLabel,
+        view.withdrawn,
+        view.failed,
+      ];
+      for (const text of texts) {
+        expect(text.trim().length).toBeGreaterThan(0);
+      }
+      expect(new Set(view.given).size).toBe(DATA_SHARING_CONSENT_PURPOSES.length);
+    },
+  );
+
+  it("says in English what stops and what stays", () => {
+    const view = buildDataSharingConsentWithdrawalViewData(["partner_share"], "en");
+    expect(view.given).toEqual(["Sharing your cycle with a partner"]);
+    expect(view.stops).toMatch(/stops new backups and partner updates/);
+    expect(view.keeps).toMatch(/deletes nothing/);
+    expect(view.keeps).toMatch(/revoke the partner/);
   });
 });

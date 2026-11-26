@@ -2,6 +2,7 @@ import { selectDataSharingConsentCopy } from "../i18n/data-sharing-consent-copy"
 import type { InterfaceLanguage } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
+  DATA_SHARING_CONSENT_PURPOSES,
   withoutDataSharingConsent,
   type DataSharingConsentPurpose,
   type SyncMode,
@@ -72,6 +73,60 @@ export async function withdrawDataSharingConsent(
   await storage.writeSyncPreferencesRecord(record, {
     dataSharingConsent: withoutDataSharingConsent(current, purposes),
   });
+}
+
+/** The purposes whose stored consent counts at the current revision. */
+export async function loadCurrentDataSharingConsentPurposes(
+  storage: LocalAppStorage,
+): Promise<DataSharingConsentPurpose[]> {
+  const record = await storage.readSyncPreferencesRecord();
+  return DATA_SHARING_CONSENT_PURPOSES.filter((purpose) =>
+    isDataSharingConsentCurrent(record, purpose),
+  );
+}
+
+/**
+ * The standalone withdrawal: drops every stored consent, current or not. The
+ * send gates then refuse until the user agrees again; nothing on a server is
+ * touched.
+ */
+export async function withdrawAllDataSharingConsent(
+  storage: LocalAppStorage,
+): Promise<void> {
+  await withdrawDataSharingConsent(storage, DATA_SHARING_CONSENT_PURPOSES);
+}
+
+export type DataSharingConsentWithdrawalViewData = {
+  title: string;
+  givenHeading: string;
+  given: string[];
+  stops: string;
+  keeps: string;
+  withdrawLabel: string;
+  withdrawn: string;
+  failed: string;
+};
+
+export function buildDataSharingConsentWithdrawalViewData(
+  purposes: readonly DataSharingConsentPurpose[],
+  language: InterfaceLanguage,
+): DataSharingConsentWithdrawalViewData {
+  const copy = selectDataSharingConsentCopy(language).withdrawControl;
+  const labels: Record<DataSharingConsentPurpose, string> = {
+    managed_sync: copy.purposes.managedSync,
+    self_hosted_sync: copy.purposes.selfHostedSync,
+    partner_share: copy.purposes.partnerShare,
+  };
+  return {
+    title: copy.title,
+    givenHeading: copy.givenHeading,
+    given: purposes.map((purpose) => labels[purpose]),
+    stops: copy.stops,
+    keeps: copy.keeps,
+    withdrawLabel: copy.withdrawLabel,
+    withdrawn: copy.withdrawn,
+    failed: copy.failed,
+  };
 }
 
 export type DataSharingConsentViewData = {

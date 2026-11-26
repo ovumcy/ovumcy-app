@@ -8,6 +8,7 @@ import { createSettingsStorageMock } from "../../test/create-settings-storage-mo
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
 import {
   createDefaultSyncPreferencesRecord,
+  withDataSharingConsent,
   type SyncPreferencesRecord,
 } from "../../sync/sync-contract";
 import { BackupSyncScreen } from "./BackupSyncScreen";
@@ -55,8 +56,24 @@ function managedPreferences(
 }
 
 async function renderReadyToLogIn(preferences: SyncPreferencesRecord) {
+  // Keeps the stored consent the way the real storage does: only a write that
+  // passes `options.dataSharingConsent` changes it.
+  let stored = preferences;
   const storage = createSettingsStorageMock({
-    readSyncPreferencesRecord: jest.fn().mockResolvedValue(preferences),
+    readSyncPreferencesRecord: jest.fn(async () => stored),
+    writeSyncPreferencesRecord: jest.fn(
+      async (
+        record: SyncPreferencesRecord,
+        options?: { dataSharingConsent?: SyncPreferencesRecord["dataSharingConsent"] },
+      ) => {
+        stored = withDataSharingConsent(
+          record,
+          options?.dataSharingConsent !== undefined
+            ? options.dataSharingConsent
+            : stored.dataSharingConsent,
+        );
+      },
+    ),
   });
   const syncSecretStore = createSyncSecretStoreMock();
   await syncSecretStore.writeSyncSecrets({
@@ -206,6 +223,56 @@ describe("BackupSyncScreen data-sharing consent", () => {
         },
       }),
     );
+
+    await fireEvent.press(screen.getByTestId("settings-sync-login-button"));
+
+    expect(await screen.findByTestId("data-sharing-consent-dialog")).toBeTruthy();
+    expect(connectSpy).not.toHaveBeenCalled();
+  });
+
+  it("offers no withdrawal control while no consent is stored", async () => {
+    await renderReadyToLogIn(managedPreferences());
+
+    expect(screen.queryByTestId("data-sharing-consent-withdrawal-section")).toBeNull();
+    expect(screen.queryByTestId("data-sharing-consent-withdraw-button")).toBeNull();
+  });
+
+  it("withdraws every stored consent in one tap, says what stops, and the next connect asks again", async () => {
+    const storage = await renderReadyToLogIn(
+      managedPreferences({
+        dataSharingConsent: {
+          managed_sync: {
+            revision: DATA_SHARING_CONSENT_REVISION,
+            givenAt: "2026-05-01T08:00:00.000Z",
+          },
+          partner_share: {
+            revision: DATA_SHARING_CONSENT_REVISION,
+            givenAt: "2026-05-01T08:00:00.000Z",
+          },
+        },
+      }),
+    );
+
+    expect(
+      await screen.findByTestId("data-sharing-consent-withdrawal-section"),
+    ).toBeTruthy();
+    expect(screen.getByText("• Encrypted sync with Ovumcy Cloud")).toBeTruthy();
+    expect(screen.getByText("• Sharing your cycle with a partner")).toBeTruthy();
+    expect(
+      screen.getByText(/stops new backups and partner updates from leaving this device/),
+    ).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId("data-sharing-consent-withdraw-button"));
+
+    expect(
+      await screen.findByText(
+        "Consent withdrawn. Nothing more is sent until you agree again.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("data-sharing-consent-withdraw-button")).toBeNull();
+    expect(screen.queryByTestId("data-sharing-consent-dialog")).toBeNull();
+    expect(consentWrites(storage).at(-1)?.[1]).toEqual({ dataSharingConsent: {} });
+    expect(fetchMock).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByTestId("settings-sync-login-button"));
 

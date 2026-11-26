@@ -17,8 +17,12 @@ import type {
   BackupSyncSetupPresentation,
 } from "../../services/backup-sync-view-service";
 import type { ResolvedBillingOffer } from "../../services/offers-service";
-import type { DataSharingConsentViewData } from "../../services/data-sharing-consent-service";
+import type {
+  DataSharingConsentViewData,
+  DataSharingConsentWithdrawalViewData,
+} from "../../services/data-sharing-consent-service";
 import { DataSharingConsentDialog } from "./backup-sync/DataSharingConsentDialog";
+import { DataSharingConsentWithdrawalSection } from "./backup-sync/DataSharingConsentWithdrawalSection";
 import { AppButton } from "../components/AppButton";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { InlineBackButton } from "../components/InlineBackButton";
@@ -45,6 +49,14 @@ export type BackupSyncFlowScreenProps = {
   confirmActionLabel: string;
   dataSharingConsent: DataSharingConsentViewData | null;
   onAnswerDataSharingConsent: (accepted: boolean) => void;
+  dataSharingConsentWithdrawal: {
+    viewData: DataSharingConsentWithdrawalViewData;
+    hasConsent: boolean;
+    statusMessage: string;
+    errorMessage: string;
+    isBusy: boolean;
+  };
+  onWithdrawDataSharingConsent: () => void | Promise<void>;
   deviceErrorMessage: string;
   deviceListItems: BackupSyncDeviceListItemView[] | null;
   deviceStatusMessage: string;
@@ -169,6 +181,8 @@ export function BackupSyncFlowScreen({
   confirmActionLabel,
   dataSharingConsent,
   onAnswerDataSharingConsent,
+  dataSharingConsentWithdrawal,
+  onWithdrawDataSharingConsent,
   deviceErrorMessage,
   deviceListItems,
   deviceStatusMessage,
@@ -416,6 +430,14 @@ export function BackupSyncFlowScreen({
         onSubmitForm={onGuestUpgradeSubmitForm}
         onTapKeepAccess={onGuestUpgradeTapKeepAccess}
         passwordValue={guestUpgradePasswordValue}
+      />
+      <DataSharingConsentWithdrawalSection
+        errorMessage={dataSharingConsentWithdrawal.errorMessage}
+        hasConsent={dataSharingConsentWithdrawal.hasConsent}
+        isBusy={dataSharingConsentWithdrawal.isBusy}
+        onWithdraw={onWithdrawDataSharingConsent}
+        statusMessage={dataSharingConsentWithdrawal.statusMessage}
+        viewData={dataSharingConsentWithdrawal.viewData}
       />
       <AppButton
         label={`${viewData.advancedSectionLabel}  ${advancedOpen ? "▾" : "▸"}`}
