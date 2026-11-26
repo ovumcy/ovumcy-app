@@ -217,9 +217,9 @@ const consentCopyDe: DataSharingConsentCopy = {
   encryption:
     "Alles wird auf diesem Gerät Ende-zu-Ende verschlüsselt, bevor es gesendet wird. Ihre Wiederherstellungsphrase verlässt das Gerät nie, daher kann der Server nichts entschlüsseln.",
   withdrawal: {
-    sync: "Sie können diese Einwilligung jederzeit auf diesem Bildschirm widerrufen oder indem Sie die Synchronisierung trennen oder Ihr Konto löschen.",
+    sync: "Sie können diese Einwilligung jederzeit auf diesem Bildschirm widerrufen, außerdem durch Trennen der Synchronisierung oder Löschen Ihres Kontos.",
     partnerShare:
-      "Sie können diese Einwilligung jederzeit auf diesem Bildschirm widerrufen oder indem Sie die Freigabe widerrufen oder Ihr Konto löschen. Der Widerruf der Freigabe löscht die Kopie vom Server; bereits Heruntergeladenes kann auf dem Gerät der Person bleiben.",
+      "Sie können diese Einwilligung jederzeit auf diesem Bildschirm widerrufen, außerdem durch Widerruf der Freigabe oder Löschen Ihres Kontos. Der Widerruf der Freigabe löscht die Kopie vom Server; bereits Heruntergeladenes kann auf dem Gerät der Person bleiben.",
   },
   withdrawControl: {
     title: "Einwilligung zur Datenweitergabe",
@@ -358,7 +358,7 @@ const consentCopyEs: DataSharingConsentCopy = {
       partnerShare: "Compartir tu ciclo con tu pareja",
     },
     stops:
-      "Al retirarlo, las nuevas copias de seguridad y las actualizaciones para tu pareja dejan de salir de este dispositivo. Una copia de seguridad, un inicio de sesión, una recuperación o una invitación te pedirán antes de nuevo el consentimiento.",
+      "Al retirarlo, las nuevas copias de seguridad y las actualizaciones para tu pareja dejan de salir de este dispositivo. Antes de una copia de seguridad, un inicio de sesión, una recuperación o una invitación, se te volverá a pedir el consentimiento.",
     keeps:
       "Retirarlo no borra nada: tu cuenta, la copia de seguridad que ya está en el servidor y la copia que tu pareja ya puede leer se mantienen hasta que desconectes la sincronización, revoques el acceso o elimines tu cuenta.",
     withdrawLabel: "Retirar el consentimiento",
@@ -422,7 +422,7 @@ const consentCopyIt: DataSharingConsentCopy = {
       partnerShare: "Condivisione del tuo ciclo con il partner",
     },
     stops:
-      "Dopo la revoca, i nuovi backup e gli aggiornamenti per il partner non lasciano più questo dispositivo. Un backup, un accesso, un recupero o un invito ti chiederanno prima di nuovo il consenso.",
+      "Dopo la revoca, i nuovi backup e gli aggiornamenti per il partner non lasciano più questo dispositivo. Prima di un backup, un accesso, un recupero o un invito, ti verrà chiesto di nuovo il consenso.",
     keeps:
       "La revoca non cancella nulla: l'account, il backup già sul server e la copia che il partner può già leggere restano finché non scolleghi la sincronizzazione, revochi l'accesso o elimini l'account.",
     withdrawLabel: "Revoca il consenso",

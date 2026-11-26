@@ -230,6 +230,31 @@ describe("BackupSyncScreen data-sharing consent", () => {
     expect(connectSpy).not.toHaveBeenCalled();
   });
 
+  it("says the withdrawal failed and keeps the control when the write fails", async () => {
+    const storage = await renderReadyToLogIn(
+      managedPreferences({
+        dataSharingConsent: {
+          managed_sync: {
+            revision: DATA_SHARING_CONSENT_REVISION,
+            givenAt: "2026-05-01T08:00:00.000Z",
+          },
+        },
+      }),
+    );
+    await screen.findByTestId("data-sharing-consent-withdraw-button");
+    jest
+      .mocked(storage.writeSyncPreferencesRecord)
+      .mockRejectedValueOnce(new Error("disk full"));
+
+    await fireEvent.press(screen.getByTestId("data-sharing-consent-withdraw-button"));
+
+    expect(
+      await screen.findByText("Could not withdraw the consent. Try again."),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("data-sharing-consent-withdrawal-status")).toBeNull();
+    expect(screen.getByTestId("data-sharing-consent-withdraw-button")).toBeTruthy();
+  });
+
   it("offers no withdrawal control while no consent is stored", async () => {
     await renderReadyToLogIn(managedPreferences());
 
