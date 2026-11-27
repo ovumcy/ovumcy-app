@@ -7,10 +7,7 @@ import {
   buildCycleGuidanceState,
   parseLocalDate,
 } from "../../services/onboarding-policy";
-import type {
-  AgeGroupOption,
-  UsageGoal,
-} from "../../models/onboarding";
+import type { UsageGoal } from "../../models/onboarding";
 import type { PredictionMode } from "../../models/profile";
 import { getOnboardingCopy } from "../../i18n/app-copy";
 import { useThemedStyles } from "../theme/useThemedStyles";
@@ -25,7 +22,6 @@ export type OnboardingFlowScreenProps = {
   isSaving: boolean;
   locale: string;
   onAutoPeriodFillChange: (value: boolean) => void;
-  onAgeGroupSelect: (value: AgeGroupOption) => void;
   onBack: () => void;
   onCycleLengthChange: (value: number) => void;
   onDateSelected: (value: string) => void;
@@ -37,6 +33,8 @@ export type OnboardingFlowScreenProps = {
   onNext: () => void | Promise<void>;
   onOpenPrivacyNotice: () => void | Promise<void>;
   onPeriodLengthChange: (value: number) => void;
+  onSkipStepOne: () => void | Promise<void>;
+  onSkipUsageGoal: () => void | Promise<void>;
   onUsageGoalSelect: (value: UsageGoal) => void;
   state: LoadedOnboardingState;
   stepOneNotice: {
@@ -53,7 +51,6 @@ export function OnboardingFlowScreen({
   isSaving,
   locale,
   onAutoPeriodFillChange,
-  onAgeGroupSelect,
   onBack,
   onCycleLengthChange,
   onDateSelected,
@@ -65,6 +62,8 @@ export function OnboardingFlowScreen({
   onNext,
   onOpenPrivacyNotice,
   onPeriodLengthChange,
+  onSkipStepOne,
+  onSkipUsageGoal,
   onUsageGoalSelect,
   state,
   stepOneNotice,
@@ -112,6 +111,7 @@ export function OnboardingFlowScreen({
           onDismissStepOneNotice={onDismissStepOneNotice}
           onNext={onNext}
           onOpenPrivacyNotice={onOpenPrivacyNotice}
+          onSkip={onSkipStepOne}
           selectedDateValue={state.selectedDate}
           stepOneError={stepOneError}
           stepOneNotice={stepOneNotice}
@@ -123,7 +123,6 @@ export function OnboardingFlowScreen({
           compact={compactLayout}
           guidance={guidance}
           isSaving={isSaving}
-          onAgeGroupSelect={onAgeGroupSelect}
           onAutoPeriodFillChange={onAutoPeriodFillChange}
           onBack={onBack}
           onCycleLengthChange={onCycleLengthChange}
@@ -131,6 +130,7 @@ export function OnboardingFlowScreen({
           onFinish={onFinish}
           onPeriodLengthChange={onPeriodLengthChange}
           onPredictionModeSelect={onPredictionModeSelect}
+          onSkipUsageGoal={onSkipUsageGoal}
           onUsageGoalSelect={onUsageGoalSelect}
           stepTwoError={stepTwoError}
           stepTwoValues={state.stepTwoValues}

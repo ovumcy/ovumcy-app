@@ -285,6 +285,27 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
 });
 
+test("onboarding without a last period date lands on the empty Today and calendar", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+  await page.getByTestId("onboarding-skip-date-button").click();
+  await expect(page.getByTestId("onboarding-usage-goal-skip")).toBeVisible();
+  await page.getByTestId("onboarding-usage-goal-skip").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await expect(page.getByTestId("dashboard-cycle-hero-detail")).toHaveText(
+    "Add a cycle start",
+  );
+
+  await page.locator(tabLink("/calendar")).click();
+  await expect(page).toHaveURL(/\/calendar$/);
+  await expect(page.getByTestId("calendar-prediction-mode-banner")).toContainText(
+    "No cycle start is logged yet",
+  );
+});
+
 test("stats surfaces the perimenopause hint for a 45+ user even in the empty state", async ({
   page,
 }) => {
@@ -296,10 +317,16 @@ test("stats surfaces the perimenopause hint for a 45+ user even in the empty sta
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByTestId("onboarding-next-button").click();
 
-  await expect(page.getByTestId("onboarding-age-group-age_45_plus")).toBeVisible();
-  await page.getByTestId("onboarding-age-group-age_45_plus").click();
+  // Onboarding no longer asks for age (web parity); it is set in Settings.
+  await expect(page.getByTestId("onboarding-age-group-group")).toHaveCount(0);
   await page.getByTestId("onboarding-finish-button").click();
   await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.locator(tabLink("/settings")).click();
+  await page.getByTestId("settings-hub-open-cycle").click();
+  await page.getByTestId("settings-age-group-age_45_plus").click();
+  await page.getByTestId("settings-save-all-button").click();
+  await expect(page.getByTestId("settings-cycle-status-banner")).toBeVisible();
 
   await page.locator(tabLink("/stats")).click();
   await expect(page).toHaveURL(/\/stats$/);
@@ -330,8 +357,7 @@ test("stats shows the data-driven range explainer after three completed cycles w
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByTestId("onboarding-next-button").click();
 
-  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
-  await page.getByTestId("onboarding-age-group-under_40").click();
+  await expect(page.getByTestId("onboarding-finish-button")).toBeVisible();
   await page.getByTestId("onboarding-finish-button").click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
@@ -382,8 +408,7 @@ test("stats shows premium lock placeholders when entitlements are missing and th
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByTestId("onboarding-next-button").click();
 
-  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
-  await page.getByTestId("onboarding-age-group-under_40").click();
+  await expect(page.getByTestId("onboarding-finish-button")).toBeVisible();
   await page.getByTestId("onboarding-finish-button").click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
@@ -434,8 +459,7 @@ test("visual verify pregnancy test field and paused predictions banner", async (
   await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByTestId("onboarding-next-button").click();
-  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
-  await page.getByTestId("onboarding-age-group-under_40").click();
+  await expect(page.getByTestId("onboarding-finish-button")).toBeVisible();
   await page.getByTestId("onboarding-finish-button").click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
@@ -489,8 +513,7 @@ test("locale visual sweep: ru and de pregnancy + reminders + paywall", async ({
   await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByTestId("onboarding-next-button").click();
-  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
-  await page.getByTestId("onboarding-age-group-under_40").click();
+  await expect(page.getByTestId("onboarding-finish-button")).toBeVisible();
   await page.getByTestId("onboarding-finish-button").click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
@@ -587,8 +610,7 @@ test("visual verify partner access section UI", async ({ page }) => {
   await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByTestId("onboarding-next-button").click();
-  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
-  await page.getByTestId("onboarding-age-group-under_40").click();
+  await expect(page.getByTestId("onboarding-finish-button")).toBeVisible();
   await page.getByTestId("onboarding-finish-button").click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
@@ -625,8 +647,7 @@ test("visual verify calendar screen with positive pregnancy test", async ({
   await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByTestId("onboarding-next-button").click();
-  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
-  await page.getByTestId("onboarding-age-group-under_40").click();
+  await expect(page.getByTestId("onboarding-finish-button")).toBeVisible();
   await page.getByTestId("onboarding-finish-button").click();
   await expect(page).toHaveURL(/\/dashboard$/);
 

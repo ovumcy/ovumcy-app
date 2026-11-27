@@ -58,9 +58,13 @@ export type ReminderTime = string;
 export type DismissibleCalendarPredictionNoticeKey =
   | "calendar_irregular_prediction_notice_v1"
   | "calendar_unpredictable_prediction_notice_v1";
+// Session-scoped notices: dismissed in screen state only, never persisted.
+export type SessionCalendarPredictionNoticeKey =
+  | "calendar_pregnancy_paused_prediction_notice_v1"
+  | "calendar_awaiting_cycle_start_notice_v1";
 export type CalendarPredictionNoticeKey =
   | DismissibleCalendarPredictionNoticeKey
-  | "calendar_pregnancy_paused_prediction_notice_v1";
+  | SessionCalendarPredictionNoticeKey;
 export type OnboardingHelperNoticeKey = "onboarding_day1_tip_notice_v1";
 
 export const SUPPORTED_INTERFACE_LANGUAGES = [

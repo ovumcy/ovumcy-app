@@ -1,7 +1,6 @@
 import { Text, View } from "react-native";
 
 import type {
-  AgeGroupOption,
   OnboardingStepTwoValues,
   UsageGoal,
 } from "../../../models/onboarding";
@@ -23,13 +22,13 @@ type OnboardingStepTwoPanelProps = {
   guidance: ReturnType<typeof buildCycleGuidanceState>;
   isSaving: boolean;
   onAutoPeriodFillChange: (value: boolean) => void;
-  onAgeGroupSelect: (value: AgeGroupOption) => void;
   onBack: () => void | Promise<void>;
   onCycleLengthChange: (value: number) => void;
   onDismissStepTwoError: (() => void | Promise<void>) | undefined;
   onFinish: () => void | Promise<void>;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onPeriodLengthChange: (value: number) => void;
+  onSkipUsageGoal: () => void | Promise<void>;
   onUsageGoalSelect: (value: UsageGoal) => void;
   stepTwoError: string;
   stepTwoValues: OnboardingStepTwoValues;
@@ -42,13 +41,13 @@ export function OnboardingStepTwoPanel({
   guidance,
   isSaving,
   onAutoPeriodFillChange,
-  onAgeGroupSelect,
   onBack,
   onCycleLengthChange,
   onDismissStepTwoError,
   onFinish,
   onPredictionModeSelect,
   onPeriodLengthChange,
+  onSkipUsageGoal,
   onUsageGoalSelect,
   stepTwoError,
   stepTwoValues,
@@ -147,22 +146,6 @@ export function OnboardingStepTwoPanel({
 
       <View style={[styles.formGroup, compact ? styles.formGroupCompact : null]}>
         <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null]}>
-          {viewData.stepTwo.ageGroupLabel}
-        </Text>
-        <ChoiceGroup
-          compact={compact}
-          contentAlign={compact ? "center" : "leading"}
-          groupLabel={viewData.stepTwo.ageGroupLabel}
-          layout={compact ? "grid3" : "stack"}
-          onSelect={onAgeGroupSelect}
-          options={viewData.stepTwo.ageOptions}
-          selectedValue={stepTwoValues.ageGroup}
-          testIDPrefix="onboarding-age-group"
-        />
-      </View>
-
-      <View style={[styles.formGroup, compact ? styles.formGroupCompact : null]}>
-        <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null]}>
           {viewData.stepTwo.usageGoalLabel}
         </Text>
         <ChoiceGroup
@@ -174,6 +157,14 @@ export function OnboardingStepTwoPanel({
           options={viewData.stepTwo.usageGoalOptions}
           selectedValue={stepTwoValues.usageGoal}
           testIDPrefix="onboarding-usage-goal"
+        />
+        <OnboardingSecondaryButton
+          compact={compact}
+          disabled={isSaving || guidance.invalid}
+          label={viewData.stepTwo.usageGoalSkipLabel}
+          onPress={onSkipUsageGoal}
+          styles={styles}
+          testID="onboarding-usage-goal-skip"
         />
       </View>
 

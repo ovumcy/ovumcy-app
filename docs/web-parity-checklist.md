@@ -130,6 +130,7 @@ that owns the canonical web UX).
   - localized date field
   - day grid
   - primary CTA
+  - skip action (the date is optional; no start → Today and calendar show their no-anchor state)
   - status area
 - Day grid:
   - max height: `18rem`
@@ -148,9 +149,9 @@ that owns the canonical web UX).
   - validation / guidance messages
   - auto-period-fill toggle
   - irregular-cycle toggle
-  - age-group choices
-  - usage-goal choices
+  - usage-goal choices + "Skip this question" (submits step 2 with the default goal)
   - back + finish actions
+- No age question: age is set in Settings only (web `TestOnboardingStep2DropsAgeAndKeepsASkippableModeChoice`)
   - status area
 - Form rhythm:
   - overall `space-y-6`

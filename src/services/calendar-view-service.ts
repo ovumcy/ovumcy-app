@@ -343,6 +343,7 @@ export function buildCalendarViewData(
   // same suppression buildCalendarPredictionMaps just applied above.
   const predictionNotice = buildCalendarPredictionNotice(profile, locale, {
     pregnancyActive: options.suppressPredictions ?? false,
+    awaitingCycleStart: projection.cycleAnchorDate === null,
   });
   const days: CalendarDayCellViewData[] = [];
 

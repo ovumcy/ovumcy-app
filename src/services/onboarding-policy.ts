@@ -21,7 +21,6 @@ import {
   atLocalDay,
   parseLocalDate,
   resolveCycleAndPeriodDefaults as resolveSharedCycleAndPeriodDefaults,
-  resolveDisplayedAgeGroup,
   sanitizeCycleSettingsValues,
 } from "./profile-settings-policy";
 export {
@@ -88,7 +87,6 @@ export function sanitizeStepTwoValues(
     periodLength: values.periodLength,
     autoPeriodFill: values.autoPeriodFill,
     ...predictionModeFlags,
-    ageGroup: values.ageGroup,
     usageGoal: values.usageGoal,
   });
 
@@ -97,7 +95,6 @@ export function sanitizeStepTwoValues(
     periodLength: sanitizedCycle.periodLength,
     autoPeriodFill: sanitizedCycle.autoPeriodFill,
     predictionMode: resolvePredictionMode(sanitizedCycle),
-    ageGroup: resolveDisplayedAgeGroup(sanitizedCycle.ageGroup),
     usageGoal: sanitizedCycle.usageGoal,
   };
 }
@@ -117,7 +114,6 @@ export function createStepTwoDefaults(record: OnboardingRecord): OnboardingStepT
     periodLength: defaults.periodLength,
     autoPeriodFill: record.autoPeriodFill,
     predictionMode: resolvePredictionMode(record),
-    ageGroup: resolveDisplayedAgeGroup(record.ageGroup),
     usageGoal: normalizeUsageGoal(record.usageGoal),
   };
 }
@@ -134,12 +130,9 @@ export function resolveOnboardingStep(
 
 export function getOnboardingDateBounds(now: Date): OnboardingDateBounds {
   const today = atLocalDay(now);
-  const currentYearStart = new Date(today.getFullYear(), 0, 1);
-  const lookbackStart = addDays(today, -ONBOARDING_LOOKBACK_DAYS);
-  const minDate = currentYearStart > lookbackStart ? currentYearStart : lookbackStart;
 
   return {
-    minDate: formatLocalDate(minDate),
+    minDate: formatLocalDate(addDays(today, -ONBOARDING_LOOKBACK_DAYS)),
     maxDate: formatLocalDate(today),
   };
 }
