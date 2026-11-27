@@ -9,7 +9,7 @@ import {
   buildCycleHistorySummary,
 } from "./cycle-history-service";
 import { predictCycleWindow } from "./cycle-prediction-policy";
-import { resolveDaySaveMessageKey } from "./dashboard-view-service";
+import { buildDashboardViewData, resolveDaySaveMessageKey } from "./dashboard-view-service";
 import { buildLocalReminderPlans } from "./local-reminder-plan-service";
 
 // Web FertilityProjectionSuppressed, read from the one projection every
@@ -133,6 +133,26 @@ describe("fertility gate on the shared projection", () => {
     expect(projection.nextPeriodDate).toBeNull();
   });
 
+  it("keeps the approximate hero without phases for an irregular cycle bleeding outside its start", () => {
+    const profile = profileOf({ irregularCycle: true });
+    const records = [
+      ...completedCycleHistory({ currentStart: CURRENT_START }),
+      ...periodRun(CURRENT_START, 2),
+      { ...createEmptyDayLogRecord("2026-03-12"), isPeriod: true, flow: "spotting" as const },
+    ];
+    const history = buildCycleHistorySummary(profile, records, MARCH_12);
+    const hero = buildDashboardViewData(profile, records, history, MARCH_12).cycleHero;
+    expect(history.hasReliableTrend).toBe(true);
+    expect(hero).toEqual(
+      expect.objectContaining({
+        state: "approximate",
+        detail: getDashboardCopy("en").cycleHeroApproximate,
+        phaseCards: [],
+        progressPercent: null,
+      }),
+    );
+  });
+
   it("keeps a profile-only anchor's own period days inside the opening episode", () => {
     // The stored start has no day-log row but still seeds the period clusters,
     // so the day logged today is the second day of that same bleed, not
@@ -174,6 +194,10 @@ describe("fertility gate on the dashboard copy", () => {
       const copy = getDashboardCopy(locale);
       expect(copy.fertilityAwaitingFirstCycle.length).toBeGreaterThan(20);
       expect(copy.fertilityAwaitingMoreCycles(FERTILITY_MINIMUM_CYCLES)).toContain("3");
+      // The singular form stays grammatical should the floor ever be one.
+      expect(copy.fertilityAwaitingMoreCycles(1)).not.toBe(
+        copy.fertilityAwaitingMoreCycles(FERTILITY_MINIMUM_CYCLES).replace("3", "1"),
+      );
     }
     const ru = getDashboardCopy("ru").fertilityAwaitingMoreCycles;
     expect(ru(1)).toContain("1 завершённого цикла");
@@ -219,6 +243,14 @@ describe("fertility gate on the calendar", () => {
       expect(keys.get("2026-04-02")).toBe("predicted");
       expect(keys.get("2026-04-30")).toBe("predicted");
     }
+  });
+
+  it("chains no fertile window in irregular range mode", () => {
+    const keys = stateKeys(profileOf({ irregularCycle: true }), recordsWith(3));
+    expect(keys.get("2026-04-02")).toBe("predicted");
+    expect(
+      [...keys.entries()].filter(([date, key]) => date >= "2026-04-02" && FERTILE_KEYS.has(key)),
+    ).toEqual([]);
   });
 
   it("chains a fertile window to the next cycle only and keeps the periods running", () => {

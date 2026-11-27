@@ -17,10 +17,7 @@ export function completedCycleHistory(options: {
   const completed = options.completed ?? 3;
   const cycleLength = options.cycleLength ?? 28;
   const periodLength = options.periodLength ?? 5;
-  const current = parseLocalDate(options.currentStart);
-  if (!current) {
-    throw new Error(`completedCycleHistory: bad date ${options.currentStart}`);
-  }
+  const current = parseLocalDate(options.currentStart)!;
 
   const records: DayLogRecord[] = [];
   for (let cycle = completed; cycle >= 1; cycle -= 1) {

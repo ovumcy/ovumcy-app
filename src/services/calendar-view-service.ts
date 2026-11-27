@@ -840,8 +840,7 @@ function buildCalendarPredictionMaps(
   // window, no later cycle does (each chained cycle adds the per-cycle spread
   // until the window is narrower than the error). Irregular range mode places
   // its fertility as a range instead, so no cycle is chained there.
-  const chainedFertilityCycles =
-    profile.irregularCycle && projection.upcomingOvulationWindowStartDate ? 0 : 1;
+  const chainedFertilityCycles = profile.irregularCycle ? 0 : 1;
 
   if (projection.cycleAnchorDate) {
     // Web parity (calendar_days.go appendCurrentBaselinePeriod/PreFertile): the
