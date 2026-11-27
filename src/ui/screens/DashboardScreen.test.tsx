@@ -11,6 +11,7 @@ import { createDefaultSymptomRecords } from "../../models/symptom";
 import { createDefaultProfileRecord } from "../../models/profile";
 import { createPregnancyRecord } from "../../models/pregnancy";
 import { createScreeningResponse } from "../../models/screening";
+import { completedCycleHistory } from "../../services/__fixtures__/completed-cycles";
 import {
   createPostpartumRecord,
   type PostpartumRecord,
@@ -452,7 +453,15 @@ describe("DashboardScreen", () => {
   it(
     "renders settings-driven dashboard visibility like the web contract",
     async () => {
-      await renderDashboard(createStorageMock());
+      // Three completed cycles behind the stored start clear the fertility
+      // floor, so the hero names its ovulation day and phases.
+      await renderDashboard(
+        createStorageMock({
+          listDayLogRecordsInRange: jest
+            .fn()
+            .mockResolvedValue(completedCycleHistory({ currentStart: "2026-03-10" })),
+        }),
+      );
 
       await screen.findByTestId("day-log-period-toggle");
 
@@ -1280,7 +1289,11 @@ describe("DashboardScreen", () => {
   });
 
   it("announces the day-logging surface: headers, named quick actions, and grouped phase cards", async () => {
-    const storage = createStorageMock();
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest
+        .fn()
+        .mockResolvedValue(completedCycleHistory({ currentStart: "2026-03-10" })),
+    });
 
     await renderDashboard(storage);
 
