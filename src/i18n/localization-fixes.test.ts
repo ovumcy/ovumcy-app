@@ -851,3 +851,62 @@ describe("stats-copy completedCyclesProgress — localized per language", () => 
     expect(getStatsCopy(lang).completedCyclesProgress(2)).toBe(expected);
   });
 });
+
+describe("L ru glossary alignment with the web catalog", () => {
+  const ru = "ru" as const;
+
+  it("uses the shared glossary for cycle, goal and day-log terms", () => {
+    expect(getSettingsCopy(ru).cycle.cycleLength).toBe("Обычная длина цикла");
+    expect(getSettingsCopy(ru).goal.trying).toBe("Планирую беременность");
+    expect(getSettingsCopy(ru).goal.health).toBe("Слежу за здоровьем");
+    const dayLog = getDayLogCopy(ru);
+    expect(dayLog.flow).toBe("Обильность");
+    expect(dayLog.options.mood[0]?.secondaryLabel).toBe("Очень плохое");
+    expect(dayLog.options.mood[4]?.secondaryLabel).toBe("Очень хорошее");
+    expect(dayLog.options.sexActivity.map((o) => o.label)).toEqual([
+      "Нет",
+      "Защищённый",
+      "Незащищённый",
+    ]);
+    expect(dayLog.options.cycleFactors.sleep_disruption.label).toBe("Сбой сна");
+    expect(dayLog.options.cycleFactors.medication_change.label).toBe(
+      "Изменение лекарств",
+    );
+  });
+
+  it("hedges the fertile save message and uses the web cycle-length range", () => {
+    expect(getDashboardCopy(ru).saveMessageFertile).toContain("вероятно");
+    expect(getOnboardingCopy(ru).step2.cycleLengthHint).toContain(
+      "24-38",
+    );
+  });
+
+  it("names the backup screen once and keeps slang out of the ru settings copy", () => {
+    const account = getSettingsCopy(ru).account;
+    expect(account.title).toBe("Резервная копия и синхронизация");
+    expect(account.openHubLabel).toContain("синхронизацию");
+    const collectText = (node: unknown): string[] =>
+      typeof node === "string"
+        ? [node]
+        : node !== null && typeof node === "object"
+          ? Object.values(node).flatMap(collectText)
+          : [];
+    expect(collectText(getSettingsCopy(ru)).join("\n")).not.toMatch(
+      /dashboard|трекинг|бэкап|[Пп]ресет|[Пп]редсказани|endpoint|hosted|billing|recovery-flow/,
+    );
+  });
+
+  it("never ends a ru template with a full stop right after a date", () => {
+    const dashboard = getDashboardCopy(ru);
+    expect(dashboard.cycleStartShortGapMessage).not.toMatch(/%s\.$/);
+    expect(dashboard.cycleStartPregnancyEndGapMessage).not.toMatch(/%s\.$/);
+    const stats = getStatsCopy(ru);
+    const fertility = stats.advancedFertility;
+    expect(stats.mucusFertilityDescription("18 дек.")).toMatch(/ 18 дек\.$/);
+    expect(fertility.lhPeakLoggedDescription("18 дек.")).toMatch(/ 18 дек\.$/);
+    expect(fertility.lhPeakAlignedDescription("18 дек.", 0)).toMatch(/: 18 дек\.$/);
+    expect(fertility.ovulationConfirmationDescription("18 дек.", 0)).toMatch(
+      /: 18 дек\.$/,
+    );
+  });
+});

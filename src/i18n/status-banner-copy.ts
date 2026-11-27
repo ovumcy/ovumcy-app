@@ -40,7 +40,7 @@ const statusBannerCopyCatalog: Record<InterfaceLanguage, StatusBannerCopy> = {
     tones: {
       success: "Готово",
       error: "Ошибка",
-      info: "Инфо",
+      info: "Информация",
     },
   },
   es: {

@@ -1025,7 +1025,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     mucusFertilityTitle: "Высокая фертильность",
     mucusFertilityValue: "Сигнал по слизи",
     mucusFertilityDescription: (date: string) =>
-      `Слизь как яичный белок была отмечена ${date}.`,
+      `Слизь как яичный белок была отмечена ${date}`,
     cycleLengthCard: "Длина цикла",
     cycleRange: "Диапазон",
     averageLabel: "Среднее",
@@ -1205,21 +1205,21 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       ovulationConfirmationBuildingValue: "Сигналы формируются",
       ovulationConfirmationDescription: (date: string, gapDays: number) =>
         gapDays === 0
-          ? `Слизь типа яичного белка и последний температурный подъём были отмечены в один день: ${date}.`
+          ? `Слизь типа яичного белка и последний температурный подъём были отмечены в один день: ${date}`
           : `Слизь типа яичного белка была отмечена ${date}, а последний температурный подъём последовал через ${gapDays} д.`,
       ovulationConfirmationConfirmedHint:
         "Обычно это значит, что овуляция, вероятно, уже произошла недавно и фертильное окно может закрываться.",
       ovulationConfirmationBuildingHint:
         "Продолжайте отмечать БТТ ещё 1-2 утра, чтобы понять, превратится ли это в подтверждённый подъём.",
-      lhPeakTitle: "Пик LH",
+      lhPeakTitle: "Пик ЛГ",
       lhPeakLoggedValue: "Пик отмечен",
       lhPeakAlignedValue: "Пик + температурный подъём",
       lhPeakLoggedDescription: (date: string) =>
-        `Пиковый LH-тест был отмечен ${date}.`,
+        `Пиковый ЛГ-тест был отмечен ${date}`,
       lhPeakAlignedDescription: (date: string, gapDays: number) =>
         gapDays === 0
-          ? `Пиковый LH-тест и последний температурный подъём были отмечены в один день: ${date}.`
-          : `Пиковый LH-тест был отмечен ${date}, а последний температурный подъём последовал через ${gapDays} д.`,
+          ? `Пиковый ЛГ-тест и последний температурный подъём были отмечены в один день: ${date}`
+          : `Пиковый ЛГ-тест был отмечен ${date}, а последний температурный подъём последовал через ${gapDays} д.`,
       lhPeakLoggedHint:
         "Пик LH часто приходится на самые фертильные дни. Продолжайте отмечать БТТ ещё 1-3 утра.",
       lhPeakAlignedHint:
