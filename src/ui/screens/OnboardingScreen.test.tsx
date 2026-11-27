@@ -38,7 +38,6 @@ function createState(
       periodLength: record.periodLength,
       autoPeriodFill: record.autoPeriodFill,
       predictionMode: "regular",
-      ageGroup: "under_40",
       usageGoal: record.usageGoal,
     },
     ...overrides,
@@ -60,7 +59,6 @@ async function renderFlow(
       isSaving={false}
       locale="en"
       onAutoPeriodFillChange={jest.fn()}
-      onAgeGroupSelect={jest.fn()}
       onBack={jest.fn()}
       onCycleLengthChange={jest.fn()}
       onDateSelected={jest.fn()}
@@ -72,6 +70,8 @@ async function renderFlow(
       onNext={jest.fn()}
       onOpenPrivacyNotice={jest.fn()}
       onPeriodLengthChange={jest.fn()}
+      onSkipStepOne={jest.fn()}
+      onSkipUsageGoal={jest.fn()}
       onUsageGoalSelect={jest.fn()}
       state={state}
       stepOneNotice={{
@@ -135,7 +135,6 @@ describe("OnboardingFlowScreen", () => {
         isSaving={false}
         locale="en"
         onAutoPeriodFillChange={jest.fn()}
-        onAgeGroupSelect={jest.fn()}
         onBack={jest.fn()}
         onCycleLengthChange={jest.fn()}
         onDateSelected={onDateSelected}
@@ -147,6 +146,8 @@ describe("OnboardingFlowScreen", () => {
         onNext={jest.fn()}
         onOpenPrivacyNotice={jest.fn()}
         onPeriodLengthChange={jest.fn()}
+        onSkipStepOne={jest.fn()}
+        onSkipUsageGoal={jest.fn()}
         onUsageGoalSelect={jest.fn()}
         state={state}
         stepOneNotice={{
@@ -201,7 +202,6 @@ describe("OnboardingFlowScreen", () => {
         isSaving={false}
         locale="en"
         onAutoPeriodFillChange={jest.fn()}
-        onAgeGroupSelect={jest.fn()}
         onBack={jest.fn()}
         onCycleLengthChange={onCycleLengthChange}
         onDateSelected={jest.fn()}
@@ -213,6 +213,8 @@ describe("OnboardingFlowScreen", () => {
         onNext={jest.fn()}
         onOpenPrivacyNotice={jest.fn()}
         onPeriodLengthChange={jest.fn()}
+        onSkipStepOne={jest.fn()}
+        onSkipUsageGoal={jest.fn()}
         onUsageGoalSelect={jest.fn()}
         state={state}
         stepOneNotice={null}
@@ -276,7 +278,6 @@ describe("OnboardingFlowScreen", () => {
           periodLength: 9,
           autoPeriodFill: true,
           predictionMode: "regular",
-          ageGroup: "under_40",
           usageGoal: "health",
         },
       }),
@@ -302,7 +303,6 @@ describe("OnboardingFlowScreen", () => {
           periodLength: 5,
           autoPeriodFill: true,
           predictionMode: "regular",
-          ageGroup: "under_40",
           usageGoal: "health",
         },
       }),
@@ -343,7 +343,6 @@ describe("OnboardingFlowScreen", () => {
 
     const expectations: [string, string][] = [
       ["onboarding-prediction-mode-group", "How predictable is your cycle?"],
-      ["onboarding-age-group-group", "Your age"],
       ["onboarding-usage-goal-group", "Why are you using Ovumcy?"],
     ];
 
@@ -352,6 +351,32 @@ describe("OnboardingFlowScreen", () => {
       expect(group.props.accessibilityRole).toBe("radiogroup");
       expect(group.props.accessibilityLabel).toBe(label);
     }
+  });
+
+  it("asks no age on step 2 and offers a skip for the usage goal", async () => {
+    const onSkipUsageGoal = jest.fn();
+    await renderFlow(
+      createState({
+        record: createOnboardingRecord({ lastPeriodStart: "2026-03-17" }),
+        selectedDate: "2026-03-17",
+        step: 2,
+      }),
+      { onSkipUsageGoal },
+    );
+
+    expect(screen.queryByTestId("onboarding-age-group-group")).toBeNull();
+    expect(screen.queryByText("Your age")).toBeNull();
+    await fireEvent.press(screen.getByTestId("onboarding-usage-goal-skip"));
+    expect(onSkipUsageGoal).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Skip this question")).toBeTruthy();
+  });
+
+  it("offers a skip for the step 1 date", async () => {
+    const onSkipStepOne = jest.fn();
+    await renderFlow(createState(), { onSkipStepOne });
+
+    await fireEvent.press(screen.getByTestId("onboarding-skip-date-button"));
+    expect(onSkipStepOne).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the heading and the progress announced on the compact phone layout", async () => {

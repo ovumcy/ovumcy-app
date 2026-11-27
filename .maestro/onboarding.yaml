@@ -29,14 +29,6 @@ appId: ${APP_ID}
     id: "onboarding-cycle-length-slider"
 - assertVisible:
     id: "onboarding-finish-button"
-# Age group is a choice grid; pick the under-40 bucket if it is shown.
-- runFlow:
-    when:
-      visible:
-        id: "onboarding-age-group-under_40"
-    commands:
-      - tapOn:
-          id: "onboarding-age-group-under_40"
 - tapOn:
     id: "onboarding-finish-button"
 

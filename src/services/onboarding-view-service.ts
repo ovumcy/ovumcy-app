@@ -1,6 +1,5 @@
 import { getOnboardingCopy } from "../i18n/app-copy";
 import type {
-  AgeGroupOption,
   OnboardingRecord,
   OnboardingStepTwoValues,
   UsageGoal,
@@ -25,6 +24,7 @@ export type OnboardingViewData = {
     privacyNotice: string;
     privacyNoticeLink: string;
     nextLabel: string;
+    skipLabel: string;
     dayOptions: ReturnType<typeof buildDayOptions>;
     minDate: string;
     maxDate: string;
@@ -40,10 +40,9 @@ export type OnboardingViewData = {
     autoPeriodFillHint: string;
     predictionModeLabel: string;
     predictionModeHint: string;
-    ageGroupLabel: string;
-    ageGroupHint: string;
     usageGoalLabel: string;
     usageGoalHint: string;
+    usageGoalSkipLabel: string;
     backLabel: string;
     finishLabel: string;
     messages: {
@@ -54,10 +53,6 @@ export type OnboardingViewData = {
       infoCycleLong: string;
       infoCycleShort: string;
     };
-    ageOptions: {
-      value: AgeGroupOption;
-      label: string;
-    }[];
     predictionModeOptions: {
       value: PredictionMode;
       label: string;
@@ -107,6 +102,7 @@ export function buildOnboardingViewData(
       privacyNotice: onboardingCopy.step1.privacyNotice,
       privacyNoticeLink: onboardingCopy.step1.privacyNoticeLink,
       nextLabel: onboardingCopy.buttons.next,
+      skipLabel: onboardingCopy.buttons.skip,
       dayOptions: buildDayOptions(bounds.minDate, bounds.maxDate, locale, {
         today: onboardingCopy.step1.today,
         yesterday: onboardingCopy.step1.yesterday,
@@ -126,10 +122,9 @@ export function buildOnboardingViewData(
       autoPeriodFillHint: onboardingCopy.step2.autoPeriodFillHint,
       predictionModeLabel: onboardingCopy.step2.predictionMode,
       predictionModeHint: onboardingCopy.step2.predictionModeHint,
-      ageGroupLabel: onboardingCopy.step2.ageGroup,
-      ageGroupHint: onboardingCopy.step2.ageGroupHint,
       usageGoalLabel: onboardingCopy.step2.usageGoal,
       usageGoalHint: onboardingCopy.step2.usageGoalHint,
+      usageGoalSkipLabel: onboardingCopy.buttons.skip,
       backLabel: onboardingCopy.buttons.back,
       finishLabel: onboardingCopy.buttons.finish,
       messages: {
@@ -140,12 +135,6 @@ export function buildOnboardingViewData(
         infoCycleLong: onboardingCopy.step2.infoCycleLong,
         infoCycleShort: onboardingCopy.step2.infoCycleShort,
       },
-      ageOptions: [
-        { value: "", label: onboardingCopy.ageGroup.unspecified },
-        { value: "under_40", label: onboardingCopy.ageGroup.under40 },
-        { value: "age_40_45", label: onboardingCopy.ageGroup.age40to45 },
-        { value: "age_45_plus", label: onboardingCopy.ageGroup.age45plus },
-      ],
       predictionModeOptions: [
         {
           value: "regular",

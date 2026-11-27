@@ -458,7 +458,6 @@ describe("OnboardingScreen", () => {
 
     await fireEvent(screen.getByTestId("onboarding-cycle-length-slider"), "valueChange", 40);
     await fireEvent(screen.getByTestId("onboarding-period-length-slider"), "valueChange", 6);
-    await fireEvent.press(screen.getByTestId("onboarding-age-group-age_40_45"));
     await fireEvent.press(screen.getByTestId("onboarding-usage-goal-trying_to_conceive"));
     await fireEvent.press(screen.getByTestId("onboarding-prediction-mode-irregular"));
     await fireEvent.press(screen.getByTestId("onboarding-toggle-auto-period-fill"));
@@ -478,7 +477,7 @@ describe("OnboardingScreen", () => {
         autoPeriodFill: false,
         irregularCycle: true,
         unpredictableCycle: false,
-        ageGroup: "age_40_45",
+        ageGroup: "",
         usageGoal: "trying_to_conceive",
       }),
     );
@@ -524,33 +523,102 @@ describe("OnboardingScreen", () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it("surfaces and dismisses a date-required step-two error for a persisted record with no start date", async () => {
-    const onboardingRecord = createOnboardingRecordFixture({
-      lastPeriodStart: null,
+  it("skips the step 1 date and finishes with no last period start and no seeded days", async () => {
+    const storage = createLocalAppStorageMock({
+      readBootstrapState: jest.fn().mockResolvedValue({
+        hasCompletedOnboarding: false,
+        profileVersion: 2,
+        incompleteOnboardingStep: 1,
+      }),
+      readOnboardingRecord: jest
+        .fn()
+        .mockResolvedValue(createOnboardingRecordFixture({ lastPeriodStart: null })),
+      readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
     });
+
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+
+    // A date picked and then skipped is dropped, not kept.
+    await fireEvent.press(await screen.findByTestId("onboarding-day-option-2026-03-19"));
+    await fireEvent.press(screen.getByTestId("onboarding-skip-date-button"));
+    await screen.findByTestId("onboarding-finish-button");
+    expect(storage.writeOnboardingRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ lastPeriodStart: null }),
+    );
+    expect(storage.writeBootstrapState).toHaveBeenCalledWith({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+      incompleteOnboardingStep: 2,
+    });
+
+    // The fixture keeps auto-fill on, so a seed would run if there were a start.
+    await fireEvent.press(screen.getByTestId("onboarding-finish-button"));
+
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"),
+    );
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ lastPeriodStart: null, autoPeriodFill: true }),
+    );
+    // Auto-fill is on, but there is no start to seed from.
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a generic step-one error when skipping the date fails to persist", async () => {
+    const storage = createLocalAppStorageMock({
+      readBootstrapState: jest.fn().mockResolvedValue({
+        hasCompletedOnboarding: false,
+        profileVersion: 2,
+        incompleteOnboardingStep: 1,
+      }),
+      readOnboardingRecord: jest
+        .fn()
+        .mockResolvedValue(createOnboardingRecordFixture({ lastPeriodStart: null })),
+      readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
+      writeOnboardingRecord: jest.fn().mockRejectedValue(new Error("disk full")),
+    });
+    const now = new Date(2026, 2, 20);
+
+    await render(<OnboardingScreen now={now} storage={storage} />);
+
+    await fireEvent.press(await screen.findByTestId("onboarding-skip-date-button"));
+
+    const expectedError = buildOnboardingViewData(
+      createOnboardingRecordFixture({ lastPeriodStart: null }),
+      now,
+      "en",
+    ).errors.generic;
+    await screen.findByText(expectedError);
+    expect(screen.queryByTestId("onboarding-finish-button")).toBeNull();
+  });
+
+  it("skipping the usage goal finishes onboarding with the default goal", async () => {
     const storage = createLocalAppStorageMock({
       readBootstrapState: jest.fn().mockResolvedValue({
         hasCompletedOnboarding: false,
         profileVersion: 2,
         incompleteOnboardingStep: 2,
       }),
-      readOnboardingRecord: jest.fn().mockResolvedValue(onboardingRecord),
+      readOnboardingRecord: jest
+        .fn()
+        .mockResolvedValue(createOnboardingRecordFixture({ lastPeriodStart: "2026-03-18" })),
       readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
     });
-    const now = new Date(2026, 2, 20);
 
-    await render(<OnboardingScreen now={now} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
-    await screen.findByTestId("onboarding-finish-button");
-    await fireEvent.press(screen.getByTestId("onboarding-finish-button"));
+    await fireEvent.press(
+      await screen.findByTestId("onboarding-usage-goal-trying_to_conceive"),
+    );
+    await fireEvent(screen.getByTestId("onboarding-cycle-length-slider"), "valueChange", 33);
+    await fireEvent.press(screen.getByTestId("onboarding-usage-goal-skip"));
 
-    const expectedError = buildOnboardingViewData(onboardingRecord, now, "en").errors
-      .dateRequired;
-    await screen.findByText(expectedError);
-    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
-
-    await fireEvent.press(screen.getByTestId("onboarding-step-two-error-dismiss"));
-    expect(screen.queryByText(expectedError)).toBeNull();
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"),
+    );
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ usageGoal: "health", cycleLength: 33 }),
+    );
   });
 
   it("disables finish and surfaces the incompatible-cycle warning while step-two settings conflict", async () => {

@@ -83,7 +83,6 @@ type SaveStepOneErrorCode =
   | "generic";
 
 type FinishOnboardingErrorCode =
-  | "date_required"
   | "invalid_cycle_settings"
   | "generic";
 
@@ -110,6 +109,25 @@ export async function loadOnboardingScreenState(
   };
 }
 
+// Step 1 is optional (owner decision for both repos, APP-61 / WEB-544):
+// skipping leaves lastPeriodStart null, and Today/calendar stay in their
+// no-anchor state until a cycle start is logged.
+export async function skipOnboardingStepOne(
+  storage: LocalAppStorage,
+  state: LoadedOnboardingState,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedOnboardingState;
+    }
+  | {
+      ok: false;
+      errorCode: "generic";
+    }
+> {
+  return advanceToStepTwo(storage, state, null);
+}
+
 export async function saveOnboardingStepOne(
   storage: LocalAppStorage,
   state: LoadedOnboardingState,
@@ -132,9 +150,26 @@ export async function saveOnboardingStepOne(
     };
   }
 
+  return advanceToStepTwo(storage, state, state.selectedDate);
+}
+
+async function advanceToStepTwo(
+  storage: LocalAppStorage,
+  state: LoadedOnboardingState,
+  lastPeriodStart: string | null,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedOnboardingState;
+    }
+  | {
+      ok: false;
+      errorCode: "generic";
+    }
+> {
   const nextRecord: OnboardingRecord = {
     ...state.record,
-    lastPeriodStart: state.selectedDate,
+    lastPeriodStart,
   };
 
   try {
@@ -159,6 +194,7 @@ export async function saveOnboardingStepOne(
     state: {
       ...state,
       record: nextRecord,
+      selectedDate: lastPeriodStart ?? "",
       step: 2,
     },
   };
@@ -183,13 +219,6 @@ export async function finishOnboarding(
       ? state.selectedDate.trim()
       : state.record.lastPeriodStart;
 
-  if (!completedLastPeriodStart) {
-    return {
-      ok: false,
-      errorCode: "date_required",
-    };
-  }
-
   const sanitizedValues = sanitizeStepTwoValues(state.stepTwoValues);
   if (
     buildCycleGuidanceState(
@@ -212,7 +241,6 @@ export async function finishOnboarding(
     periodLength: sanitizedValues.periodLength,
     autoPeriodFill: sanitizedValues.autoPeriodFill,
     ...predictionModeFlags,
-    ageGroup: sanitizedValues.ageGroup,
     usageGoal: sanitizedValues.usageGoal,
   };
 
@@ -256,7 +284,7 @@ export async function finishOnboarding(
     state: {
       ...state,
       record: completedRecord,
-      selectedDate: completedLastPeriodStart,
+      selectedDate: completedLastPeriodStart ?? "",
       stepTwoValues: sanitizedValues,
     },
   };

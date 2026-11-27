@@ -4,7 +4,10 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import type { DayOption } from "../../../models/onboarding";
 import type { OnboardingViewData } from "../../../services/onboarding-view-service";
 import { StatusBanner } from "../../components/StatusBanner";
-import { OnboardingPrimaryButton } from "./OnboardingButtons";
+import {
+  OnboardingPrimaryButton,
+  OnboardingSecondaryButton,
+} from "./OnboardingButtons";
 import type { OnboardingFlowStyles } from "./onboarding-flow-styles";
 
 type OnboardingStepOnePanelProps = {
@@ -17,6 +20,7 @@ type OnboardingStepOnePanelProps = {
   onDismissStepOneNotice: (() => void | Promise<void>) | undefined;
   onNext: () => void | Promise<void>;
   onOpenPrivacyNotice: () => void | Promise<void>;
+  onSkip: () => void | Promise<void>;
   selectedDateValue: string;
   stepOneError: string;
   stepOneNotice: {
@@ -47,6 +51,7 @@ export function OnboardingStepOnePanel({
   onDismissStepOneNotice,
   onNext,
   onOpenPrivacyNotice,
+  onSkip,
   selectedDateValue,
   stepOneError,
   stepOneNotice,
@@ -142,6 +147,15 @@ export function OnboardingStepOnePanel({
           onPress={onNext}
           styles={styles}
           testID="onboarding-next-button"
+        />
+
+        <OnboardingSecondaryButton
+          compact={compact}
+          disabled={isSaving}
+          label={viewData.stepOne.skipLabel}
+          onPress={onSkip}
+          styles={styles}
+          testID="onboarding-skip-date-button"
         />
 
         <View style={styles.privacyNoticeRow}>

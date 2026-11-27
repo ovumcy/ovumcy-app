@@ -15,6 +15,7 @@ import {
   patchOnboardingStepTwoValues,
   persistIncompleteOnboardingStep,
   saveOnboardingStepOne,
+  skipOnboardingStepOne,
   type LoadedOnboardingState,
 } from "../../services/onboarding-screen-service";
 import { buildOnboardingViewData } from "../../services/onboarding-view-service";
@@ -132,11 +133,26 @@ export function OnboardingScreen({
     setIsSaving(false);
   }
 
-  async function handleFinish() {
+  async function handleStepOneSkip() {
+    setIsSaving(true);
+    setStepOneError("");
+
+    const result = await skipOnboardingStepOne(storage, readyState);
+    if (!result.ok) {
+      setStepOneError(resolveStepOneError(result.errorCode, readyViewData));
+      setIsSaving(false);
+      return;
+    }
+
+    setState(result.state);
+    setIsSaving(false);
+  }
+
+  async function handleFinish(stateToFinish: LoadedOnboardingState = readyState) {
     setIsSaving(true);
     setStepTwoError("");
 
-    const result = await finishOnboarding(storage, readyState);
+    const result = await finishOnboarding(storage, stateToFinish);
     if (!result.ok) {
       setStepTwoError(resolveStepTwoError(result.errorCode, readyViewData));
       setIsSaving(false);
@@ -157,13 +173,6 @@ export function OnboardingScreen({
         setState((current) =>
           current
             ? patchOnboardingStepTwoValues(current, { autoPeriodFill: value })
-            : current,
-        );
-      }}
-      onAgeGroupSelect={(value) => {
-        setState((current) =>
-          current
-            ? patchOnboardingStepTwoValues(current, { ageGroup: value })
             : current,
         );
       }}
@@ -197,7 +206,7 @@ export function OnboardingScreen({
             : current,
         );
       }}
-      onFinish={handleFinish}
+      onFinish={() => handleFinish()}
       onDismissStepOneNotice={async () => {
         const nextProfile = await dismissOnboardingDayOneNotice(storage, profile);
         setProfile(nextProfile);
@@ -226,6 +235,12 @@ export function OnboardingScreen({
             : current,
         );
       }}
+      onSkipStepOne={handleStepOneSkip}
+      onSkipUsageGoal={() =>
+        // Web parity: skipping the goal question submits step 2 with no goal,
+        // which stores the default ("health").
+        handleFinish(patchOnboardingStepTwoValues(readyState, { usageGoal: "health" }))
+      }
       onUsageGoalSelect={(value) => {
         setState((current) =>
           current
@@ -262,12 +277,10 @@ function resolveStepOneError(
 }
 
 function resolveStepTwoError(
-  code: "date_required" | "invalid_cycle_settings" | "generic",
+  code: "invalid_cycle_settings" | "generic",
   viewData: ReturnType<typeof buildOnboardingViewData>,
 ): string {
   switch (code) {
-    case "date_required":
-      return viewData.errors.dateRequired;
     case "invalid_cycle_settings":
       return viewData.stepTwo.messages.errorIncompatible;
     case "generic":

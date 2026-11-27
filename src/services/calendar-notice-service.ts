@@ -3,6 +3,7 @@ import type {
   CalendarPredictionNoticeKey,
   DismissibleCalendarPredictionNoticeKey,
   ProfileRecord,
+  SessionCalendarPredictionNoticeKey,
 } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 
@@ -21,13 +22,13 @@ export type CalendarPredictionNoticeViewData =
   | {
       dismissalScope: "session";
       dismissLabel: string;
-      key: "calendar_pregnancy_paused_prediction_notice_v1";
+      key: SessionCalendarPredictionNoticeKey;
       message: string;
     };
 
 export function resolveCalendarPredictionNoticeKey(
   profile: Pick<ProfileRecord, "irregularCycle" | "unpredictableCycle">,
-  options: { pregnancyActive?: boolean } = {},
+  options: { pregnancyActive?: boolean; awaitingCycleStart?: boolean } = {},
 ): CalendarPredictionNoticeKey | null {
   // An active pregnancy outranks both mode notices: while it suppresses the
   // calendar's prediction cells, the irregular-mode copy ("Ovumcy still shows
@@ -38,6 +39,12 @@ export function resolveCalendarPredictionNoticeKey(
 
   if (profile.unpredictableCycle) {
     return "calendar_unpredictable_prediction_notice_v1";
+  }
+
+  // No cycle start yet (onboarding date skipped): nothing is predicted, so
+  // the irregular-mode copy would be false here too.
+  if (options.awaitingCycleStart) {
+    return "calendar_awaiting_cycle_start_notice_v1";
   }
 
   if (profile.irregularCycle) {
@@ -55,20 +62,26 @@ export function buildCalendarPredictionNotice(
     | "unpredictableCycle"
   >,
   locale: string,
-  options: { pregnancyActive?: boolean } = {},
+  options: { pregnancyActive?: boolean; awaitingCycleStart?: boolean } = {},
 ): CalendarPredictionNoticeViewData | null {
   const key = resolveCalendarPredictionNoticeKey(profile, options);
   if (!key) {
     return null;
   }
 
-  if (key === "calendar_pregnancy_paused_prediction_notice_v1") {
+  if (
+    key === "calendar_pregnancy_paused_prediction_notice_v1" ||
+    key === "calendar_awaiting_cycle_start_notice_v1"
+  ) {
     const copy = getCalendarCopy(locale);
     return {
       dismissalScope: "session",
       dismissLabel: copy.dismissNotice,
       key,
-      message: copy.predictionPregnancyPaused,
+      message:
+        key === "calendar_awaiting_cycle_start_notice_v1"
+          ? copy.predictionAwaitingCycleStart
+          : copy.predictionPregnancyPaused,
     };
   }
 

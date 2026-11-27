@@ -16,6 +16,7 @@ const appCopyEn = {
       back: "Back",
       next: "Next",
       finish: "Finish",
+      skip: "Skip this question",
     },
     step1: {
       title: "When did your last period start?",
@@ -63,18 +64,9 @@ const appCopyEn = {
       predictionModeIrregularHint: "Show approximate dates.",
       predictionModeFactsOnly: "No predictions",
       predictionModeFactsOnlyHint: "Show your records only.",
-      ageGroup: "Your age",
-      ageGroupHint:
-        "Optional. Stored with your profile; predictions use only your own cycle history.",
       usageGoal: "Why are you using Ovumcy?",
       usageGoalHint:
         "Optional. This changes UI emphasis only, not the prediction algorithm.",
-    },
-    ageGroup: {
-      unspecified: "Prefer not to say",
-      under40: "Under 40",
-      age40to45: "40-44",
-      age45plus: "45+",
     },
     usageGoal: {
       avoidPregnancy: "Avoid pregnancy",
@@ -108,6 +100,7 @@ const appCopyDe: AppCopy = {
       back: "Zurück",
       next: "Weiter",
       finish: "Fertig",
+      skip: "Diese Frage überspringen",
     },
     step1: {
       title: "Wann hat Ihre letzte Periode begonnen?",
@@ -155,18 +148,9 @@ const appCopyDe: AppCopy = {
       predictionModeIrregularHint: "Ungefähre Daten anzeigen.",
       predictionModeFactsOnly: "Keine Vorhersagen",
       predictionModeFactsOnlyHint: "Nur Ihre Einträge anzeigen.",
-      ageGroup: "Ihr Alter",
-      ageGroupHint:
-        "Optional. Wird mit Ihrem Profil gespeichert; Vorhersagen verwenden ausschließlich Ihre eigene Zyklushistorie.",
       usageGoal: "Wofür nutzen Sie Ovumcy?",
       usageGoalHint:
         "Optional. Das verändert nur die Betonung in der Oberfläche, nicht den Vorhersagealgorithmus.",
-    },
-    ageGroup: {
-      unspecified: "Keine Angabe",
-      under40: "Unter 40",
-      age40to45: "40-44",
-      age45plus: "45+",
     },
     usageGoal: {
       avoidPregnancy: "Schwangerschaft vermeiden",
@@ -200,6 +184,7 @@ const appCopyFr: AppCopy = {
       back: "Retour",
       next: "Suivant",
       finish: "Terminer",
+      skip: "Passer cette question",
     },
     step1: {
       title: "Quand vos dernières règles ont-elles commencé ?",
@@ -247,18 +232,9 @@ const appCopyFr: AppCopy = {
       predictionModeIrregularHint: "Afficher des dates approximatives.",
       predictionModeFactsOnly: "Pas de prédictions",
       predictionModeFactsOnlyHint: "Afficher seulement vos enregistrements.",
-      ageGroup: "Votre âge",
-      ageGroupHint:
-        "Optionnel. Enregistré avec votre profil ; les prédictions n'utilisent que votre propre historique de cycles.",
       usageGoal: "Pourquoi utilisez-vous Ovumcy ?",
       usageGoalHint:
         "Optionnel. Cela change seulement l'accent mis dans l'interface, pas l'algorithme de prédiction.",
-    },
-    ageGroup: {
-      unspecified: "Préfère ne pas répondre",
-      under40: "Moins de 40 ans",
-      age40to45: "40-44",
-      age45plus: "45+",
     },
     usageGoal: {
       avoidPregnancy: "Éviter une grossesse",
@@ -294,6 +270,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         back: "Назад",
         next: "Далее",
         finish: "Завершить",
+        skip: "Пропустить этот вопрос",
       },
       step1: {
         title: "Когда начались последние месячные?",
@@ -341,18 +318,9 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeIrregularHint: "Показывать примерные даты.",
         predictionModeFactsOnly: "Без прогнозов",
         predictionModeFactsOnlyHint: "Показывать только Ваши записи.",
-        ageGroup: "Ваш возраст",
-        ageGroupHint:
-          "Необязательно. Сохраняется в профиле; прогнозы строятся только по Вашей истории циклов.",
         usageGoal: "Зачем Вы используете Ovumcy?",
         usageGoalHint:
           "Необязательно. Это меняет только акценты интерфейса, а не алгоритм прогноза.",
-      },
-      ageGroup: {
-        unspecified: "Не указывать",
-        under40: "Младше 40",
-        age40to45: "40-44",
-        age45plus: "45+",
       },
       usageGoal: {
         avoidPregnancy: "Избежать беременности",
@@ -384,6 +352,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         back: "Atrás",
         next: "Siguiente",
         finish: "Finalizar",
+        skip: "Omitir esta pregunta",
       },
       step1: {
         title: "¿Cuándo empezó tu último período?",
@@ -431,18 +400,9 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeIrregularHint: "Mostrar fechas aproximadas.",
         predictionModeFactsOnly: "Sin predicciones",
         predictionModeFactsOnlyHint: "Mostrar solo tus registros.",
-        ageGroup: "Tu edad",
-        ageGroupHint:
-          "Opcional. Se guarda con tu perfil; las predicciones usan solo tu propio historial de ciclos.",
         usageGoal: "¿Por qué usas Ovumcy?",
         usageGoalHint:
           "Opcional. Esto solo cambia el énfasis de la interfaz, no el algoritmo de predicción.",
-      },
-      ageGroup: {
-        unspecified: "Prefiero no decirlo",
-        under40: "Menos de 40",
-        age40to45: "40-44",
-        age45plus: "45+",
       },
       usageGoal: {
         avoidPregnancy: "Evitar embarazo",
@@ -474,6 +434,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         back: "Indietro",
         next: "Avanti",
         finish: "Fine",
+        skip: "Salta questa domanda",
       },
       step1: {
         title: "Quando è iniziato il tuo ultimo ciclo?",
@@ -521,18 +482,9 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeIrregularHint: "Mostra date approssimative.",
         predictionModeFactsOnly: "Nessuna previsione",
         predictionModeFactsOnlyHint: "Mostra solo i tuoi dati.",
-        ageGroup: "La tua età",
-        ageGroupHint:
-          "Opzionale. Memorizzata nel profilo; le previsioni usano solo la tua cronologia del ciclo.",
         usageGoal: "Perché usi Ovumcy?",
         usageGoalHint:
           "Opzionale. Modifica solo l'enfasi dell'interfaccia, non l'algoritmo di previsione.",
-      },
-      ageGroup: {
-        unspecified: "Preferisco non indicarlo",
-        under40: "Sotto i 40",
-        age40to45: "40-44",
-        age45plus: "45+",
       },
       usageGoal: {
         avoidPregnancy: "Evitare una gravidanza",

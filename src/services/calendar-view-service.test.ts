@@ -1,6 +1,6 @@
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import { createPregnancyRecord } from "../models/pregnancy";
-import type { ProfileRecord } from "../models/profile";
+import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
 import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
 import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import {
@@ -1687,5 +1687,22 @@ describe("loadCalendarScreenState predictionsSuppressed", () => {
     const state = await loadCalendarScreenState(storage, new Date(2026, 2, 25), "2026-03", "2026-03-25");
 
     expect(state.predictionsSuppressed).toBe(false);
+  });
+});
+
+describe("calendar with no cycle start (onboarding date skipped)", () => {
+  it("predicts nothing and shows the awaiting-cycle-start notice", () => {
+    const viewData = buildCalendarViewData(
+      { ...createDefaultProfileRecord(), lastPeriodStart: null },
+      [],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
+    );
+
+    expect(viewData.predictionNotice?.key).toBe(
+      "calendar_awaiting_cycle_start_notice_v1",
+    );
+    expect(viewData.days.every((day) => day.stateKey === "neutral")).toBe(true);
   });
 });

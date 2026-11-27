@@ -34,7 +34,6 @@ function createLoadedState(
       periodLength: record.periodLength,
       autoPeriodFill: record.autoPeriodFill,
       predictionMode: "regular",
-      ageGroup: "under_40",
       usageGoal: record.usageGoal,
     },
     ...overrides,
@@ -72,7 +71,6 @@ describe("seedOnboardingPeriodDays (via finishOnboarding)", () => {
         periodLength: 5,
         autoPeriodFill: true,
         predictionMode: "regular",
-        ageGroup: "under_40",
         usageGoal: "health",
       },
     });
@@ -128,7 +126,6 @@ describe("seedOnboardingPeriodDays (via finishOnboarding)", () => {
         periodLength: 5,
         autoPeriodFill: false,
         predictionMode: "regular",
-        ageGroup: "under_40",
         usageGoal: "health",
       },
     });
@@ -170,7 +167,6 @@ describe("seedOnboardingPeriodDays (via finishOnboarding)", () => {
         periodLength: 5,
         autoPeriodFill: true,
         predictionMode: "regular",
-        ageGroup: "under_40",
         usageGoal: "health",
       },
     });
@@ -227,7 +223,6 @@ describe("seedOnboardingPeriodDays (via finishOnboarding)", () => {
         periodLength: 5,
         autoPeriodFill: true,
         predictionMode: "regular",
-        ageGroup: "under_40",
         usageGoal: "health",
       },
     });

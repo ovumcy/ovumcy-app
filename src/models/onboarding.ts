@@ -40,7 +40,6 @@ export type OnboardingStepTwoValues = {
   periodLength: number;
   autoPeriodFill: boolean;
   predictionMode: PredictionMode;
-  ageGroup: AgeGroupOption;
   usageGoal: UsageGoal;
 };
 

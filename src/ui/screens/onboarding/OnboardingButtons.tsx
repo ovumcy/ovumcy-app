@@ -4,15 +4,12 @@ import type { OnboardingFlowStyles } from "./onboarding-flow-styles";
 
 type OnboardingButtonProps = {
   compact?: boolean;
+  disabled?: boolean;
   grow?: boolean;
   label: string;
   onPress: () => void | Promise<void>;
   styles: OnboardingFlowStyles;
   testID?: string;
-};
-
-type OnboardingPrimaryButtonProps = OnboardingButtonProps & {
-  disabled?: boolean;
 };
 
 export function OnboardingPrimaryButton({
@@ -23,7 +20,7 @@ export function OnboardingPrimaryButton({
   disabled,
   styles,
   testID,
-}: OnboardingPrimaryButtonProps) {
+}: OnboardingButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -48,17 +45,21 @@ export function OnboardingSecondaryButton({
   grow = false,
   label,
   onPress,
+  disabled,
   styles,
   testID,
 }: OnboardingButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
+      disabled={disabled}
       onPress={onPress}
       style={[
         styles.secondaryButton,
         grow ? styles.buttonGrow : null,
         compact ? styles.secondaryButtonCompact : null,
+        disabled ? styles.buttonDisabled : null,
       ]}
       testID={testID}
     >

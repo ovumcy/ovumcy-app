@@ -18,7 +18,7 @@ All flows live in `.maestro/` and target real `testID`s present in `src/`.
 
 | Flow | What it does | Key `testID`s used |
 | --- | --- | --- |
-| `onboarding.yaml` | Completes the 2-step onboarding and lands on the dashboard. | `onboarding-day-option-*`, `onboarding-next-button`, `onboarding-cycle-length-slider`, `onboarding-age-group-under_40`, `onboarding-finish-button`, `dashboard-quick-action-period` |
+| `onboarding.yaml` | Completes the 2-step onboarding and lands on the dashboard. | `onboarding-day-option-*`, `onboarding-next-button`, `onboarding-cycle-length-slider`, `onboarding-finish-button`, `dashboard-quick-action-period` |
 | `dashboard-log-day.yaml` | Opens today's quick log, marks a period day + a symptom, confirms persistence. | `dashboard-quick-action-period`, `day-log-flow-none`, `day-log-period-toggle`, `day-log-symptom-cramps`, `day-log-status-banner` |
 | `navigation.yaml` | Tabs between Today / Calendar / Insights / Settings. | tab labels `Today`/`Calendar`/`Insights`/`Settings`, `dashboard-quick-actions-title`, `calendar-day-panel`, `stats-screen-title`, `settings-hub-open-interface` |
 | `settings-cycle.yaml` | Opens the cycle section from the settings hub, adjusts the cycle-length slider, saves, confirms the success banner. | `settings-hub-open-cycle`, `settings-cycle-section`, `settings-cycle-length-slider`, `settings-save-all-button`, `settings-cycle-status-banner` |

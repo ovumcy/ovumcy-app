@@ -13,11 +13,15 @@ import {
 import { resolveDisplayedAgeGroup } from "./profile-settings-policy";
 
 describe("onboarding-policy", () => {
-  it("uses the later of year start and 60-day lookback for onboarding bounds", () => {
+  it("bounds onboarding dates to the last 60 days, across a year boundary", () => {
     const bounds = getOnboardingDateBounds(new Date(2026, 2, 17));
 
     expect(bounds.minDate).toBe("2026-01-16");
     expect(bounds.maxDate).toBe("2026-03-17");
+    expect(getOnboardingDateBounds(new Date(2026, 0, 5))).toEqual({
+      minDate: "2025-11-06",
+      maxDate: "2026-01-05",
+    });
   });
 
   it("validates step 1 dates against required, format, and range rules", () => {
@@ -166,7 +170,6 @@ describe("onboarding-policy", () => {
         periodLength: 5,
         autoPeriodFill: true,
         predictionMode: "irregular",
-        ageGroup: "under_40",
         usageGoal: "health",
       }),
     ).toEqual(
