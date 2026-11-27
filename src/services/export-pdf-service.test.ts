@@ -291,7 +291,7 @@ describe("export-pdf-service", () => {
             date: "2026-02-03",
             cycleDay: 3,
             lhTest: "Пик",
-            sexActivity: "С защитой",
+            sexActivity: "Защищённый",
             symptoms: ["Jaw pain"],
           }),
         ],

@@ -134,7 +134,7 @@ describe("A6 stats-copy ru symptomFrequencySummary — ruDayWord agreement", () 
 
 describe("A8 stats-copy ru cycle counts — one/few/many agreement", () => {
   const ru = getStatsCopy("ru");
-  const cases: ReadonlyArray<readonly [number, string]> = [
+  const cases: readonly (readonly [number, string])[] = [
     [1, "цикл"],
     [2, "цикла"],
     [5, "циклов"],
