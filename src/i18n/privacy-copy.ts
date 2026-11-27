@@ -70,7 +70,7 @@ const privacyCopyEn: PrivacyNoticeCopy = {
     },
     contact: {
       title: "Who is responsible",
-      body: "Ovumcy is developed in the open and released under the AGPL v3. For privacy questions or requests, write to contact@ovumcy.com.",
+      body: "Ovumcy is source-available under the PolyForm Noncommercial License 1.0.0. For privacy questions or requests, write to contact@ovumcy.com.",
     },
   },
   policyLink: {
@@ -123,7 +123,7 @@ const privacyCopyDe: PrivacyNoticeCopy = {
     },
     contact: {
       title: "Wer verantwortlich ist",
-      body: "Ovumcy wird offen entwickelt und unter der AGPL v3 veröffentlicht. Bei Fragen oder Anliegen zum Datenschutz schreiben Sie an contact@ovumcy.com.",
+      body: "Der Quellcode von Ovumcy ist unter der PolyForm Noncommercial License 1.0.0 einsehbar. Bei Fragen oder Anliegen zum Datenschutz schreiben Sie an contact@ovumcy.com.",
     },
   },
   policyLink: {
@@ -176,7 +176,7 @@ const privacyCopyFr: PrivacyNoticeCopy = {
     },
     contact: {
       title: "Qui est responsable",
-      body: "Ovumcy est développé ouvertement et publié sous licence AGPL v3. Pour toute question ou demande relative à la confidentialité, écrivez à contact@ovumcy.com.",
+      body: "Le code source d'Ovumcy est disponible sous la licence PolyForm Noncommercial 1.0.0. Pour toute question ou demande relative à la confidentialité, écrivez à contact@ovumcy.com.",
     },
   },
   policyLink: {
@@ -229,7 +229,7 @@ const privacyCopyRu: PrivacyNoticeCopy = {
     },
     contact: {
       title: "Кто отвечает за обработку",
-      body: "Ovumcy разрабатывается открыто и распространяется под лицензией AGPL v3. По вопросам конфиденциальности пишите на contact@ovumcy.com.",
+      body: "Исходный код Ovumcy открыт для просмотра и распространяется под лицензией PolyForm Noncommercial License 1.0.0. По вопросам конфиденциальности пишите на contact@ovumcy.com.",
     },
   },
   policyLink: {
@@ -282,7 +282,7 @@ const privacyCopyEs: PrivacyNoticeCopy = {
     },
     contact: {
       title: "Quién es responsable",
-      body: "Ovumcy se desarrolla de forma abierta y se publica bajo la licencia AGPL v3. Para preguntas o solicitudes sobre privacidad, escribe a contact@ovumcy.com.",
+      body: "El código fuente de Ovumcy está disponible bajo la licencia PolyForm Noncommercial 1.0.0. Para preguntas o solicitudes sobre privacidad, escribe a contact@ovumcy.com.",
     },
   },
   policyLink: {
@@ -335,7 +335,7 @@ const privacyCopyIt: PrivacyNoticeCopy = {
     },
     contact: {
       title: "Chi è responsabile",
-      body: "Ovumcy è sviluppato in modo aperto e distribuito con licenza AGPL v3. Per domande o richieste sulla privacy scrivi a contact@ovumcy.com.",
+      body: "Il codice sorgente di Ovumcy è disponibile con licenza PolyForm Noncommercial 1.0.0. Per domande o richieste sulla privacy scrivi a contact@ovumcy.com.",
     },
   },
   policyLink: {

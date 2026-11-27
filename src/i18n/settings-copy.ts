@@ -56,7 +56,7 @@ const settingsCopyEn = {
     hint: "Optional. Stored with your profile; predictions use only your own cycle history.",
     unspecified: "Prefer not to say",
     under40: "Under 40",
-    age40to45: "40-45",
+    age40to45: "40-44",
     age45plus: "45+",
   },
   goal: {
@@ -2008,7 +2008,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       hint: "Необязательно. Сохраняется в профиле; прогнозы строятся только по вашей истории циклов.",
       unspecified: "Не указывать",
       under40: "Младше 40",
-      age40to45: "40-45",
+      age40to45: "40-44",
       age45plus: "45+",
     },
     goal: {
@@ -2463,7 +2463,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       sensitiveHint:
         "Экспортированные файлы чувствительны. Сохраняйте и отправляйте их только туда, где доверяете устройству или получателю.",
       pdfCloudOnlyHint:
-        "PDF-экспорт относится к плюшкам Ovumcy Cloud. CSV и JSON по-прежнему доступны локально на этом устройстве.",
+        "PDF-экспорт входит в план Ovumcy Cloud. CSV и JSON по-прежнему доступны локально на этом устройстве.",
       pdfPlanHint:
         "Для этого аккаунта Ovumcy Cloud нужен активный план, чтобы открыть PDF-экспорт.",
       noData:
@@ -2635,7 +2635,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       hint: "Opcional. Se guarda con tu perfil; las predicciones usan solo tu propio historial de ciclos.",
       unspecified: "Prefiero no decirlo",
       under40: "Menos de 40",
-      age40to45: "40-45",
+      age40to45: "40-44",
       age45plus: "45+",
     },
     goal: {
@@ -3272,7 +3272,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       hint: "Opzionale. Memorizzata nel profilo; le previsioni usano solo la tua cronologia del ciclo.",
       unspecified: "Preferisco non indicarlo",
       under40: "Sotto i 40",
-      age40to45: "40-45",
+      age40to45: "40-44",
       age45plus: "45+",
     },
     goal: {
