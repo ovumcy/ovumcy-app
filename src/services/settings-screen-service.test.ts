@@ -662,6 +662,8 @@ describe("settings services", () => {
       themeOverride: "light",
       firstDayOfWeek: 1,
       screenCaptureProtectionEnabled: false,
+      showCycleRing: false,
+      showCycleRibbon: true,
     });
 
     expect(result).toEqual({
@@ -677,6 +679,8 @@ describe("settings services", () => {
       expect.objectContaining({
         firstDayOfWeek: 1,
         screenCaptureProtectionEnabled: false,
+        showCycleRing: false,
+        showCycleRibbon: true,
       }),
     );
   });

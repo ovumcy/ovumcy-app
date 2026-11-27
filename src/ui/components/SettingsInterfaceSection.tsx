@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import type {
+  CycleViewKey,
   InterfaceSettingsValues,
   InterfaceLanguage,
   ThemePreference,
@@ -13,10 +14,12 @@ import { useThemedStyles } from "../theme/useThemedStyles";
 import { BinaryToggleCard } from "./BinaryToggleCard";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
+import { MultiSelectChipGroup } from "./MultiSelectChipGroup";
 import { StatusBanner } from "./StatusBanner";
 
 type SettingsInterfaceSectionProps = {
   errorMessage: string;
+  onCycleViewToggle: (value: CycleViewKey) => void;
   onFirstDayOfWeekSelect: (value: WeekStartDay) => void;
   onLanguageSelect: (value: InterfaceLanguage) => void;
   onScreenCaptureProtectionChange: (value: boolean) => void;
@@ -28,6 +31,7 @@ type SettingsInterfaceSectionProps = {
 
 export function SettingsInterfaceSection({
   errorMessage,
+  onCycleViewToggle,
   onFirstDayOfWeekSelect,
   onLanguageSelect,
   onScreenCaptureProtectionChange,
@@ -83,6 +87,19 @@ export function SettingsInterfaceSection({
         />
       </View>
 
+      <View style={styles.formGroup}>
+        <Text style={styles.fieldLabel}>{viewData.cycleViewLabel}</Text>
+        <Text style={styles.helperText}>{viewData.cycleViewHint}</Text>
+        <MultiSelectChipGroup
+          compact
+          groupLabel={viewData.cycleViewLabel}
+          onToggle={onCycleViewToggle}
+          options={viewData.cycleViewOptions}
+          selectedValues={selectedCycleViews(value)}
+          testIDPrefix="settings-interface-cycle-view"
+        />
+      </View>
+
       <BinaryToggleCard
         compact
         description={viewData.screenCaptureProtectionHint}
@@ -117,6 +134,17 @@ export function SettingsInterfaceSection({
       ) : null}
     </FeatureCard>
   );
+}
+
+function selectedCycleViews(value: InterfaceSettingsValues): CycleViewKey[] {
+  const selected: CycleViewKey[] = [];
+  if (value.showCycleRing) {
+    selected.push("ring");
+  }
+  if (value.showCycleRibbon) {
+    selected.push("ribbon");
+  }
+  return selected;
 }
 
 const createStyles = (colors: AppThemeColors) =>

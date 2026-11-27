@@ -27,6 +27,7 @@ import {
   normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
   normalizeWeekStartDay,
+  resolveCycleViews,
   resolveScreenCaptureProtectionEnabled,
   type ProfileRecord,
 } from "../models/profile";
@@ -972,6 +973,10 @@ function sanitizeImportedProfileRecord(candidate: unknown): ProfileRecord | null
     firstDayOfWeek: normalizeWeekStartDay(record.firstDayOfWeek),
     screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
       record.screenCaptureProtectionEnabled,
+    ),
+    ...resolveCycleViews(
+      typeof record.showCycleRing === "boolean" ? record.showCycleRing : undefined,
+      typeof record.showCycleRibbon === "boolean" ? record.showCycleRibbon : undefined,
     ),
     dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
       record.dismissedCalendarPredictionNoticeKey,

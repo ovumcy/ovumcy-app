@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
+import type {
+  CycleRibbonDayViewData,
+  DashboardCycleRibbonViewData,
+} from "../../../services/dashboard-cycle-ribbon-service";
 import type { DashboardCycleHeroViewData } from "../../../services/dashboard-view-service";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { DashboardCycleHero } from "./DashboardCycleHero";
@@ -14,6 +18,8 @@ const baseViewData: DashboardCycleHeroViewData = {
   upcomingOvulationLabel: null,
   progressPercent: 7 / 28,
   currentTone: "period" as const,
+  showRing: true,
+  ribbon: null,
   phaseSegments: [
     { key: "period" as const, startPercent: 0, endPercent: 5 / 28, tone: "period" as const },
     {
@@ -181,5 +187,70 @@ describe("DashboardCycleHero", () => {
     await renderHero({ state: "stale", value: "~41" });
 
     expect(screen.getByTestId("dashboard-cycle-hero-value").props.children).toBe("~41");
+  });
+
+  it("hides the ring and keeps the day number when the ring view is off", async () => {
+    await renderHero({ showRing: false });
+
+    expect(screen.queryByTestId("dashboard-cycle-hero-ovulation-marker")).toBeNull();
+    expect(screen.getByTestId("dashboard-cycle-hero-lead")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-cycle-hero-value").props.children).toBe("8");
+    expect(screen.getByTestId("dashboard-cycle-hero-phase-grid")).toBeTruthy();
+  });
+
+  it("draws the ribbon under the ring and reads its summary with the hero", async () => {
+    const cell = (day: number, overrides: Partial<CycleRibbonDayViewData> = {}) => ({
+      day,
+      phase: day <= 2 ? ("menstrual" as const) : ("follicular" as const),
+      isToday: false,
+      isPredictedFlow: false,
+      isFertile: false,
+      isFertilePeak: false,
+      isStartWindow: false,
+      isLogged: false,
+      showScaleLabel: false,
+      ...overrides,
+    });
+    const ribbon: DashboardCycleRibbonViewData = {
+      accessibilityLabel: "Cycle map: today is cycle day 3 of about 4. Phase: Follicular.",
+      todayLabel: "Today",
+      todayMarkerAlign: "end",
+      days: [
+        cell(1, { isLogged: true, showScaleLabel: true }),
+        cell(2),
+        cell(3, { isToday: true, showScaleLabel: true }),
+        cell(4, { isFertile: true, isFertilePeak: true }),
+      ],
+      legendLabel: "Cycle map legend",
+      legend: [
+        {
+          key: "phase-menstrual",
+          label: "Menstrual",
+          swatches: [
+            {
+              phase: "menstrual",
+              isPredictedFlow: false,
+              isFertile: false,
+              isFertilePeak: false,
+              isStartWindow: false,
+              isLogged: false,
+            },
+          ],
+        },
+      ],
+      truncatedNote: null,
+    };
+
+    await renderHero({ ribbon });
+
+    expect(screen.getByTestId("dashboard-cycle-ribbon")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-cycle-ribbon-today-marker").props.children).toBe("Today");
+    expect(screen.getByTestId("dashboard-cycle-ribbon-scale-1")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-cycle-ribbon-scale-2")).toBeNull();
+    expect(screen.getByTestId("dashboard-cycle-ribbon-legend-phase-menstrual")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-cycle-ribbon-truncated")).toBeNull();
+    expect(
+      screen.getByTestId("dashboard-cycle-hero").props.accessibilityLabel,
+    ).toContain("Cycle map: today is cycle day 3 of about 4.");
   });
 });

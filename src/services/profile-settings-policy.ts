@@ -22,6 +22,7 @@ import {
   normalizeInterfaceLanguage,
   normalizeThemePreference,
   normalizeWeekStartDay,
+  resolveCycleViews,
 } from "../models/profile";
 
 import { normalizeCycleDayReminders } from "./cycle-day-reminder-policy";
@@ -237,6 +238,7 @@ export function sanitizeInterfaceSettingsValues(
     themeOverride: normalizeThemePreference(values.themeOverride),
     firstDayOfWeek: normalizeWeekStartDay(values.firstDayOfWeek),
     screenCaptureProtectionEnabled: values.screenCaptureProtectionEnabled !== false,
+    ...resolveCycleViews(values.showCycleRing, values.showCycleRibbon),
   };
 }
 

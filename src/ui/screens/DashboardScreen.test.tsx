@@ -476,7 +476,7 @@ describe("DashboardScreen", () => {
       expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
       expect(
         screen.getByLabelText(
-          "Day 8. Follicular. Cycle 28 days. Next period: Apr 7. Ovulation: Mar 23",
+          "Day 8. Follicular. Cycle 28 days. Next period: Apr 7. Ovulation: Mar 23. Cycle map: today is cycle day 8 of about 28. Phase: Follicular. Fertile window (estimate): cycle days 9–14.",
         ),
       ).toBeTruthy();
       expect(

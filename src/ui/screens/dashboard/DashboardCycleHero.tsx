@@ -6,6 +6,7 @@ import type { DashboardCycleHeroViewData } from "../../../services/dashboard-vie
 import type { AppThemeColors } from "../../theme/tokens";
 import { fontScale, spacing } from "../../theme/tokens";
 import { useThemedStyles } from "../../theme/useThemedStyles";
+import { DashboardCycleRibbon } from "./DashboardCycleRibbon";
 
 type DashboardCycleHeroProps = {
   viewData: DashboardCycleHeroViewData;
@@ -57,6 +58,50 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
     viewData.currentTone,
   );
 
+  const centerContent = (
+    <>
+      <Text
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={fontScale.dense}
+        minimumFontScale={0.85}
+        numberOfLines={1}
+        style={styles.centerTitle}
+        testID="dashboard-cycle-hero-title"
+      >
+        {viewData.title}
+      </Text>
+      <Text
+        maxFontSizeMultiplier={fontScale.dense}
+        numberOfLines={1}
+        style={styles.centerValue}
+        testID="dashboard-cycle-hero-value"
+      >
+        {resolveDisplayedHeroValue(viewData)}
+      </Text>
+      {emphasizedPhaseLabel ? (
+        <Text
+          maxFontSizeMultiplier={fontScale.dense}
+          numberOfLines={1}
+          style={[
+            styles.centerPhaseLabel,
+            viewData.currentTone === "ovulation"
+              ? styles.centerPhaseLabelOvulation
+              : styles.centerPhaseLabelPeriod,
+          ]}
+        >
+          {emphasizedPhaseLabel}
+        </Text>
+      ) : null}
+      <Text
+        maxFontSizeMultiplier={fontScale.dense}
+        style={styles.centerDetail}
+        testID="dashboard-cycle-hero-detail"
+      >
+        {viewData.detail}
+      </Text>
+    </>
+  );
+
   return (
     <View
       accessibilityLabel={buildDashboardCycleHeroAccessibilityLabel(viewData)}
@@ -67,119 +112,89 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
       <View style={styles.glowPrimary} />
       <View style={styles.glowSecondary} />
 
-      <View style={[styles.ringShell, { height: heroSize, width: heroSize }]}>
-        <Svg
-          height={heroSize}
-          style={styles.ringSvg}
-          viewBox={`0 0 ${heroSize} ${heroSize}`}
-          width={heroSize}
-        >
-          <Circle
-            cx={heroSize / 2}
-            cy={heroSize / 2}
-            fill="none"
-            opacity={0.58}
-            r={phaseRingRadius}
-            stroke={ringTrackColor}
-            strokeWidth={HERO_RING_STROKE_WIDTH}
-          />
-          {phaseRingPaths.map((segment) => (
-            <Path
-              d={segment.d}
+      {viewData.showRing ? (
+        <View style={[styles.ringShell, { height: heroSize, width: heroSize }]}>
+          <Svg
+            height={heroSize}
+            style={styles.ringSvg}
+            viewBox={`0 0 ${heroSize} ${heroSize}`}
+            width={heroSize}
+          >
+            <Circle
+              cx={heroSize / 2}
+              cy={heroSize / 2}
               fill="none"
-              key={segment.key}
-              stroke={resolveArcStrokeColor(styles, segment.tone)}
-              strokeLinecap="round"
+              opacity={0.58}
+              r={phaseRingRadius}
+              stroke={ringTrackColor}
               strokeWidth={HERO_RING_STROKE_WIDTH}
             />
-          ))}
-        </Svg>
-        {viewData.progressPercent !== null ? (
-          <View
-            style={[
-              styles.currentDot,
-              resolveCurrentDotStyle(styles, viewData.currentTone),
-              resolveCircularPosition(
-                viewData.progressPercent,
-                phaseRingRadius,
-                heroSize,
-                HERO_CURRENT_DOT_SIZE,
-                HERO_CURRENT_DOT_SIZE,
-              ),
-            ]}
-          />
-        ) : null}
-        {ovulationMarkerPercent !== null ? (
-          <View
-            pointerEvents="none"
-            style={[
-              styles.ovulationMarkerShell,
-              resolveCircularPosition(
-                ovulationMarkerPercent,
-                phaseRingRadius,
-                heroSize,
-                HERO_OVULATION_MARKER_SIZE,
-                HERO_OVULATION_MARKER_SIZE,
-              ),
-            ]}
-            testID="dashboard-cycle-hero-ovulation-marker"
-          >
-            <View style={styles.ovulationMarkerOuter}>
-              <View style={styles.ovulationMarkerCore} />
-            </View>
-          </View>
-        ) : null}
-        <View
-          style={[
-            styles.centerCard,
-            {
-              borderRadius: centerSize / 2,
-              height: centerSize,
-              width: centerSize,
-            },
-          ]}
-        >
-          <Text
-            adjustsFontSizeToFit
-            maxFontSizeMultiplier={fontScale.dense}
-            minimumFontScale={0.85}
-            numberOfLines={1}
-            style={styles.centerTitle}
-            testID="dashboard-cycle-hero-title"
-          >
-            {viewData.title}
-          </Text>
-          <Text
-            maxFontSizeMultiplier={fontScale.dense}
-            numberOfLines={1}
-            style={styles.centerValue}
-            testID="dashboard-cycle-hero-value"
-          >
-            {resolveDisplayedHeroValue(viewData)}
-          </Text>
-          {emphasizedPhaseLabel ? (
-            <Text
-              maxFontSizeMultiplier={fontScale.dense}
-              numberOfLines={1}
+            {phaseRingPaths.map((segment) => (
+              <Path
+                d={segment.d}
+                fill="none"
+                key={segment.key}
+                stroke={resolveArcStrokeColor(styles, segment.tone)}
+                strokeLinecap="round"
+                strokeWidth={HERO_RING_STROKE_WIDTH}
+              />
+            ))}
+          </Svg>
+          {viewData.progressPercent !== null ? (
+            <View
               style={[
-                styles.centerPhaseLabel,
-                viewData.currentTone === "ovulation"
-                  ? styles.centerPhaseLabelOvulation
-                  : styles.centerPhaseLabelPeriod,
+                styles.currentDot,
+                resolveCurrentDotStyle(styles, viewData.currentTone),
+                resolveCircularPosition(
+                  viewData.progressPercent,
+                  phaseRingRadius,
+                  heroSize,
+                  HERO_CURRENT_DOT_SIZE,
+                  HERO_CURRENT_DOT_SIZE,
+                ),
               ]}
-            >
-              {emphasizedPhaseLabel}
-            </Text>
+            />
           ) : null}
-          <Text
-            maxFontSizeMultiplier={fontScale.dense}
-            style={styles.centerDetail}
-            testID="dashboard-cycle-hero-detail"
+          {ovulationMarkerPercent !== null ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.ovulationMarkerShell,
+                resolveCircularPosition(
+                  ovulationMarkerPercent,
+                  phaseRingRadius,
+                  heroSize,
+                  HERO_OVULATION_MARKER_SIZE,
+                  HERO_OVULATION_MARKER_SIZE,
+                ),
+              ]}
+              testID="dashboard-cycle-hero-ovulation-marker"
+            >
+              <View style={styles.ovulationMarkerOuter}>
+                <View style={styles.ovulationMarkerCore} />
+              </View>
+            </View>
+          ) : null}
+          <View
+            style={[
+              styles.centerCard,
+              {
+                borderRadius: centerSize / 2,
+                height: centerSize,
+                width: centerSize,
+              },
+            ]}
           >
-            {viewData.detail}
-          </Text>
+            {centerContent}
+          </View>
         </View>
-      </View>
+      ) : (
+        <View style={styles.leadPlain} testID="dashboard-cycle-hero-lead">
+          {centerContent}
+        </View>
+      )}
+
+      {viewData.ribbon ? <DashboardCycleRibbon viewData={viewData.ribbon} /> : null}
 
       {viewData.phaseCards.length > 0 ? (
         <View style={styles.phaseGrid} testID="dashboard-cycle-hero-phase-grid">
@@ -270,6 +285,7 @@ function buildDashboardCycleHeroAccessibilityLabel(
     viewData.detail,
     viewData.caption,
     viewData.upcomingOvulationLabel ?? "",
+    viewData.ribbon?.accessibilityLabel ?? "",
   ]
     .filter((value) => value.trim().length > 0)
     .join(". ");
@@ -459,6 +475,11 @@ const createStyles = (colors: AppThemeColors) =>
       position: "absolute",
       top: 46,
       width: 96,
+    },
+    leadPlain: {
+      alignItems: "center",
+      gap: 2,
+      paddingVertical: spacing.sm,
     },
     ringShell: {
       alignItems: "center",
