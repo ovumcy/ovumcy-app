@@ -1,0 +1,3 @@
+### Changed
+
+- **Fertile days wait for enough history.** Until three cycles have completed, the dashboard, calendar, reminders and the day-save message no longer show an ovulation date or a fertile window; the dashboard says what they are waiting for, and the next period stays. The same applies while a bleed logged today or yesterday is not a cycle start, and in the late-cycle band. An irregular-cycle account with fewer than three completed cycles sees no predicted date at all, the next period included, and its partner share drops it too. The calendar chains a fertile window to the next cycle only.

@@ -112,7 +112,11 @@ export function buildPartnerSharedProjectionPayload(
     ownerNow,
   );
   const suppressPredictions =
-    (options.suppressPredictions ?? false) || ownerProjection.isPregnancyPaused;
+    (options.suppressPredictions ?? false) ||
+    ownerProjection.isPregnancyPaused ||
+    // An irregular cycle with fewer than three completed cycles names no date
+    // at all (web PredictionsSuppressed), the next period included.
+    ownerProjection.awaitingIrregularHistory;
 
   // EXPLICIT field-pick (fail-closed), mirroring redactDayLogForPartner: the
   // partner profile is built field-by-field, never `...input.profile`. Any

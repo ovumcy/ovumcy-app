@@ -15,6 +15,10 @@ const dashboardCopyEn = {
     `${startLabel} — ${endLabel}`,
   ovulationNeedsMoreCycles:
     "3 completed cycles are needed before an ovulation range can be shown",
+  fertilityAwaitingFirstCycle:
+    "Fertile details wait for your first completed cycle. Until then the only thing behind them is the cycle length from setup.",
+  fertilityAwaitingMoreCycles: (count: number) =>
+    `Fertile details wait for ${count} completed ${count === 1 ? "cycle" : "cycles"}. Until then there is too little history behind them to show them.`,
   ovulationApproximate: "(approximate)",
   predictionsOff: "Predictions off",
   predictionsApproximateHint:
@@ -118,6 +122,10 @@ const dashboardCopyDe: DashboardCopy = {
     `${startLabel} — ${endLabel}`,
   ovulationNeedsMoreCycles:
     "3 abgeschlossene Zyklen sind nötig, bevor ein Eisprung-Bereich angezeigt werden kann",
+  fertilityAwaitingFirstCycle:
+    "Die Fruchtbarkeitsdetails warten auf Ihren ersten abgeschlossenen Zyklus. Bis dahin steht dahinter nur die Zykluslänge aus der Einrichtung.",
+  fertilityAwaitingMoreCycles: (count: number) =>
+    `Die Fruchtbarkeitsdetails warten auf ${count} ${count === 1 ? "abgeschlossenen Zyklus" : "abgeschlossene Zyklen"}. Bis dahin steht dahinter zu wenig Verlauf, um sie anzuzeigen.`,
   ovulationApproximate: "(ungefähr)",
   predictionsOff: "Vorhersagen aus",
   predictionsApproximateHint:
@@ -222,6 +230,10 @@ const dashboardCopyFr: DashboardCopy = {
     `${startLabel} — ${endLabel}`,
   ovulationNeedsMoreCycles:
     "3 cycles terminés sont nécessaires avant d'afficher une plage d'ovulation",
+  fertilityAwaitingFirstCycle:
+    "Les détails de fertilité attendent votre premier cycle terminé. D'ici là, ils ne reposent que sur la durée de cycle définie à la configuration.",
+  fertilityAwaitingMoreCycles: (count: number) =>
+    `Les détails de fertilité attendent ${count} ${count === 1 ? "cycle terminé" : "cycles terminés"}. D'ici là, ils reposent sur trop peu d'historique pour être affichés.`,
   ovulationApproximate: "(approximatif)",
   predictionsOff: "Prédictions désactivées",
   predictionsApproximateHint:
@@ -327,6 +339,23 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       `${startLabel} — ${endLabel}`,
     ovulationNeedsMoreCycles:
       "нужно 3 завершённых цикла, чтобы показать диапазон овуляции",
+    fertilityAwaitingFirstCycle:
+      "Фертильные детали ждут первого завершённого цикла. До этого за ними стоит только длина цикла из настроек.",
+    // Russian plural forms (one / few / many), as web's
+    // prediction.explainer.awaiting_more_cycles.
+    fertilityAwaitingMoreCycles: (count: number) => {
+      const lastDigit = count % 10;
+      const lastTwoDigits = count % 100;
+      const phrase =
+        lastDigit === 1 && lastTwoDigits !== 11
+          ? "завершённого цикла"
+          : lastDigit >= 2 &&
+              lastDigit <= 4 &&
+              (lastTwoDigits < 12 || lastTwoDigits > 14)
+            ? "завершённых цикла"
+            : "завершённых циклов";
+      return `Фертильные детали ждут ${count} ${phrase}. До этого за ними слишком мало истории, чтобы их показывать.`;
+    },
     ovulationApproximate: "(приблизительно)",
     predictionsOff: "Прогнозы выключены",
     predictionsApproximateHint:
@@ -430,6 +459,10 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       `${startLabel} — ${endLabel}`,
     ovulationNeedsMoreCycles:
       "se necesitan 3 ciclos completos antes de mostrar un rango de ovulación",
+    fertilityAwaitingFirstCycle:
+      "Los detalles de fertilidad esperan a tu primer ciclo completado. Hasta entonces, lo único que hay detrás es la duración del ciclo de la configuración.",
+    fertilityAwaitingMoreCycles: (count: number) =>
+      `Los detalles de fertilidad esperan a ${count} ${count === 1 ? "ciclo completado" : "ciclos completados"}. Hasta entonces hay muy poco historial detrás para mostrarlos.`,
     ovulationApproximate: "(aproximada)",
     predictionsOff: "Predicciones desactivadas",
     predictionsApproximateHint:
@@ -533,6 +566,10 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       `${startLabel} — ${endLabel}`,
     ovulationNeedsMoreCycles:
       "servono 3 cicli completati prima di mostrare un intervallo di ovulazione",
+    fertilityAwaitingFirstCycle:
+      "I dettagli sulla fertilità attendono il primo ciclo completato. Fino ad allora dietro di essi c'è solo la durata del ciclo impostata all'inizio.",
+    fertilityAwaitingMoreCycles: (count: number) =>
+      `I dettagli sulla fertilità attendono ${count} ${count === 1 ? "ciclo completato" : "cicli completati"}. Fino ad allora dietro di essi c'è troppo poco storico per mostrarli.`,
     ovulationApproximate: "(approssimativo)",
     predictionsOff: "Previsioni disattivate",
     predictionsApproximateHint:

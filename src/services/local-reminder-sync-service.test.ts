@@ -1,6 +1,7 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createPregnancyRecord } from "../models/pregnancy";
 import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
+import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import { buildLocalReminderPlans } from "./local-reminder-plan-service";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
@@ -19,6 +20,9 @@ function createScheduler(): LocalReminderScheduler {
 }
 
 const cycleStartRecords = [
+  // Three completed cycles behind the running one, so the fertile reminder is
+  // not held back by the completed-cycle floor.
+  ...completedCycleHistory({ currentStart: "2026-03-01" }),
   {
     date: "2026-03-01",
     isPeriod: true,

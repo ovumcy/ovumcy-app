@@ -15,6 +15,7 @@ import {
 } from "./cycle-prediction-policy";
 import { inferObservedOvulationDate } from "./observed-ovulation-service";
 import {
+  FERTILITY_MINIMUM_CYCLES,
   IRREGULAR_CYCLE_SPREAD_DAYS,
   STATS_CYCLE_COMPARISON_DELTA,
   STATS_CYCLE_PREDICTION_WINDOW,
@@ -26,6 +27,7 @@ import {
   STATS_MINIMUM_INSIGHTS_CYCLES,
   STATS_RELIABLE_TREND_CYCLES,
   type CompletedCycleSummary,
+  type FertilityAwaitingTier,
   type StatsComparisonKind,
   type StatsCycleHistorySummary,
   type StatsCycleProjection,
@@ -154,12 +156,161 @@ export function buildStatsFactorContext(
   };
 }
 
+type ProjectionWithoutFertilityGate = Omit<
+  StatsCycleProjection,
+  "fertilitySuppressed" | "fertilityAwaiting" | "awaitingIrregularHistory"
+>;
+
 export function buildCurrentCycleProjection(
   profile: ProfileRecord,
   history: StatsCycleHistorySummary,
   records: DayLogRecord[],
   now: Date,
 ): StatsCycleProjection {
+  return applyFertilityGate(
+    buildProjectionDates(profile, history, records, now),
+    profile,
+    history,
+    records,
+    now,
+  );
+}
+
+// Web FertilityProjectionSuppressed, the one place every fertility surface
+// reads (dashboard hero and label, calendar, reminders, day-save message,
+// implantation notice, partner): the disjuncts web ORs are
+//   1. PredictionsSuppressed: unpredictable mode, the pregnancy pause, the
+//      overdue gate, an irregular cycle awaiting history;
+//   2. no completed cycle;
+//   3. a regular account with fewer than FERTILITY_MINIMUM_CYCLES;
+//   4./5. the stale band (past the shorter of the projection and reference
+//      lengths; `isPredictionStale` already is the union of web's two);
+//   6. a period day logged today or yesterday that is not the cycle start.
+// 1 and 4/5 are already withheld by `buildProjectionDates`; this adds the
+// rest and publishes the verdict. The next-period estimate stays in tiers 2, 3
+// and 6, exactly as web keeps it; an irregular account awaiting history loses
+// it too, as web's PredictionsSuppressed withholds both halves.
+function applyFertilityGate(
+  projection: ProjectionWithoutFertilityGate,
+  profile: ProfileRecord,
+  history: StatsCycleHistorySummary,
+  records: DayLogRecord[],
+  now: Date,
+): StatsCycleProjection {
+  const completedCycleCount = history.completedCycleCount;
+  const todayValue = formatLocalDate(atLocalDay(now));
+  const awaitingIrregularHistory =
+    profile.irregularCycle && completedCycleCount < FERTILITY_MINIMUM_CYCLES;
+  const fertilityAwaiting: FertilityAwaitingTier | null =
+    completedCycleCount < 1
+      ? "first_cycle"
+      : completedCycleCount < FERTILITY_MINIMUM_CYCLES && !profile.irregularCycle
+        ? "more_cycles"
+        : null;
+  const noProjection =
+    projection.isPregnancyPaused ||
+    profile.unpredictableCycle ||
+    projection.cycleAnchorDate === null;
+  const alreadyWithheld =
+    noProjection ||
+    projection.isPredictionStale ||
+    projection.cycleDayLooksLong === true;
+  const bleedingOutsideCycleStart =
+    projection.cycleAnchorDate !== null &&
+    hasBleedingOutsideCycleStart(profile, records, todayValue, projection.cycleAnchorDate);
+  const gate = { fertilityAwaiting, awaitingIrregularHistory };
+
+  if (awaitingIrregularHistory && !noProjection) {
+    return {
+      ...projection,
+      ...gate,
+      fertilitySuppressed: true,
+      currentCycleDay: projection.rawCycleDay ?? projection.currentCycleDay,
+      currentPhase: projection.currentPhase === "menstrual" ? "menstrual" : "unknown",
+      isPredictionStale: false,
+      cycleDayLooksLong: false,
+      nextPeriodDate: null,
+      nextPeriodWindowStartDate: null,
+      nextPeriodWindowEndDate: null,
+      ovulationDate: null,
+      upcomingOvulationDate: null,
+      upcomingOvulationExact: true,
+      upcomingOvulationNeedsMoreCycles: true,
+      upcomingOvulationWindowStartDate: null,
+      upcomingOvulationWindowEndDate: null,
+    };
+  }
+
+  const floorWithholds =
+    fertilityAwaiting !== null || bleedingOutsideCycleStart;
+  if (floorWithholds && !alreadyWithheld) {
+    return {
+      ...projection,
+      ...gate,
+      fertilitySuppressed: true,
+      // Phases past the menstrual card spell out the withheld ovulation day;
+      // "menstrual" survives because it is read off recorded bleeding.
+      currentPhase: projection.currentPhase === "menstrual" ? "menstrual" : "unknown",
+      ovulationDate: null,
+      upcomingOvulationDate: null,
+      upcomingOvulationExact: true,
+      upcomingOvulationNeedsMoreCycles: false,
+      upcomingOvulationWindowStartDate: null,
+      upcomingOvulationWindowEndDate: null,
+    };
+  }
+
+  return {
+    ...projection,
+    ...gate,
+    fertilitySuppressed: alreadyWithheld || awaitingIrregularHistory,
+  };
+}
+
+// Web bleedingOutsideOpeningEpisode: a period day (spotting included) dated
+// today or yesterday outside the bleeding episode that holds the cycle anchor.
+// The boundary rule did not take it as a start, so the running projection and
+// the log disagree about the same days.
+function hasBleedingOutsideCycleStart(
+  profile: ProfileRecord,
+  records: DayLogRecord[],
+  todayValue: string,
+  anchorDate: string,
+): boolean {
+  const today = parseLocalDate(todayValue);
+  if (!today) {
+    return false;
+  }
+  let openingStart = anchorDate;
+  let openingEnd = anchorDate;
+  for (const cluster of buildObservedPeriodClusters(profile, records, todayValue)) {
+    const first = cluster.days[0]!.date;
+    const last = cluster.days[cluster.days.length - 1]!.date;
+    if (anchorDate >= first && anchorDate <= last) {
+      openingStart = first;
+      openingEnd = last;
+      break;
+    }
+  }
+  return records.some((record) => {
+    if (!record.isPeriod) {
+      return false;
+    }
+    const day = parseLocalDate(record.date);
+    const sinceDay = day ? diffCalendarDays(day, today) : -1;
+    return (
+      (sinceDay === 0 || sinceDay === 1) &&
+      (record.date < openingStart || record.date > openingEnd)
+    );
+  });
+}
+
+function buildProjectionDates(
+  profile: ProfileRecord,
+  history: StatsCycleHistorySummary,
+  records: DayLogRecord[],
+  now: Date,
+): ProjectionWithoutFertilityGate {
   const today = atLocalDay(now);
   const todayValue = formatLocalDate(today);
   const pregnancyPause = resolvePregnancyPause(profile, records, todayValue);

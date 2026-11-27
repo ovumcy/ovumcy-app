@@ -77,6 +77,9 @@ function createProjection(
     nextPeriodWindowEndDate: null,
     ovulationDate: null,
     predictionCycleLength: 28,
+    fertilitySuppressed: false,
+    fertilityAwaiting: null,
+    awaitingIrregularHistory: false,
   };
 }
 

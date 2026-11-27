@@ -1,6 +1,7 @@
 import { getDashboardCopy } from "../i18n/dashboard-copy";
 import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import { FERTILITY_MINIMUM_CYCLES } from "../models/stats";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-service";
 import {
@@ -448,6 +449,16 @@ function resolvePotentialImplantationGapDays(
     predictionCycleLength,
     lutealPhase,
   );
+  // The notice places the bleed against an estimated ovulation, so it obeys the
+  // fertility gate as it stood on the bled day (web cycle_start_policy: the
+  // gate reads stats whose current cycle day is the target day): fewer than
+  // FERTILITY_MINIMUM_CYCLES completed cycles before it leave the estimate
+  // with nothing to stand on. (Web's stale-band signal also applies on the
+  // target day; it can only coincide with this window under a luteal phase near
+  // its 10-day floor, and is left to the dashboard and calendar gates.)
+  if (history.completedCycleCount < FERTILITY_MINIMUM_CYCLES) {
+    return [0, false];
+  }
   if (ovulationCycleDay === null) {
     // The cycle is shorter than the model can place an ovulation in, so there
     // is no window to judge this bleed against. Stay silent rather than guess:

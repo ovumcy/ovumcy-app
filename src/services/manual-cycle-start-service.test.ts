@@ -4,6 +4,7 @@ import { createPostpartumRecord } from "../models/postpartum";
 import { createPregnancyRecord } from "../models/pregnancy";
 import type { ProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
+import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import {
   applyManualCycleStart,
   buildManualCycleStartViewData,
@@ -577,13 +578,21 @@ describe("early-bleeding notice structure (medical safety)", () => {
   function earlyBleedViewData(
     targetDate: string,
     now: Date,
-    options: { predictionsSuppressed?: boolean; unpredictableCycle?: boolean } = {},
+    options: {
+      predictionsSuppressed?: boolean;
+      unpredictableCycle?: boolean;
+      completedCycles?: number;
+    } = {},
   ) {
     const profile = createProfileRecord({
       lastPeriodStart: "2026-03-01",
       unpredictableCycle: options.unpredictableCycle === true,
     });
     const records = [
+      ...completedCycleHistory({
+        currentStart: "2026-03-01",
+        completed: options.completedCycles ?? 3,
+      }),
       {
         ...createEmptyDayLogRecord("2026-03-01"),
         isPeriod: true,
@@ -633,6 +642,22 @@ describe("early-bleeding notice structure (medical safety)", () => {
     expect(notice).not.toMatch(/implantation/i);
     expect(notice).not.toMatch(/\b\d/);
     expect(notice).not.toContain("2026-03-15");
+  });
+
+  it("withholds the notice before three completed cycles", () => {
+    // Control: the same bleed fires with three completed cycles behind it.
+    expect(
+      earlyBleedViewData("2026-03-23", new Date(2026, 2, 23))?.notices.implantation,
+    ).toBe(getDashboardCopy("en").implantationWarning);
+
+    // Fewer than FERTILITY_MINIMUM_CYCLES completed cycles: the ovulation the
+    // notice measures against rests on the slider or on one or two lengths.
+    for (const completedCycles of [0, 1, 2]) {
+      expect(
+        earlyBleedViewData("2026-03-23", new Date(2026, 2, 23), { completedCycles })
+          ?.notices.implantation,
+      ).toBeUndefined();
+    }
   });
 
   it("stays silent for an early bleed too soon after the estimated ovulation", () => {
