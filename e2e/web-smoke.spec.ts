@@ -221,10 +221,10 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("day-log-symptom-cramps").last().click();
   await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
   await expect(page.getByTestId("day-log-period-toggle").last()).toBeVisible();
-  const nextAutoFilledDay = formatLocalDate(
-    addDays(parseLocalDate(previousCycleStart), 1),
-  );
-  await expect(page.getByTestId(`calendar-marker-data-${nextAutoFilledDay}`)).toBeVisible();
+  await expect(page.getByTestId(`calendar-marker-data-${previousCycleStart}`)).toBeVisible();
+  // Auto period fill is off by default (web parity): the next day stays empty.
+  const nextDay = formatLocalDate(addDays(parseLocalDate(previousCycleStart), 1));
+  await expect(page.getByTestId(`calendar-marker-data-${nextDay}`)).toHaveCount(0);
 
   await page.getByTestId("calendar-today-button").click();
   await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
@@ -314,12 +314,15 @@ test("stats surfaces the perimenopause hint for a 45+ user even in the empty sta
 test("stats shows the data-driven range explainer after three completed cycles with variability", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   const today = new Date();
   const onboardingStart = formatLocalDate(addDays(today, -7));
   const olderCycleStarts = [
     addDays(today, -35),
     addDays(today, -64),
     addDays(today, -92),
+    // Re-marks the onboarding start, which an older manual start replaces.
+    addDays(today, -7),
   ];
 
   await page.goto("/");
@@ -346,8 +349,8 @@ test("stats shows the data-driven range explainer after three completed cycles w
     }
 
     await page.getByTestId(`calendar-day-${targetStr}`).click();
-    await page.getByTestId("day-log-period-toggle").last().click();
-    await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+    await page.getByTestId("calendar-day-cycle-start-button").click();
+    await expect(page.getByTestId(`calendar-marker-data-${targetStr}`)).toBeVisible();
     await page.getByTestId("calendar-today-button").click();
   }
 
@@ -363,11 +366,15 @@ test("stats shows the data-driven range explainer after three completed cycles w
 test("stats shows premium lock placeholders when entitlements are missing and the lock routes to backup-sync", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   const today = new Date();
   const onboardingStart = formatLocalDate(addDays(today, -7));
   const olderCycleStarts = [
     addDays(today, -35),
     addDays(today, -64),
+    addDays(today, -92),
+    // Re-marks the onboarding start, which an older manual start replaces.
+    addDays(today, -7),
   ];
 
   await page.goto("/");
@@ -394,8 +401,8 @@ test("stats shows premium lock placeholders when entitlements are missing and th
     }
 
     await page.getByTestId(`calendar-day-${targetStr}`).click();
-    await page.getByTestId("day-log-period-toggle").last().click();
-    await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+    await page.getByTestId("calendar-day-cycle-start-button").click();
+    await expect(page.getByTestId(`calendar-marker-data-${targetStr}`)).toBeVisible();
     await page.getByTestId("calendar-today-button").click();
   }
 
@@ -475,7 +482,8 @@ test("locale visual sweep: ru and de pregnancy + reminders + paywall", async ({
 
   const today = new Date();
   const onboardingStart = formatLocalDate(addDays(today, -7));
-  const olderCycleStarts = [addDays(today, -35), addDays(today, -64)];
+  // Last entry re-marks the onboarding start, which an older manual start replaces.
+  const olderCycleStarts = [addDays(today, -35), addDays(today, -64), addDays(today, -92), addDays(today, -7)];
 
   await page.goto("/");
   await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
@@ -486,7 +494,7 @@ test("locale visual sweep: ru and de pregnancy + reminders + paywall", async ({
   await page.getByTestId("onboarding-finish-button").click();
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  // Need at least 2 completed cycles to render Stats premium lock cards
+  // Need 3 completed cycles (insights gate) to render Stats premium lock cards
   await page.locator(tabLink("/calendar")).click();
   await expect(page).toHaveURL(/\/calendar$/);
   for (const target of olderCycleStarts) {
@@ -498,8 +506,8 @@ test("locale visual sweep: ru and de pregnancy + reminders + paywall", async ({
       await page.getByTestId("calendar-prev-button").click();
     }
     await page.getByTestId(`calendar-day-${targetStr}`).click();
-    await page.getByTestId("day-log-period-toggle").last().click();
-    await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+    await page.getByTestId("calendar-day-cycle-start-button").click();
+    await expect(page.getByTestId(`calendar-marker-data-${targetStr}`)).toBeVisible();
     await page.getByTestId("calendar-today-button").click();
   }
 

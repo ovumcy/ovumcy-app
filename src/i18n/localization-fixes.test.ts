@@ -838,3 +838,16 @@ describe("K doctor-PDF pregnancy copy — translated, non-empty in 6 locales", (
     );
   });
 });
+
+describe("stats-copy completedCyclesProgress — localized per language", () => {
+  it.each([
+    ["en", "Cycle 2 of 3 completed"],
+    ["de", "Zyklus 2 von 3 abgeschlossen"],
+    ["fr", "Cycle 2 sur 3 terminé"],
+    ["ru", "Завершён цикл 2 из 3"],
+    ["es", "Ciclo 2 de 3 completado"],
+    ["it", "Ciclo 2 di 3 completato"],
+  ])("%s", (lang, expected) => {
+    expect(getStatsCopy(lang).completedCyclesProgress(2)).toBe(expected);
+  });
+});
