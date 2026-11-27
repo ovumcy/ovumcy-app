@@ -1,5 +1,6 @@
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import {
   buildCurrentCycleProjection,
   buildCycleHistorySummary,
@@ -41,6 +42,13 @@ function createProfileRecord(
     dismissedOnboardingHelperNoticeKey: null,
     ...overrides,
   };
+}
+
+// The three completed cycles the fertility gate asks for, closing on the
+// profile's stored start, so a fixture keeps its anchor and its published
+// ovulation window.
+function withThreeCycles(profile: ProfileRecord): DayLogRecord[] {
+  return completedCycleHistory({ currentStart: profile.lastPeriodStart ?? "2026-03-01" });
 }
 
 function isoDate(date: Date): string {
@@ -121,7 +129,13 @@ describe("cycle-history-service", () => {
     const projection = buildCurrentCycleProjection(profile, history, records, now);
 
     expect(projection.predictionCycleLength).toBe(28);
-    expect(projection.ovulationDate).toBe("2026-04-06");
+    // Fewer than three completed cycles sit under the fertility floor, so the
+    // ovulation date (anchor + 13 = 2026-04-06) is withheld by design; the
+    // settings length still places the next period (anchor + 28).
+    expect(history.completedCycleCount).toBeLessThan(3);
+    expect(projection.fertilitySuppressed).toBe(true);
+    expect(projection.ovulationDate).toBeNull();
+    expect(projection.nextPeriodDate).toBe("2026-04-21");
     expect(projection.isPredictionStale).toBe(false);
   });
 
@@ -174,8 +188,8 @@ describe("cycle-history-service", () => {
     const project = (now: Date) =>
       buildCurrentCycleProjection(
         profile,
-        buildCycleHistorySummary(profile, [], now),
-        [],
+        buildCycleHistorySummary(profile, withThreeCycles(profile), now),
+        withThreeCycles(profile),
         now,
       );
 
@@ -228,8 +242,8 @@ describe("cycle-history-service", () => {
     const project = (now: Date) =>
       buildCurrentCycleProjection(
         profile,
-        buildCycleHistorySummary(profile, [], now),
-        [],
+        buildCycleHistorySummary(profile, withThreeCycles(profile), now),
+        withThreeCycles(profile),
         now,
       );
 
@@ -473,8 +487,9 @@ describe("cycle-history-service", () => {
       // stats.OvulationDate vs DashboardUpcomingPredictions().OvulationDate.
       const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
       const now = new Date(2026, 2, 25);
-      const history = buildCycleHistorySummary(profile, [], now);
-      const projection = buildCurrentCycleProjection(profile, history, [], now);
+      const records = withThreeCycles(profile);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
 
       expect(projection.currentPhase).toBe("luteal");
       expect(projection.ovulationDate).toBe("2026-03-14");
@@ -487,8 +502,9 @@ describe("cycle-history-service", () => {
       // ovulation values agree.
       const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
       const now = new Date(2026, 2, 5);
-      const history = buildCycleHistorySummary(profile, [], now);
-      const projection = buildCurrentCycleProjection(profile, history, [], now);
+      const records = withThreeCycles(profile);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
 
       expect(projection.currentCycleDay).toBe(5);
       expect(projection.ovulationDate).toBe("2026-03-14");
@@ -574,8 +590,9 @@ describe("cycle-history-service", () => {
     it("keeps the concrete upcoming ovulation date for a regular cycle", () => {
       const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
       const now = new Date(2026, 2, 5);
-      const history = buildCycleHistorySummary(profile, [], now);
-      const projection = buildCurrentCycleProjection(profile, history, [], now);
+      const records = withThreeCycles(profile);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
 
       expect(projection.upcomingOvulationDate).toBe("2026-03-14");
       expect(projection.upcomingOvulationExact).toBe(true);
@@ -594,8 +611,9 @@ describe("cycle-history-service", () => {
     function projectForCycleDay(cycleDay: number) {
       const profile = createProfileRecord({ lastPeriodStart: anchor });
       const now = new Date(2026, 2, cycleDay);
-      const history = buildCycleHistorySummary(profile, [], now);
-      return buildCurrentCycleProjection(profile, history, [], now);
+      const records = withThreeCycles(profile);
+      const history = buildCycleHistorySummary(profile, records, now);
+      return buildCurrentCycleProjection(profile, history, records, now);
     }
 
     it("returns menstrual for a projected-but-unlogged period day (day 3, no log yet)", () => {
@@ -1229,12 +1247,14 @@ describe("cycle-history-service", () => {
         lastPeriodStart: "2026-02-26",
         periodLength: 5,
       });
-      const { records } = cyclesWithPeriodLengths(new Date(2026, 0, 1), [2, 2, 2]);
+      // Three completed cycles: the follicular reading is a fertility-half
+      // phase, withheld under the floor.
+      const { records } = cyclesWithPeriodLengths(new Date(2025, 11, 4), [2, 2, 2, 2]);
       const now = new Date(2026, 1, 28); // cycle day 3 of the 2026-02-26 cycle, unlogged
       const history = buildCycleHistorySummary(profile, records, now);
       const projection = buildCurrentCycleProjection(profile, history, records, now);
 
-      expect(history.completedCycleCount).toBe(2);
+      expect(history.completedCycleCount).toBe(3);
       expect(projection.projectedPeriodLength).toBe(2);
       expect(projection.currentCycleDay).toBe(3);
       expect(projection.currentPhase).toBe("follicular");
