@@ -905,6 +905,9 @@ describe("L ru glossary alignment with the web catalog", () => {
     expect(stats.mucusFertilityDescription("18 дек.")).toMatch(/ 18 дек\.$/);
     expect(fertility.lhPeakLoggedDescription("18 дек.")).toMatch(/ 18 дек\.$/);
     expect(fertility.lhPeakAlignedDescription("18 дек.", 0)).toMatch(/: 18 дек\.$/);
+    expect(fertility.lhPeakAlignedDescription("18 дек.", 2)).toBe(
+      "Пиковый ЛГ-тест был отмечен 18 дек., а последний температурный подъём последовал через 2 д.",
+    );
     expect(fertility.ovulationConfirmationDescription("18 дек.", 0)).toMatch(
       /: 18 дек\.$/,
     );
