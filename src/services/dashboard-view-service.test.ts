@@ -8,6 +8,7 @@ import {
   buildCurrentCycleProjection,
   buildCycleHistorySummary,
 } from "./cycle-history-service";
+import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import { predictCycleWindow } from "./cycle-prediction-policy";
 import {
   buildDashboardViewData,
@@ -111,7 +112,12 @@ describe("dashboard-view-service", () => {
       symptomIDs: [],
       notes: "",
     };
-    const historyRecords = [todayEntry];
+    // Three completed 29-day cycles closing on the stored start clear the
+    // fertility floor, so the hero publishes its phases.
+    const historyRecords = [
+      ...completedCycleHistory({ currentStart: "2026-03-10", cycleLength: 29 }),
+      todayEntry,
+    ];
 
     const viewData = buildDashboardViewData(
       profile,
@@ -165,6 +171,7 @@ describe("dashboard-view-service", () => {
       themeOverride: null,
     };
     const historyRecords: DayLogRecord[] = [
+      ...completedCycleHistory({ currentStart: "2026-03-10", cycleLength: 29 }),
       {
         date: "2026-03-17",
         isPeriod: false,
@@ -248,16 +255,24 @@ describe("dashboard-view-service", () => {
       new Date(2026, 2, 17),
     );
 
+    // One logged start in irregular mode sits under the three-cycle history web
+    // asks for (DashboardAwaitingIrregularHistory): the hero keeps the
+    // approximate frame but names no date at all, next period included.
+    expect(history.completedCycleCount).toBeLessThan(3);
     expect(viewData.cycleHero).toEqual(
       expect.objectContaining({
         state: "approximate",
         title: "Day",
         value: "8",
         detail: "Approximate cycle",
-        caption:
-          "Next period: around Apr 8 · 3 cycles are needed for a reliable range",
+        caption: "Next period: 3 cycles are needed for a reliable range",
+        phaseCards: [],
+        phaseSegments: [],
+        upcomingOvulationLabel:
+          "Ovulation: 3 completed cycles are needed before an ovulation range can be shown",
       }),
     );
+    expect(viewData.cycleHero.caption).not.toContain("Apr");
     expect(viewData.predictionExplanation).toBe(
       "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
     );
@@ -659,18 +674,15 @@ describe("dashboard-view-service", () => {
         // With <3 completed cycles the data-driven range is no longer emitted —
         // dashboard falls back to a single date.
         caption: "Next period: Apr 22",
-        // Period phase now spans the rolling AveragePeriodLength, not the
-        // configured 5 (web parity, dashboard_cycle_hero.go:54): both logged
-        // cycles are single-day period markers (2026-02-05, 2026-03-25), so the
-        // last-6 observed average — including the current cycle — is 1 day.
-        // Day 2 therefore reads follicular, not period.
-        currentTone: "follicular",
-        phaseCards: [
-          expect.objectContaining({ key: "period", rangeLabel: "Day 1", active: false }),
-          expect.objectContaining({ key: "follicular", rangeLabel: "Days 2-13", active: true }),
-          expect.objectContaining({ key: "ovulation", rangeLabel: "Day 14", active: false }),
-          expect.objectContaining({ key: "luteal", rangeLabel: "Days 15-28", active: false }),
-        ],
+        // One completed cycle is under the fertility floor (web
+        // DashboardAwaitingMoreCycles): the phases name the ovulation day, so
+        // the hero drops them while the next-period line keeps its settings
+        // length.
+        currentTone: "neutral",
+        phaseCards: [],
+        phaseSegments: [],
+        upcomingOvulationLabel:
+          "Fertile details wait for 3 completed cycles. Until then there is too little history behind them to show them.",
       }),
     );
   });
@@ -711,7 +723,10 @@ describe("dashboard-view-service", () => {
       symptomIDs: [],
       notes: "",
     };
-    const historyRecords = [todayEntry];
+    const historyRecords = [
+      ...completedCycleHistory({ currentStart: "2026-03-10", cycleLength: 29 }),
+      todayEntry,
+    ];
 
     const viewData = buildDashboardViewData(
       profile,
@@ -831,7 +846,10 @@ describe("dashboard-view-service", () => {
 
     it("offers a fertile message inside the predicted fertile window", () => {
       const profile = regularProfile();
-      const projection = makeProjection(profile, cycleStartRecords);
+      const projection = makeProjection(profile, [
+        ...completedCycleHistory({ currentStart: cycleStart }),
+        ...cycleStartRecords,
+      ]);
       const window = predictCycleWindow(
         cycleStart,
         projection.predictionCycleLength,
@@ -1005,7 +1023,7 @@ describe("dashboard upcoming-ovulation low-reliability softening", () => {
   it("keeps a single concrete ovulation date for a regular cycle", () => {
     const hero = heroFor(
       { lastPeriodStart: "2026-03-01" },
-      [],
+      completedCycleHistory({ currentStart: "2026-03-01" }),
       new Date(2026, 2, 5),
     );
 
@@ -1018,7 +1036,10 @@ describe("dashboard upcoming-ovulation low-reliability softening", () => {
     // concrete ovulation label must then carry the "(approximate)" qualifier.
     const hero = heroFor(
       { lastPeriodStart: "2026-03-10", cycleLength: 17 },
-      [cycleStart("2026-03-10")],
+      [
+        ...completedCycleHistory({ currentStart: "2026-03-10", cycleLength: 17 }),
+        cycleStart("2026-03-10"),
+      ],
       new Date(2026, 2, 12),
     );
 
@@ -1518,6 +1539,7 @@ describe("dashboard-view-service pregnancy mode", () => {
       lastPeriodStart: "2026-03-10",
     };
     const records: DayLogRecord[] = [
+      ...completedCycleHistory({ currentStart: "2026-03-10" }),
       {
         ...createEmptyDayLogRecord("2026-03-10"),
         isPeriod: true,

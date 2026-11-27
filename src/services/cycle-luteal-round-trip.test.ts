@@ -1,5 +1,6 @@
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import {
   buildCurrentCycleProjection,
   buildCycleHistorySummary,
@@ -361,7 +362,12 @@ describe("the live inference reaches the owner surfaces through the projection",
   it("predicts the observed cycle day, not the day the stale default names", () => {
     const cycleLength = 28;
     const originDate = "2026-01-01";
-    const records = lutealRoundTripRecords(originDate, cycleLength, [15, 15], "bbt");
+    // One earlier cycle without temperatures closes the third completed cycle
+    // the fertility gate asks for before an ovulation date is published.
+    const records = [
+      ...completedCycleHistory({ currentStart: originDate, completed: 1 }),
+      ...lutealRoundTripRecords(originDate, cycleLength, [15, 15], "bbt"),
+    ];
 
     // Cycle starts Jan 1, Jan 29 and Feb 26; today sits inside the third.
     const now = new Date(2026, 2, 3, 9, 0, 0);

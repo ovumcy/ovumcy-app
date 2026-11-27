@@ -2,6 +2,7 @@ import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import { createPregnancyRecord } from "../models/pregnancy";
 import type { ProfileRecord } from "../models/profile";
 import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
+import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import {
   buildCalendarViewData,
   loadCalendarScreenState,
@@ -274,7 +275,10 @@ describe("calendar-view-service", () => {
       cycleStart: true,
       flow: "medium" as const,
     });
+    // A fourth start closes the third cycle, the floor the fertility gate asks
+    // for before any window is painted.
     const records = [
+      ...completedCycleHistory({ currentStart: "2026-01-17", completed: 1 }),
       createPeriodRecord("2026-01-17"),
       createPeriodRecord("2026-02-14"),
       createPeriodRecord("2026-03-14"),
@@ -331,6 +335,14 @@ describe("calendar-view-service", () => {
       }),
     );
     expect(byDate.get("2026-03-27")?.accessibilityLabel).toContain("Ovulation");
+    // The cycle after the running one (N+1, from 2026-04-11) still carries its
+    // window (web chainedFertilityCycles).
+    expect(aprilByDate.get("2026-04-24")).toEqual(
+      expect.objectContaining({
+        stateKey: "ovulation",
+        hasOvulationMarker: true,
+      }),
+    );
     const mayViewData = buildCalendarViewData(
       profile,
       records,
@@ -344,11 +356,23 @@ describe("calendar-view-service", () => {
         stateKey: "predicted",
       }),
     );
+    // N+2 (from 2026-05-09) keeps its predicted period but no window: each
+    // chained cycle widens the error past the window it would name.
     expect(mayByDate.get("2026-05-22")).toEqual(
       expect.objectContaining({
-        stateKey: "ovulation",
+        stateKey: "neutral",
+        hasOvulationMarker: false,
       }),
     );
+    expect(
+      mayViewData.days
+        .filter((day) => day.date >= "2026-05-09")
+        .filter((day) =>
+          ["pre_fertile", "fertility_edge", "fertility_peak", "ovulation", "ovulation_tentative"].includes(
+            day.stateKey,
+          ),
+        ),
+    ).toEqual([]);
     expect(aprilViewData.legend).toEqual(
       expect.objectContaining({
         guide: expect.any(String),
@@ -377,6 +401,7 @@ describe("calendar-view-service", () => {
       dismissedCalendarPredictionNoticeKey: null,
     } as const;
     const records = [
+      ...completedCycleHistory({ currentStart: "2026-03-01", completed: 3 }),
       {
         ...createEmptyDayLogRecord("2026-03-01"),
         isPeriod: true,
@@ -433,6 +458,7 @@ describe("calendar-view-service", () => {
       bbt: 36.4,
     }));
     const records = [
+      ...completedCycleHistory({ currentStart: "2026-03-10" }),
       { ...flatBBTRecords[0]!, isPeriod: true, cycleStart: true, flow: "medium" as const },
       ...flatBBTRecords.slice(1),
     ];
@@ -479,6 +505,7 @@ describe("calendar-view-service", () => {
     // elevated streak 03-16..03-18. The detected shift keeps the predicted
     // ovulation day firm (not demoted to tentative).
     const records = [
+      ...completedCycleHistory({ currentStart: "2026-03-10" }),
       {
         ...createEmptyDayLogRecord("2026-03-10"),
         isPeriod: true,
@@ -634,6 +661,9 @@ describe("calendar-view-service", () => {
       themeOverride: null,
       dismissedCalendarPredictionNoticeKey: null,
     });
+    for (const record of completedCycleHistory({ currentStart: "2026-02-08" })) {
+      await storage.writeDayLogRecord(record);
+    }
 
     // Cycle day 22 of the logged cycle: inside its length, so the projected
     // ovulation still paints (past length + 7 every prediction cell is withheld).
@@ -774,6 +804,8 @@ describe("calendar-view-service", () => {
     // Web calendar_days.go ConfirmedCurrentCycleOvulation: the day before a
     // sustained thermal shift is an observation, so it stays on the grid when
     // the overdue gate (raw cycle day 40 > 28 + 7) withholds every projection.
+    // It needs one completed cycle behind it (web ConfirmedOvulationWithheld);
+    // the history here gives the running cycle three.
     const profile = {
       lastPeriodStart: "2026-02-01",
       cycleLength: 28,
@@ -791,7 +823,8 @@ describe("calendar-view-service", () => {
       themeOverride: null,
       dismissedCalendarPredictionNoticeKey: null,
     };
-    const records: DayLogRecord[] = [
+    const history = completedCycleHistory({ currentStart: "2026-02-01" });
+    const cycleRecords: DayLogRecord[] = [
       {
         ...createEmptyDayLogRecord("2026-02-01"),
         isPeriod: true,
@@ -807,6 +840,7 @@ describe("calendar-view-service", () => {
         bbt: 36.7,
       })),
     ];
+    const records = [...history, ...cycleRecords];
 
     const viewData = buildCalendarViewData(
       profile,
@@ -840,7 +874,7 @@ describe("calendar-view-service", () => {
     // Without a sustained thermal shift no marker is named.
     const noShift = buildCalendarViewData(
       profile,
-      records.slice(0, 7),
+      [...history, ...cycleRecords.slice(0, 7)],
       new Date(2026, 2, 12),
       new Date(2026, 1, 1),
       "2026-03-12",
@@ -883,6 +917,9 @@ describe("calendar-view-service", () => {
       symptomIDs: [],
       notes: "",
     });
+    for (const record of completedCycleHistory({ currentStart: "2026-03-14" })) {
+      await storage.writeDayLogRecord(record);
+    }
 
     const state = await loadCalendarScreenState(
       storage,
@@ -992,6 +1029,9 @@ describe("calendar-view-service", () => {
           flow: "medium",
         });
       }
+      for (const record of completedCycleHistory({ currentStart: "2026-01-17", completed: 1 })) {
+        await storage.writeDayLogRecord(record);
+      }
 
       const edge = await loadCalendarScreenState(
         storage,
@@ -1044,6 +1084,9 @@ describe("calendar-view-service", () => {
             ? { isPeriod: true, cycleStart: true, flow: "medium" as const }
             : {}),
         });
+      }
+      for (const record of completedCycleHistory({ currentStart: "2026-03-10" })) {
+        await storage.writeDayLogRecord(record);
       }
 
       const state = await loadCalendarScreenState(
@@ -1265,7 +1308,11 @@ describe("calendar-view-service", () => {
     themeOverride: null,
     dismissedCalendarPredictionNoticeKey: null,
   };
+  // Two cycles before 2026-03-01 plus the one the 04-08 period closes give the
+  // three the fertility gate asks for, so the lifted-pause grid has a window to
+  // paint and the active-pregnancy suppression below is not vacuous.
   const liftedPauseRecords: DayLogRecord[] = [
+    ...completedCycleHistory({ currentStart: "2026-03-01", completed: 2 }),
     {
       ...createEmptyDayLogRecord("2026-03-01"),
       isPeriod: true,
