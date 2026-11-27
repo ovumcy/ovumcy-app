@@ -86,7 +86,7 @@ describe("StatsScreen", () => {
     expect(screen.getByTestId("stats-empty-hero")).toBeTruthy();
     expect(screen.getByTestId("stats-screen-title").props.children).toBe("Insights");
     expect(screen.getByText("Cycle length")).toBeTruthy();
-    expect(screen.getByText("Cycle 0 of 2 completed")).toBeTruthy();
+    expect(screen.getByText("Cycle 0 of 3 completed")).toBeTruthy();
   });
 
   it("renders the persistent not-medical-advice prediction disclaimer in the empty state (web parity)", async () => {

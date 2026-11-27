@@ -63,7 +63,7 @@ describe("buildStatsViewData", () => {
       "These are estimates, not medical advice or a method of contraception.",
     );
     expect(viewData.emptyState?.title).toBe("Keep logging to unlock insights");
-    expect(viewData.emptyState?.progressLabel).toBe("Cycle 0 of 2 completed");
+    expect(viewData.emptyState?.progressLabel).toBe("Cycle 0 of 3 completed");
     expect(viewData.emptyState?.lockedSections).toContain("Cycle length");
     expect(viewData.emptyState?.action).toEqual({
       kind: "open_logging",
