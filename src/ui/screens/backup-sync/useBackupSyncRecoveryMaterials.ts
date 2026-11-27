@@ -29,12 +29,12 @@ import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
  * Recovery-materials concern: generating/regenerating the local encryption keys
  * (which reveals the recovery phrase once), rotating a connected managed
  * account's phrase, and exporting that phrase. Both paths keep a
- * confirm-then-device-auth gate; rotation adds the step-up card and reveals the
- * new phrase only after Ovumcy Cloud confirmed it. A key a sign-in to another
- * account replaced reveals its phrase behind the same confirm-then-device-auth
- * gate, or, once a process kill lost it, offers a new phrase through the
- * regular path. The phrase itself lives on the shared core because the
- * focus-load reset and the draft-save both clear it.
+ * confirm-then-device-auth gate; rotation adds a managed-sync consent check and
+ * the step-up card, and reveals the new phrase only after Ovumcy Cloud
+ * confirmed it. A key a sign-in to another account replaced reveals its phrase
+ * behind the same confirm-then-device-auth gate, or, once a process kill lost
+ * it, offers a new phrase through the regular path. The phrase itself lives on
+ * the shared core because the focus-load reset and the draft-save both clear it.
  */
 export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
   const {
@@ -152,6 +152,11 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     }
 
     if (rotates) {
+      // The consent dialog lists the re-wrapped key package as leaving the
+      // device; without consent no step-up card opens and nothing is sent.
+      if (!(await core.ensureDataSharingConsent("managed_sync"))) {
+        return;
+      }
       // Asked up front: a code-less try would spend the shared step-up budget.
       setIsPreparingSync(true);
       const codeRequired = await isCodeFieldNeeded(state);
@@ -214,9 +219,13 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     rotationInFlightRef.current = true;
     const forState = pendingRotationStepUp.forState;
     const codeFieldShown = managedRecoveryRotationStepUpPrompt.codeRequired;
-    resetFeedbackMessages();
-    setIsRotatingRecoveryPhrase(true);
     try {
+      // Checked again per send: consent can be withdrawn while the card is open.
+      if (!(await core.ensureDataSharingConsent("managed_sync"))) {
+        return;
+      }
+      resetFeedbackMessages();
+      setIsRotatingRecoveryPhrase(true);
       let result: Awaited<ReturnType<typeof rotateManagedRecoveryPhrase>>;
       try {
         result = await rotateManagedRecoveryPhrase(syncSecretStore, stepUp, effectiveNow);

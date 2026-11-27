@@ -654,6 +654,66 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
     });
 
+    it("opens no card and sends nothing when managed-sync consent is not given", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        state: createConnectedManagedState(),
+        ensureDataSharingConsent: jest.fn().mockResolvedValue(false),
+      });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+
+      await act(async () => {
+        await result.current.handlePrepareSyncSetup();
+      });
+
+      expect(core.ensureDataSharingConsent).toHaveBeenCalledWith("managed_sync");
+      expect(mockDescribeSyncAccountTwoFactor).not.toHaveBeenCalled();
+      expect(mockPrepareRotationCandidate).not.toHaveBeenCalled();
+      expect(mockRotateManagedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(mockPrepareBackupSyncSetup).not.toHaveBeenCalled();
+      expect(core.setErrorState).not.toHaveBeenCalled();
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+      expect(result.current.isPreparingSync).toBe(false);
+    });
+
+    it("asks for managed-sync consent before the card and rotates once it is given", async () => {
+      const { core, result } = await openRotationCard(false);
+      expect(core.ensureDataSharingConsent).toHaveBeenCalledWith("managed_sync");
+      expect(result.current.managedRecoveryRotationStepUpPrompt).not.toBeNull();
+      mockRotateManagedRecoveryPhrase.mockResolvedValue({
+        ok: true,
+        recoveryPhrase: "new phrase words",
+      });
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(core.ensureDataSharingConsent).toHaveBeenCalledTimes(2);
+      expect(mockRotateManagedRecoveryPhrase).toHaveBeenCalledTimes(1);
+      expect(core.setGeneratedRecoveryPhrase).toHaveBeenCalledWith("new phrase words");
+    });
+
+    it("sends nothing and keeps the card when consent is gone by the submit", async () => {
+      const { core, result } = await openRotationCard(false);
+      const shown = result.current.managedRecoveryRotationStepUpPrompt;
+      jest.mocked(core.ensureDataSharingConsent).mockResolvedValueOnce(false);
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(mockRotateManagedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(core.setGeneratedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual(shown);
+      expect(result.current.isRotatingRecoveryPhrase).toBe(false);
+    });
+
     it("reveals the new phrase only after the rotation is confirmed", async () => {
       const { core, result } = await openRotationCard(true);
       mockRotateManagedRecoveryPhrase.mockResolvedValue({
