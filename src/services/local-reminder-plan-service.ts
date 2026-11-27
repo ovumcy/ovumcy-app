@@ -161,6 +161,10 @@ export function buildLocalReminderPlans(
   if (
     projection.isPregnancyPaused ||
     projection.cycleDayLooksLong ||
+    // An irregular cycle with fewer than three completed cycles names no date
+    // at all (web PredictionsSuppressed), so no period, fertile or cycle-day
+    // reminder is planned from it.
+    projection.awaitingIrregularHistory ||
     activePregnancy?.status === "active"
   ) {
     return plans;
@@ -195,9 +199,15 @@ export function buildLocalReminderPlans(
     }
   }
 
+  // The fertile reminder recomputes its window from the anchor, so it reads the
+  // projection's fertility verdict (web FertilityProjectionSuppressed: the
+  // completed-cycle floor, the stale band, bleeding outside the cycle start)
+  // rather than the nulls the projection already carries. The period reminder
+  // above keeps its recorded-start estimate in those tiers.
   if (
     profile.fertileWindowReminderEnabled === true &&
-    projection.cycleAnchorDate
+    projection.cycleAnchorDate &&
+    !projection.fertilitySuppressed
   ) {
     const window = predictCycleWindow(
       projection.cycleAnchorDate,

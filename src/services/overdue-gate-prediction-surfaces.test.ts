@@ -1,6 +1,7 @@
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
 import { createDefaultSymptomRecords } from "../models/symptom";
+import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import * as cycleHistory from "./cycle-history-service";
 import { buildLocalReminderPlans } from "./local-reminder-plan-service";
 import { buildStatsViewData } from "./stats-view-service";
@@ -44,6 +45,7 @@ describe("overdue gate on reminders", () => {
     reminderTime: "20:00",
   };
   const records: DayLogRecord[] = [
+    ...completedCycleHistory({ currentStart: "2026-03-05" }),
     { ...createEmptyDayLogRecord("2026-03-05"), isPeriod: true, cycleStart: true },
   ];
 

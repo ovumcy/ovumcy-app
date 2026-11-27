@@ -7,6 +7,10 @@ import type { SymptomID } from "./symptom";
 // PREDICTION_OBSERVED_LENGTH_MIN_CYCLES, pinned by the shared golden vectors.
 export const STATS_MINIMUM_INSIGHTS_CYCLES = 3;
 export const PREDICTION_OBSERVED_LENGTH_MIN_CYCLES = 2;
+// Web's fertilityMinimumCycles: completed cycles every account needs before the
+// fertility half of the projection (ovulation date, fertile window) is shown,
+// the same number for regular and irregular mode.
+export const FERTILITY_MINIMUM_CYCLES = 3;
 export const STATS_MINIMUM_PHASE_INSIGHTS_CYCLES = 3;
 export const STATS_RELIABLE_TREND_CYCLES = 3;
 export const STATS_CYCLE_PREDICTION_WINDOW = 6;
@@ -156,7 +160,25 @@ export type StatsCycleProjection = {
   // menstrual phase card (dashboard_cycle_hero.go) all read this single value.
   // Optional so existing projection literals stay valid; the producer always sets it.
   projectedPeriodLength?: number;
+  // Web FertilityProjectionSuppressed: the fertility half of the projection (the
+  // ovulation date, the fertile window and the phases that name them) is
+  // withheld. It ORs the whole-projection signals (pause, unpredictable mode,
+  // the overdue gate, an irregular cycle awaiting history) with the
+  // completed-cycle floor, the stale band and bleeding outside the cycle start.
+  // The next-period estimate keeps its own path. Required, never optional: a
+  // literal that omits it must not read as an open gate.
+  fertilitySuppressed: boolean;
+  // Which floor tier withheld it: no completed cycle, or fewer than
+  // FERTILITY_MINIMUM_CYCLES (regular mode only; irregular mode withholds both
+  // halves under `awaitingIrregularHistory` instead). null otherwise.
+  fertilityAwaiting: FertilityAwaitingTier | null;
+  // Web DashboardAwaitingIrregularHistory: irregular mode with fewer than
+  // FERTILITY_MINIMUM_CYCLES completed cycles. The projection then names no
+  // date at all, next period included.
+  awaitingIrregularHistory: boolean;
 };
+
+export type FertilityAwaitingTier = "first_cycle" | "more_cycles";
 
 export type StatsTrendPoint = {
   key: LocalDateISO;

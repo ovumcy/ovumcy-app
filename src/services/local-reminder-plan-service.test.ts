@@ -1,6 +1,7 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createPregnancyRecord } from "../models/pregnancy";
+import { completedCycleHistory } from "./__fixtures__/completed-cycles";
 import { buildLocalReminderPlans } from "./local-reminder-plan-service";
 import { addDays, parseLocalDate } from "./profile-settings-policy";
 
@@ -14,6 +15,9 @@ describe("local-reminder-plan-service", () => {
       reminderTime: "20:00",
     };
     const records = [
+      // The fertile reminder needs the three completed cycles the fertility
+      // gate asks for; the two marks below close the third.
+      ...completedCycleHistory({ currentStart: "2026-03-01", completed: 2 }),
       {
         ...createEmptyDayLogRecord("2026-03-01"),
         isPeriod: true,
@@ -62,6 +66,7 @@ describe("local-reminder-plan-service", () => {
   describe("reminder lead days (web parity: reminder_lead_days)", () => {
     const now = new Date(2026, 3, 5, 10, 0, 0, 0);
     const records = [
+      ...completedCycleHistory({ currentStart: "2026-03-01", completed: 2 }),
       {
         ...createEmptyDayLogRecord("2026-03-01"),
         isPeriod: true,
@@ -175,6 +180,7 @@ describe("local-reminder-plan-service", () => {
     };
     const now = new Date(2026, 2, 12, 10, 0, 0, 0);
     const baseRecords = [
+      ...completedCycleHistory({ currentStart: "2026-03-05" }),
       {
         ...createEmptyDayLogRecord("2026-03-05"),
         isPeriod: true,
@@ -216,6 +222,7 @@ describe("local-reminder-plan-service", () => {
     };
     const now = new Date(2026, 2, 12, 10, 0, 0, 0);
     const records = [
+      ...completedCycleHistory({ currentStart: "2026-03-05" }),
       {
         ...createEmptyDayLogRecord("2026-03-05"),
         isPeriod: true,

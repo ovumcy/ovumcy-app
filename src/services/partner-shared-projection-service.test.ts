@@ -209,10 +209,11 @@ describe("partner-shared-projection-service", () => {
 
     function buildSummaryPayload(
       overrides: Partial<{ irregularCycle: boolean }> = {},
+      earlierRecords: typeof records = [],
     ) {
       return buildPartnerSharedProjectionPayload({
         accessLevel: "summary",
-        dayLogs: records,
+        dayLogs: [...earlierRecords, ...records],
         generatedAt: generatedAt.toISOString(),
         generation: 1,
         grantID: "grant-1",
@@ -244,14 +245,30 @@ describe("partner-shared-projection-service", () => {
     });
 
     it("carries the owner's approximate-prediction explanation to the partner", () => {
+      // A third completed cycle: with fewer, the irregular owner's projection
+      // names no date at all and the partner reads the facts-only shape (next test).
       const readState = buildPartnerSharedReadState(
-        buildSummaryPayload({ irregularCycle: true }),
+        buildSummaryPayload({ irregularCycle: true }, [
+          { ...createEmptyDayLogRecord("2025-11-06"), isPeriod: true, cycleStart: true },
+        ]),
         generatedAt,
         "en",
       );
 
       expect(readState.cycleStatus.state).toBe("approximate");
       expect(readState.cycleStatus.predictionExplanation).not.toBe("");
+    });
+
+    it("drops the next period for an irregular cycle with fewer than three completed cycles", () => {
+      const readState = buildPartnerSharedReadState(
+        buildSummaryPayload({ irregularCycle: true }),
+        generatedAt,
+        "en",
+      );
+
+      expect(readState.cycleStatus.state).toBe("facts_only");
+      expect(readState.cycleStatus.nextPeriodDate).toBeNull();
+      expect(readState.cycleStatus.currentCycleDay).toBeNull();
     });
 
     it("advances the cycle day by the whole days elapsed since the owner's date", () => {

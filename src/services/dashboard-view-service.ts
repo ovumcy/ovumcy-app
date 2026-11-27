@@ -6,6 +6,7 @@ import type { PregnancyRecord } from "../models/pregnancy";
 import type { PostpartumRecord } from "../models/postpartum";
 import type { ScreeningResponse } from "../models/screening";
 import type { ProfileRecord } from "../models/profile";
+import { FERTILITY_MINIMUM_CYCLES } from "../models/stats";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { loadPregnancyModuleOwned } from "./pregnancy-entitlement-service";
 import {
@@ -199,12 +200,19 @@ export function resolveDaySaveMessageKey(
     if (cycleDay >= 1 && cycleDay <= DAY_SAVE_SELF_CARE_MAX_CYCLE_DAY) {
       return "self_care";
     }
-    const window = predictCycleWindow(
-      projection.cycleAnchorDate,
-      projection.predictionCycleLength,
-      projection.lutealPhase,
-    );
+    // The window is recomputed from the anchor, so it reads the projection's
+    // fertility verdict (web FertilityProjectionSuppressed) instead of the
+    // nulls the projection already carries: under the completed-cycle floor,
+    // the stale band or bleeding outside the cycle start no fertile claim is made.
+    const window = projection.fertilitySuppressed
+      ? null
+      : predictCycleWindow(
+          projection.cycleAnchorDate,
+          projection.predictionCycleLength,
+          projection.lutealPhase,
+        );
     if (
+      window &&
       window.fertilityStart &&
       window.fertilityEnd &&
       day >= window.fertilityStart &&
@@ -683,6 +691,7 @@ function buildDashboardCycleHero(
     projection,
     dashboardCopy,
     locale,
+    profile.unpredictableCycle,
   );
 
   if (suppressPredictions || postpartumAwaitingCycle) {
@@ -786,6 +795,32 @@ function buildDashboardCycleHero(
       title: heroTitle,
       value: cycleDayValue,
       detail: dashboardCopy.cycleHeroApproximate,
+      // The projection names no next period here (web PredictionsSuppressed
+      // withholds both halves for an irregular cycle awaiting history), so the
+      // caption says why instead of naming a date.
+      caption: projection.awaitingIrregularHistory
+        ? `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodNeedsMoreCycles}`
+        : buildDashboardCycleHeroCaption(profile, projection, history, locale),
+      upcomingOvulationLabel,
+      progressPercent: null,
+      currentTone: "neutral",
+      phaseSegments: [],
+      phaseCards: [],
+    };
+  }
+
+  if (projection.fertilitySuppressed) {
+    // Web FertilityProjectionSuppressed on the hero: the completed-cycle floor
+    // or bleeding outside the cycle start withholds the phases past the
+    // menstrual card (they spell out the withheld ovulation day), so no ring is
+    // drawn; the next-period estimate stays, anchored on the recorded start.
+    return {
+      state: profile.irregularCycle ? "approximate" : "regular",
+      title: heroTitle,
+      value: cycleDayValue,
+      detail: profile.irregularCycle
+        ? dashboardCopy.cycleHeroApproximate
+        : dashboardCopy.cycleHeroRegular(projection.predictionCycleLength),
       caption: buildDashboardCycleHeroCaption(profile, projection, history, locale),
       upcomingOvulationLabel,
       progressPercent: null,
@@ -863,7 +898,24 @@ function buildDashboardUpcomingOvulationLabel(
   projection: ReturnType<typeof buildCurrentCycleProjection>,
   dashboardCopy: ReturnType<typeof getDashboardCopy>,
   locale: string,
+  unpredictableCycle: boolean,
 ): string | null {
+  // Web prediction.explainer.awaiting_*: the completed-cycle floor names what
+  // the fertility half is waiting for in place of an ovulation date. Unpredictable
+  // mode and the overdue gate publish no projection to wait on, so they keep
+  // their own surfaces.
+  if (
+    projection.fertilityAwaiting !== null &&
+    !projection.awaitingIrregularHistory &&
+    !projection.isPregnancyPaused &&
+    !projection.cycleDayLooksLong &&
+    !unpredictableCycle
+  ) {
+    return projection.fertilityAwaiting === "first_cycle"
+      ? dashboardCopy.fertilityAwaitingFirstCycle
+      : dashboardCopy.fertilityAwaitingMoreCycles(FERTILITY_MINIMUM_CYCLES);
+  }
+
   // Web DashboardOvulationRange: an irregular cycle with a reliable trend shows
   // the ovulation as an explicit range instead of a single (false-precision) day.
   if (

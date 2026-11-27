@@ -754,8 +754,21 @@ function buildCalendarPredictionMaps(
   }
   // The gate and the stale band are only ever set with a logged anchor.
   const anchorDate = projection.cycleAnchorDate;
-  if (projection.cycleDayLooksLong === true && anchorDate) {
-    appendConfirmedCurrentCycleOvulation(profile, anchorDate, records, today, ovulation);
+  // An irregular cycle awaiting history is the same whole-projection verdict
+  // (web PredictionsSuppressed): no period, window or ovulation is painted.
+  if (
+    (projection.cycleDayLooksLong === true ||
+      projection.awaitingIrregularHistory) &&
+    anchorDate
+  ) {
+    appendConfirmedCurrentCycleOvulationAfterFirstCycle(
+      profile,
+      history,
+      anchorDate,
+      records,
+      today,
+      ovulation,
+    );
     return {
       predictedPeriod,
       preFertile,
@@ -798,7 +811,14 @@ function buildCalendarPredictionMaps(
         projection.lutealPhase,
       );
     }
-    appendConfirmedCurrentCycleOvulation(profile, anchorDate, records, today, ovulation);
+    appendConfirmedCurrentCycleOvulationAfterFirstCycle(
+      profile,
+      history,
+      anchorDate,
+      records,
+      today,
+      ovulation,
+    );
     return {
       predictedPeriod,
       preFertile,
@@ -809,20 +829,36 @@ function buildCalendarPredictionMaps(
     };
   }
 
+  // Web FertilityProjectionSuppressed on the grid (calendar_days.go): the
+  // completed-cycle floor and bleeding outside the cycle start keep every
+  // predicted period (they rest on a recorded start) and paint no window, peak
+  // band or ovulation day, the one exception being a BBT-confirmed day once a
+  // cycle has completed. The historical pass stays: past cycles have their own
+  // record.
+  const fertilitySuppressed = projection.fertilitySuppressed;
+  // Web chainedFertilityCycles: the cycle after the running one (N+1) carries a
+  // window, no later cycle does (each chained cycle adds the per-cycle spread
+  // until the window is narrower than the error). Irregular range mode places
+  // its fertility as a range instead, so no cycle is chained there.
+  const chainedFertilityCycles =
+    profile.irregularCycle && projection.upcomingOvulationWindowStartDate ? 0 : 1;
+
   if (projection.cycleAnchorDate) {
     // Web parity (calendar_days.go appendCurrentBaselinePeriod/PreFertile): the
     // logged-anchor cycle is always painted from the ORIGINAL anchor.
     appendPredictedPeriod(predictedPeriod, projection.cycleAnchorDate, predictedPeriodLength);
-    appendPredictedWindow(
-      preFertile,
-      fertilityEdge,
-      fertilityPeak,
-      ovulation,
-      projection.cycleAnchorDate,
-      projection.predictionCycleLength,
-      predictedPeriodLength,
-      projection.lutealPhase,
-    );
+    if (!fertilitySuppressed) {
+      appendPredictedWindow(
+        preFertile,
+        fertilityEdge,
+        fertilityPeak,
+        ovulation,
+        projection.cycleAnchorDate,
+        projection.predictionCycleLength,
+        predictedPeriodLength,
+        projection.lutealPhase,
+      );
+    }
   }
 
   // Web parity (calendar_days.go appendPredictedCycles): subsequent cycles are
@@ -846,6 +882,7 @@ function buildCalendarPredictionMaps(
       predictedPeriodLength,
       projection.lutealPhase,
       gridEnd,
+      fertilitySuppressed ? 0 : chainedFertilityCycles,
     );
   }
 
@@ -861,14 +898,27 @@ function buildCalendarPredictionMaps(
     );
   }
 
-  applyCurrentCycleBBTSignal(
-    profile,
-    projection,
-    records,
-    today,
-    ovulation,
-    tentativeOvulation,
-  );
+  if (fertilitySuppressed) {
+    if (projection.cycleAnchorDate) {
+      appendConfirmedCurrentCycleOvulationAfterFirstCycle(
+        profile,
+        history,
+        projection.cycleAnchorDate,
+        records,
+        today,
+        ovulation,
+      );
+    }
+  } else {
+    applyCurrentCycleBBTSignal(
+      profile,
+      projection,
+      records,
+      today,
+      ovulation,
+      tentativeOvulation,
+    );
+  }
 
   return {
     predictedPeriod,
@@ -915,6 +965,23 @@ function applyCurrentCycleBBTSignal(
 
   ovulation.delete(projection.ovulationDate);
   tentativeOvulation.add(projection.ovulationDate);
+}
+
+// Web ConfirmedOvulationWithheld: a confirmed day is an observation, so it
+// outlives the overdue gate, the stale band and the completed-cycle floor, but
+// not the first-cycle floor (no completed cycle at all).
+function appendConfirmedCurrentCycleOvulationAfterFirstCycle(
+  profile: ProfileRecord,
+  history: ReturnType<typeof buildCycleHistorySummary>,
+  anchorDate: string,
+  records: readonly DayLogRecord[],
+  today: Date,
+  ovulation: Set<string>,
+) {
+  if (history.completedCycleCount < 1) {
+    return;
+  }
+  appendConfirmedCurrentCycleOvulation(profile, anchorDate, records, today, ovulation);
 }
 
 /**
@@ -1011,12 +1078,14 @@ function appendPredictedCycles(
   predictedPeriodLength: number,
   lutealPhase: number,
   gridEnd: Date,
+  fertileCycles: number,
 ) {
   const cycleStart = parseLocalDate(nextPeriodDate);
   if (!cycleStart) {
     return;
   }
 
+  let chainIndex = 0;
   for (
     let currentCycleStart = cycleStart;
     currentCycleStart <= gridEnd;
@@ -1028,6 +1097,10 @@ function appendPredictedCycles(
       currentCycleStartValue,
       predictedPeriodLength,
     );
+    chainIndex += 1;
+    if (chainIndex > fertileCycles) {
+      continue;
+    }
     appendPredictedWindow(
       preFertile,
       fertilityEdge,
