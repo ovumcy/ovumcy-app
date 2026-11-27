@@ -36,7 +36,7 @@ describe("settings view service", () => {
     expect(en.ageGroup.options).toEqual([
       { value: "", label: "Prefer not to say" },
       { value: "under_40", label: "Under 40" },
-      { value: "age_40_45", label: "40-45" },
+      { value: "age_40_45", label: "40-44" },
       { value: "age_45_plus", label: "45+" },
     ]);
     expect(

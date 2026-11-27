@@ -73,7 +73,7 @@ const appCopyEn = {
     ageGroup: {
       unspecified: "Prefer not to say",
       under40: "Under 40",
-      age40to45: "40-45",
+      age40to45: "40-44",
       age45plus: "45+",
     },
     usageGoal: {
@@ -165,7 +165,7 @@ const appCopyDe: AppCopy = {
     ageGroup: {
       unspecified: "Keine Angabe",
       under40: "Unter 40",
-      age40to45: "40-45",
+      age40to45: "40-44",
       age45plus: "45+",
     },
     usageGoal: {
@@ -257,7 +257,7 @@ const appCopyFr: AppCopy = {
     ageGroup: {
       unspecified: "Préfère ne pas répondre",
       under40: "Moins de 40 ans",
-      age40to45: "40-45",
+      age40to45: "40-44",
       age45plus: "45+",
     },
     usageGoal: {
@@ -351,7 +351,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       ageGroup: {
         unspecified: "Не указывать",
         under40: "Младше 40",
-        age40to45: "40-45",
+        age40to45: "40-44",
         age45plus: "45+",
       },
       usageGoal: {
@@ -441,7 +441,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       ageGroup: {
         unspecified: "Prefiero no decirlo",
         under40: "Menos de 40",
-        age40to45: "40-45",
+        age40to45: "40-44",
         age45plus: "45+",
       },
       usageGoal: {
@@ -531,7 +531,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       ageGroup: {
         unspecified: "Preferisco non indicarlo",
         under40: "Sotto i 40",
-        age40to45: "40-45",
+        age40to45: "40-44",
         age45plus: "45+",
       },
       usageGoal: {
