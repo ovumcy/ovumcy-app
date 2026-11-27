@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
 import { getShellCopy } from "../../../i18n/shell-copy";
+import { resolveCycleViews } from "../../../models/profile";
 import { appStorage } from "../../../services/app-bootstrap-service";
 import {
   createPlatformExportDeliveryClient,
@@ -771,6 +772,16 @@ export function useSettingsScreenController({
         applyInterfaceValues({
           ...readyState.interfaceValues,
           firstDayOfWeek: value,
+        });
+      },
+      onCycleViewToggle: (value) => {
+        const current = readyState.interfaceValues;
+        applyInterfaceValues({
+          ...current,
+          ...resolveCycleViews(
+            value === "ring" ? !current.showCycleRing : current.showCycleRing,
+            value === "ribbon" ? !current.showCycleRibbon : current.showCycleRibbon,
+          ),
         });
       },
       onScreenCaptureProtectionChange: (value) => {

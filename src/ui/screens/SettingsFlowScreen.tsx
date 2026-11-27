@@ -10,6 +10,7 @@ import type {
   PredictionMode,
   ThemePreference,
   WeekStartDay,
+  CycleViewKey,
 } from "../../models/profile";
 import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
@@ -129,6 +130,7 @@ export type SettingsFlowScreenProps = {
   onInterfaceThemeSelect: (value: ThemePreference) => void;
   onInterfaceFirstDayOfWeekSelect: (value: WeekStartDay) => void;
   onScreenCaptureProtectionChange: (value: boolean) => void;
+  onCycleViewToggle: (value: CycleViewKey) => void;
   onOpenBackupSync: () => void | Promise<void>;
   onOpenPrivacyNotice: () => void | Promise<void>;
   onOpenPregnancyManage: () => void;
@@ -231,6 +233,7 @@ export function SettingsFlowScreen({
   onInterfaceThemeSelect,
   onInterfaceFirstDayOfWeekSelect,
   onScreenCaptureProtectionChange,
+  onCycleViewToggle,
   onOpenBackupSync,
   onOpenPrivacyNotice,
   onOpenPregnancyManage,
@@ -437,6 +440,7 @@ export function SettingsFlowScreen({
           {section === "interface" ? (
             <SettingsInterfaceSection
               errorMessage={interfaceErrorMessage}
+              onCycleViewToggle={onCycleViewToggle}
               onFirstDayOfWeekSelect={onInterfaceFirstDayOfWeekSelect}
               onLanguageSelect={onInterfaceLanguageSelect}
               onScreenCaptureProtectionChange={onScreenCaptureProtectionChange}

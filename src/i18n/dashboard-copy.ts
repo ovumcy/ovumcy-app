@@ -49,6 +49,29 @@ const dashboardCopyEn = {
     ovulation: "Ovulation",
     luteal: "Luteal",
   },
+  cycleRibbon: {
+    summary: (day: number, length: number, phase: string) =>
+      `Cycle map: today is cycle day ${day} of about ${length}. Phase: ${phase}.`,
+    daySingle: (day: number) => `cycle day ${day}.`,
+    daysRange: (start: number, end: number) => `cycle days ${start}–${end}.`,
+    legendLabel: "Cycle map legend",
+    colon: ":",
+    truncated: (days: number) =>
+      `The ribbon shows the first ${days} days of this cycle; days beyond that are not drawn.`,
+    today: "Today",
+    cycleDay: "Cycle day",
+    phases: {
+      menstrual: "Menstrual",
+      follicular: "Follicular",
+      ovulation: "Ovulation (estimate)",
+      luteal: "Luteal",
+      withheld: "Fertile details held back",
+    },
+    fertile: "Fertile window (estimate)",
+    predictedPeriod: "Predicted period days",
+    startWindow: "Predicted start window",
+    logged: "Logged entry",
+  },
   cycleHeroDayRange: (startDay: number, endDay: number) =>
     startDay === endDay ? `Day ${startDay}` : `Days ${startDay}-${endDay}`,
   todayEditor: "Today journal",
@@ -157,6 +180,29 @@ const dashboardCopyDe: DashboardCopy = {
     ovulation: "Eisprung",
     luteal: "Lutealphase",
   },
+  cycleRibbon: {
+    summary: (day: number, length: number, phase: string) =>
+      `Zykluskarte: heute ist Zyklustag ${day} von etwa ${length}. Phase: ${phase}.`,
+    daySingle: (day: number) => `Zyklustag ${day}.`,
+    daysRange: (start: number, end: number) => `Zyklustage ${start}–${end}.`,
+    legendLabel: "Legende der Zykluskarte",
+    colon: ":",
+    truncated: (days: number) =>
+      `Das Band zeigt die ersten ${days} Tage dieses Zyklus; spätere Tage werden nicht dargestellt.`,
+    today: "Heute",
+    cycleDay: "Zyklustag",
+    phases: {
+      menstrual: "Menstruell",
+      follicular: "Follikulär",
+      ovulation: "Eisprung (Schätzung)",
+      luteal: "Luteal",
+      withheld: "Fruchtbarkeitsdetails zurückgehalten",
+    },
+    fertile: "Fruchtbares Fenster (Schätzung)",
+    predictedPeriod: "Vorhergesagte Periodentage",
+    startWindow: "Vorhergesagtes Startfenster",
+    logged: "Erfasster Eintrag",
+  },
   cycleHeroDayRange: (startDay: number, endDay: number) =>
     startDay === endDay ? `T. ${startDay}` : `T. ${startDay}-${endDay}`,
   todayEditor: "Heutiges Journal",
@@ -264,6 +310,29 @@ const dashboardCopyFr: DashboardCopy = {
     follicular: "Phase folliculaire",
     ovulation: "Ovulation",
     luteal: "Phase lutéale",
+  },
+  cycleRibbon: {
+    summary: (day: number, length: number, phase: string) =>
+      `Carte du cycle : aujourd'hui est le jour ${day} du cycle, sur environ ${length}. Phase : ${phase}.`,
+    daySingle: (day: number) => `jour du cycle ${day}.`,
+    daysRange: (start: number, end: number) => `jours du cycle ${start}–${end}.`,
+    legendLabel: "Légende de la carte du cycle",
+    colon: " :",
+    truncated: (days: number) =>
+      `Le ruban montre les ${days} premiers jours de ce cycle ; les jours suivants ne sont pas représentés.`,
+    today: "Aujourd'hui",
+    cycleDay: "Jour du cycle",
+    phases: {
+      menstrual: "Menstruelle",
+      follicular: "Folliculaire",
+      ovulation: "Ovulation (estimation)",
+      luteal: "Lutéale",
+      withheld: "Détails de fertilité non affichés",
+    },
+    fertile: "Fenêtre fertile (estimation)",
+    predictedPeriod: "Jours de règles prédits",
+    startWindow: "Fenêtre de début prédite",
+    logged: "Entrée enregistrée",
   },
   cycleHeroDayRange: (startDay: number, endDay: number) =>
     startDay === endDay ? `j. ${startDay}` : `j. ${startDay}-${endDay}`,
@@ -387,6 +456,29 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       ovulation: "Овуляция",
       luteal: "Лютеиновая",
     },
+    cycleRibbon: {
+      summary: (day: number, length: number, phase: string) =>
+        `Карта цикла: сегодня ${day}-й день цикла примерно из ${length}. Фаза: ${phase}.`,
+      daySingle: (day: number) => `день цикла ${day}.`,
+      daysRange: (start: number, end: number) => `дни цикла ${start}–${end}.`,
+      legendLabel: "Обозначения карты цикла",
+      colon: ":",
+      truncated: (days: number) =>
+        `Лента показывает первые ${days} дней этого цикла; последующие дни не отображаются.`,
+      today: "Сегодня",
+      cycleDay: "День цикла",
+      phases: {
+        menstrual: "Менструальная",
+        follicular: "Фолликулярная",
+        ovulation: "Овуляция (оценка)",
+        luteal: "Лютеиновая",
+        withheld: "Фертильные детали удержаны",
+      },
+      fertile: "Фертильное окно (оценка)",
+      predictedPeriod: "Прогноз: дни месячных",
+      startWindow: "Прогноз: окно начала",
+      logged: "Есть запись",
+    },
     cycleHeroDayRange: (startDay: number, endDay: number) =>
       startDay === endDay ? `д. ${startDay}` : `д. ${startDay}-${endDay}`,
     todayEditor: "Сегодняшний журнал",
@@ -494,6 +586,29 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       ovulation: "Ovulación",
       luteal: "Lútea",
     },
+    cycleRibbon: {
+      summary: (day: number, length: number, phase: string) =>
+        `Mapa del ciclo: hoy es el día ${day} del ciclo, de unos ${length}. Fase: ${phase}.`,
+      daySingle: (day: number) => `día del ciclo ${day}.`,
+      daysRange: (start: number, end: number) => `días del ciclo ${start}–${end}.`,
+      legendLabel: "Leyenda del mapa del ciclo",
+      colon: ":",
+      truncated: (days: number) =>
+        `La cinta muestra los primeros ${days} días de este ciclo; los días posteriores no se dibujan.`,
+      today: "Hoy",
+      cycleDay: "Día del ciclo",
+      phases: {
+        menstrual: "Menstrual",
+        follicular: "Folicular",
+        ovulation: "Ovulación (estimación)",
+        luteal: "Lútea",
+        withheld: "Detalles de fertilidad retenidos",
+      },
+      fertile: "Ventana fértil (estimación)",
+      predictedPeriod: "Días de periodo previstos",
+      startWindow: "Ventana de inicio prevista",
+      logged: "Registro guardado",
+    },
     cycleHeroDayRange: (startDay: number, endDay: number) =>
       startDay === endDay ? `d. ${startDay}` : `d. ${startDay}-${endDay}`,
     todayEditor: "Registro de hoy",
@@ -600,6 +715,29 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       follicular: "Follicolare",
       ovulation: "Ovulazione",
       luteal: "Luteale",
+    },
+    cycleRibbon: {
+      summary: (day: number, length: number, phase: string) =>
+        `Mappa del ciclo: oggi è il giorno ${day} del ciclo, su circa ${length}. Fase: ${phase}.`,
+      daySingle: (day: number) => `giorno del ciclo ${day}.`,
+      daysRange: (start: number, end: number) => `giorni del ciclo ${start}–${end}.`,
+      legendLabel: "Legenda della mappa del ciclo",
+      colon: ":",
+      truncated: (days: number) =>
+        `Il nastro mostra i primi ${days} giorni di questo ciclo; i giorni successivi non sono disegnati.`,
+      today: "Oggi",
+      cycleDay: "Giorno del ciclo",
+      phases: {
+        menstrual: "Mestruale",
+        follicular: "Follicolare",
+        ovulation: "Ovulazione (stima)",
+        luteal: "Luteale",
+        withheld: "Dettagli sulla fertilità non mostrati",
+      },
+      fertile: "Finestra fertile (stima)",
+      predictedPeriod: "Giorni di periodo previsti",
+      startWindow: "Finestra di inizio prevista",
+      logged: "Voce registrata",
     },
     cycleHeroDayRange: (startDay: number, endDay: number) =>
       startDay === endDay ? `g. ${startDay}` : `g. ${startDay}-${endDay}`,

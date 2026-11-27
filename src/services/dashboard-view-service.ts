@@ -5,7 +5,7 @@ import type { DayLogRecord } from "../models/day-log";
 import type { PregnancyRecord } from "../models/pregnancy";
 import type { PostpartumRecord } from "../models/postpartum";
 import type { ScreeningResponse } from "../models/screening";
-import type { ProfileRecord } from "../models/profile";
+import { resolveCycleViews, type ProfileRecord } from "../models/profile";
 import { FERTILITY_MINIMUM_CYCLES } from "../models/stats";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { loadPregnancyModuleOwned } from "./pregnancy-entitlement-service";
@@ -32,6 +32,10 @@ import {
 } from "./cycle-history-service";
 import { listCycleHistoryRecords } from "./cycle-history-records";
 import { calcOvulationDay, predictCycleWindow } from "./cycle-prediction-policy";
+import {
+  buildDashboardCycleRibbon,
+  type DashboardCycleRibbonViewData,
+} from "./dashboard-cycle-ribbon-service";
 import {
   buildPredictionExplanation,
   isPausedTestConcluded,
@@ -83,6 +87,11 @@ export type DashboardCycleHeroViewData = {
     tone: DashboardCycleHeroPhaseKey;
     active: boolean;
   }[];
+  // Interface preference (web settings.interface.cycle_view): the ring hides,
+  // the day number and phase cards stay.
+  showRing: boolean;
+  // Null when the ribbon preference is off or the cycle cannot be drawn.
+  ribbon: DashboardCycleRibbonViewData | null;
 };
 
 // Additive pregnancy-mode discriminant. `mode` is a presentational switch
@@ -453,6 +462,7 @@ export function buildDashboardViewData(
   const hasActivePregnancy = options.activePregnancy?.status === "active";
   const suppressPredictions =
     hasActivePregnancy || projectedCycle.isPregnancyPaused;
+  const cycleViews = resolveCycleViews(profile.showCycleRing, profile.showCycleRibbon);
   // The pause's positive test belongs to a pregnancy that has ended: an
   // active postpartum record means a birth, and an ended record dated on/after
   // the test covers a loss or other ending. The pause itself is unchanged;
@@ -506,14 +516,29 @@ export function buildDashboardViewData(
       ? { postpartumStaleCard: pregnancySection.postpartumStaleCard }
       : {}),
     ...(pregnancySection.staleCard ? { staleCard: pregnancySection.staleCard } : {}),
-    cycleHero: buildDashboardCycleHero(
-      profile,
-      projectedCycle,
-      history,
-      locale,
-      suppressPredictions,
-      postpartumAwaitingCycle,
-    ),
+    cycleHero: {
+      ...buildDashboardCycleHero(
+        profile,
+        projectedCycle,
+        history,
+        locale,
+        suppressPredictions,
+        postpartumAwaitingCycle,
+      ),
+      showRing: cycleViews.showCycleRing,
+      ribbon: cycleViews.showCycleRibbon
+        ? buildDashboardCycleRibbon({
+            profile,
+            projection: projectedCycle,
+            history,
+            records: historyRecords,
+            today,
+            locale,
+            suppressPredictions,
+            postpartumAwaitingCycle,
+          })
+        : null,
+    },
     // Blanked for an active record only: the day-log pause keeps its own
     // pregnancyPausedHint, whose "log a new period to resume" instruction is
     // right there and wrong while a pregnancy is actively tracked (same split
@@ -679,7 +704,7 @@ function buildDashboardCycleHero(
   // Active pregnancy record OR the day-log pause — see buildDashboardViewData.
   suppressPredictions: boolean,
   postpartumAwaitingCycle: boolean,
-): DashboardCycleHeroViewData {
+): Omit<DashboardCycleHeroViewData, "showRing" | "ribbon"> {
   const dashboardCopy = getDashboardCopy(locale);
   const statsCopy = getStatsCopy(locale);
   const cycleDayValue =

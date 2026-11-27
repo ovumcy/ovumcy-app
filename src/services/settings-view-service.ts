@@ -12,6 +12,7 @@ import type {
   AgeGroupOption,
   CycleSettingsValues,
   InterfaceLanguage,
+  CycleViewKey,
   InterfaceSettingsValues,
   PredictionMode,
   ProfileRecord,
@@ -27,6 +28,7 @@ import {
   DEFAULT_REMINDER_TIME,
   normalizeWeekStartDay,
   resolvePredictionMode,
+  resolveCycleViews,
   resolveScreenCaptureProtectionEnabled,
 } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
@@ -204,6 +206,9 @@ export type SettingsViewData = {
     firstDayOfWeekLabel: string;
     firstDayOfWeekHint: string;
     firstDayOfWeekOptions: { value: WeekStartDay; label: string }[];
+    cycleViewLabel: string;
+    cycleViewHint: string;
+    cycleViewOptions: { value: CycleViewKey; label: string }[];
     screenCaptureProtectionLabel: string;
     screenCaptureProtectionHint: string;
     screenCaptureProtectionStateOn: string;
@@ -782,6 +787,12 @@ export function buildSettingsViewData(
         { value: 0, label: settingsCopy.interface.firstDayOfWeekSunday },
         { value: 1, label: settingsCopy.interface.firstDayOfWeekMonday },
       ],
+      cycleViewLabel: settingsCopy.interface.cycleViewLabel,
+      cycleViewHint: settingsCopy.interface.cycleViewHint,
+      cycleViewOptions: [
+        { value: "ring", label: settingsCopy.interface.cycleViewRing },
+        { value: "ribbon", label: settingsCopy.interface.cycleViewRibbon },
+      ],
       screenCaptureProtectionLabel:
         settingsCopy.interface.screenCaptureProtectionLabel,
       screenCaptureProtectionHint:
@@ -1113,6 +1124,7 @@ export function createLoadedSettingsState(
       screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
         profile.screenCaptureProtectionEnabled,
       ),
+      ...resolveCycleViews(profile.showCycleRing, profile.showCycleRibbon),
     },
     hasSyncSession,
     managedPremiumAccess,
@@ -1204,6 +1216,7 @@ export function extractPersistedInterfaceValues(
     screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
       profile.screenCaptureProtectionEnabled,
     ),
+    ...resolveCycleViews(profile.showCycleRing, profile.showCycleRibbon),
   };
 }
 
@@ -1260,7 +1273,9 @@ export function areInterfaceSettingsEqual(
     left.languageOverride === right.languageOverride &&
     left.themeOverride === right.themeOverride &&
     left.screenCaptureProtectionEnabled === right.screenCaptureProtectionEnabled &&
-    left.firstDayOfWeek === right.firstDayOfWeek
+    left.firstDayOfWeek === right.firstDayOfWeek &&
+    left.showCycleRing === right.showCycleRing &&
+    left.showCycleRibbon === right.showCycleRibbon
   );
 }
 

@@ -250,6 +250,28 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("saves the Today cycle views and never leaves both off", async () => {
+    const storage = createSettingsStorageMock();
+
+    await render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
+
+    await screen.findByTestId("settings-interface-section");
+
+    await fireEvent.press(screen.getByTestId("settings-interface-cycle-view-ribbon"));
+    // With the ribbon off, turning the ring off too brings the ribbon back.
+    await fireEvent.press(screen.getByTestId("settings-interface-cycle-view-ring"));
+    await fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          showCycleRing: false,
+          showCycleRibbon: true,
+        }),
+      ),
+    );
+  });
+
   it("persists a first-day-of-week change through Save all", async () => {
     const storage = createSettingsStorageMock();
 

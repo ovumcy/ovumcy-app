@@ -91,6 +91,8 @@ export async function runClearAllDataAction(context: DangerActionContext) {
     themeOverride: null,
     firstDayOfWeek: DEFAULT_WEEK_START_DAY,
     screenCaptureProtectionEnabled: true,
+    showCycleRing: true,
+    showCycleRibbon: true,
   });
   router.replace(`/onboarding?reset=${Date.now().toString()}`);
 }

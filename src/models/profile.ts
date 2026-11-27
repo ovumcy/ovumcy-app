@@ -79,6 +79,7 @@ export const SUPPORTED_THEME_PREFERENCES = ["light", "dark", "system"] as const;
 // First day of the calendar week, in JS Date.getDay() convention: 0 = Sunday,
 // 1 = Monday. Mirrors web's optional "First day of the week" preference.
 export type WeekStartDay = 0 | 1;
+export type CycleViewKey = "ring" | "ribbon";
 export const DEFAULT_WEEK_START_DAY: WeekStartDay = 0;
 const MONDAY_FIRST_LANGUAGES: readonly InterfaceLanguage[] = ["de", "es", "fr", "it", "ru"];
 
@@ -151,6 +152,10 @@ export type ProfileRecord = {
   themeOverride: ThemePreference | null;
   firstDayOfWeek?: WeekStartDay;
   screenCaptureProtectionEnabled?: boolean;
+  // Today's cycle views (web settings.interface.cycle_view): absent reads as
+  // shown; both hidden reads as the ribbon shown (resolveCycleViews).
+  showCycleRing?: boolean;
+  showCycleRibbon?: boolean;
   dismissedCalendarPredictionNoticeKey?: DismissibleCalendarPredictionNoticeKey | null;
   dismissedOnboardingHelperNoticeKey?: OnboardingHelperNoticeKey | null;
   // Set once lastPeriodStart has been re-read under the write-path repoint
@@ -196,6 +201,8 @@ export type InterfaceSettingsValues = Pick<
 > & {
   firstDayOfWeek: WeekStartDay;
   screenCaptureProtectionEnabled: boolean;
+  showCycleRing: boolean;
+  showCycleRibbon: boolean;
 };
 
 export function normalizeWeekStartDay(value: unknown): WeekStartDay {
@@ -224,6 +231,19 @@ export function normalizeThemePreference(
   return SUPPORTED_THEME_PREFERENCES.includes(value as ThemePreference)
     ? (value as ThemePreference)
     : null;
+}
+
+// Web theme-bootstrap.js: a stored "both off" draws the ribbon, so Today always
+// keeps one cycle view.
+export function resolveCycleViews(
+  ring: boolean | null | undefined,
+  ribbon: boolean | null | undefined,
+): { showCycleRing: boolean; showCycleRibbon: boolean } {
+  const showCycleRing = ring !== false;
+  return {
+    showCycleRing,
+    showCycleRibbon: ribbon !== false || !showCycleRing,
+  };
 }
 
 export function resolveScreenCaptureProtectionEnabled(
@@ -334,6 +354,8 @@ export function createDefaultProfileRecord(): ProfileRecord {
     themeOverride: null,
     firstDayOfWeek: DEFAULT_WEEK_START_DAY,
     screenCaptureProtectionEnabled: true,
+    showCycleRing: true,
+    showCycleRibbon: true,
     dismissedCalendarPredictionNoticeKey: null,
     dismissedOnboardingHelperNoticeKey: null,
   };

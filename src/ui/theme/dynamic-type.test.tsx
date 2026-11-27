@@ -61,6 +61,8 @@ const heroViewData: DashboardCycleHeroViewData = {
   upcomingOvulationLabel: "Ovulation around 20 March",
   progressPercent: 42,
   currentTone: "follicular",
+  showRing: true,
+  ribbon: null,
   phaseSegments: [
     { key: "period", startPercent: 0, endPercent: 18, tone: "period" },
     { key: "follicular", startPercent: 18, endPercent: 55, tone: "follicular" },

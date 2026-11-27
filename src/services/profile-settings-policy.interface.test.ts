@@ -29,12 +29,16 @@ describe("theme preference sanitization", () => {
         themeOverride: "system",
         firstDayOfWeek: 1,
         screenCaptureProtectionEnabled: true,
+        showCycleRing: false,
+        showCycleRibbon: true,
       }),
     ).toEqual({
       languageOverride: "en",
       themeOverride: "system",
       firstDayOfWeek: 1,
       screenCaptureProtectionEnabled: true,
+      showCycleRing: false,
+      showCycleRibbon: true,
     });
   });
 
@@ -48,12 +52,17 @@ describe("theme preference sanitization", () => {
         // An out-of-range week start normalizes back to Sunday (0).
         firstDayOfWeek: 3 as never,
         screenCaptureProtectionEnabled: false,
+        // Web theme-bootstrap.js: both views off reads as the ribbon on.
+        showCycleRing: false,
+        showCycleRibbon: false,
       }),
     ).toEqual({
       languageOverride: null,
       themeOverride: null,
       firstDayOfWeek: 0,
       screenCaptureProtectionEnabled: false,
+      showCycleRing: false,
+      showCycleRibbon: true,
     });
   });
 });
