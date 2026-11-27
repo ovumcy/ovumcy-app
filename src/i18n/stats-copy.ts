@@ -19,12 +19,12 @@ const statsCopyEn = {
   dataNotice: "Data is still limited. The picture will sharpen as you log more cycles.",
   emptyTitle: "Keep logging to unlock insights",
   emptyBodyZero:
-    "Complete 2 cycles to unlock insights. Start by entering the first day of your next period.",
+    "Complete 3 cycles to unlock insights. Start by entering the first day of your next period.",
   emptyBodyOne:
-    "You have 1 completed cycle. Complete one more cycle to unlock insights.",
-  emptyProgressHint: "Predictions become clearer after at least 2 completed cycles.",
+    "Insights unlock after 3 completed cycles. Keep logging the first day of each period.",
+  emptyProgressHint: "Predictions become clearer after at least 3 completed cycles.",
   emptyActionLabel: "Log today to speed this up",
-  completedCyclesProgress: (count: number) => `Cycle ${count} of 2 completed`,
+  completedCyclesProgress: (count: number) => `Cycle ${count} of 3 completed`,
   irregularNotice: (minDays: number, maxDays: number) =>
     `Your cycles vary from ${minDays} to ${maxDays} days. This is an irregular rhythm. Predictions are approximate.`,
   irregularRecommendation: "Consider enabling irregular cycle mode in settings.",
@@ -343,13 +343,13 @@ const statsCopyDe: StatsCopy = {
     "Es gibt noch wenige Daten. Das Bild wird klarer, je mehr Zyklen Sie erfassen.",
   emptyTitle: "Erfassen Sie weiter, um Einblicke freizuschalten",
   emptyBodyZero:
-    "Schließen Sie 2 Zyklen ab, um Einblicke freizuschalten. Beginnen Sie damit, den ersten Tag Ihrer nächsten Periode einzugeben.",
+    "Schließen Sie 3 Zyklen ab, um Einblicke freizuschalten. Beginnen Sie damit, den ersten Tag Ihrer nächsten Periode einzugeben.",
   emptyBodyOne:
-    "Sie haben 1 abgeschlossenen Zyklus. Schließen Sie noch einen ab, um Einblicke freizuschalten.",
+    "Einblicke werden nach 3 abgeschlossenen Zyklen freigeschaltet. Tragen Sie weiter den ersten Tag jeder Periode ein.",
   emptyProgressHint:
-    "Vorhersagen werden nach mindestens 2 abgeschlossenen Zyklen klarer.",
+    "Vorhersagen werden nach mindestens 3 abgeschlossenen Zyklen klarer.",
   emptyActionLabel: "Heute eintragen, damit es schneller geht",
-  completedCyclesProgress: (count: number) => `Zyklus ${count} von 2 abgeschlossen`,
+  completedCyclesProgress: (count: number) => `Zyklus ${count} von 3 abgeschlossen`,
   irregularNotice: (minDays: number, maxDays: number) =>
     `Ihre Zyklen schwanken zwischen ${minDays} und ${maxDays} Tagen. Das ist ein unregelmäßiger Rhythmus. Vorhersagen sind nur ungefähr.`,
   irregularRecommendation:
@@ -668,13 +668,13 @@ const statsCopyFr: StatsCopy = {
     "Les données sont encore limitées. La vue d'ensemble sera plus nette à mesure que vous enregistrez plus de cycles.",
   emptyTitle: "Continuez à enregistrer pour débloquer les analyses",
   emptyBodyZero:
-    "Complétez 2 cycles pour débloquer les analyses. Commencez par saisir le premier jour de vos prochaines règles.",
+    "Complétez 3 cycles pour débloquer les analyses. Commencez par saisir le premier jour de vos prochaines règles.",
   emptyBodyOne:
-    "Vous avez 1 cycle terminé. Terminez-en un autre pour débloquer les analyses.",
+    "Les analyses se débloquent après 3 cycles terminés. Continuez à saisir le premier jour de vos règles.",
   emptyProgressHint:
-    "Les prédictions deviennent plus claires après au moins 2 cycles terminés.",
+    "Les prédictions deviennent plus claires après au moins 3 cycles terminés.",
   emptyActionLabel: "Noter aujourd'hui pour aller plus vite",
-  completedCyclesProgress: (count: number) => `Cycle ${count} sur 2 terminé`,
+  completedCyclesProgress: (count: number) => `Cycle ${count} sur 3 terminé`,
   irregularNotice: (minDays: number, maxDays: number) =>
     `Vos cycles varient entre ${minDays} et ${maxDays} jours. C'est un rythme irrégulier. Les prédictions restent approximatives.`,
   irregularRecommendation:
@@ -996,12 +996,12 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     dataNotice: "Данных пока мало. Картина станет точнее по мере записи новых циклов.",
     emptyTitle: "Продолжайте записи, чтобы открыть аналитику",
     emptyBodyZero:
-      "Завершите 2 цикла, чтобы открыть аналитику. Начните с ввода первого дня следующей менструации.",
+      "Завершите 3 цикла, чтобы открыть аналитику. Начните с ввода первого дня следующей менструации.",
     emptyBodyOne:
-      "У вас есть 1 завершённый цикл. Завершите ещё один, чтобы открыть аналитику.",
-    emptyProgressHint: "Прогнозы становятся точнее как минимум после 2 завершённых циклов.",
+      "Чтобы открыть аналитику, нужно 3 завершённых цикла. Продолжайте отмечать первый день месячных.",
+    emptyProgressHint: "Прогнозы становятся точнее как минимум после 3 завершённых циклов.",
     emptyActionLabel: "Записать сегодня, чтобы открыть быстрее",
-    completedCyclesProgress: (count: number) => `Завершён цикл ${count} из 2`,
+    completedCyclesProgress: (count: number) => `Завершён цикл ${count} из 3`,
     irregularNotice: (minDays: number, maxDays: number) =>
       `Ваши циклы варьируются от ${minDays} до ${maxDays} ${ruDayWordGenitive(maxDays)}. Это нерегулярный ритм. Прогнозы приблизительны.`,
     irregularRecommendation: "Подумайте о включении режима нерегулярного цикла в настройках.",
@@ -1304,12 +1304,12 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     dataNotice: "Todavía hay pocos datos. La imagen será más clara a medida que registres más ciclos.",
     emptyTitle: "Sigue registrando para desbloquear análisis",
     emptyBodyZero:
-      "Completa 2 ciclos para desbloquear análisis. Empieza introduciendo el primer día de tu próximo período.",
+      "Completa 3 ciclos para desbloquear análisis. Empieza introduciendo el primer día de tu próximo período.",
     emptyBodyOne:
-      "Tienes 1 ciclo completado. Completa uno más para desbloquear análisis.",
-    emptyProgressHint: "Las predicciones se vuelven más claras tras al menos 2 ciclos completos.",
+      "Los análisis se desbloquean tras 3 ciclos completados. Sigue registrando el primer día de cada período.",
+    emptyProgressHint: "Las predicciones se vuelven más claras tras al menos 3 ciclos completos.",
     emptyActionLabel: "Registrar hoy para desbloquear antes",
-    completedCyclesProgress: (count: number) => `Ciclo ${count} de 2 completado`,
+    completedCyclesProgress: (count: number) => `Ciclo ${count} de 3 completado`,
     irregularNotice: (minDays: number, maxDays: number) =>
       `Tus ciclos varían entre ${minDays} y ${maxDays} días. Es un ritmo irregular. Las predicciones son aproximadas.`,
     irregularRecommendation: "Considera activar el modo de ciclo irregular en ajustes.",
@@ -1618,12 +1618,12 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     dataNotice: "I dati sono ancora limitati. Il quadro si chiarirà man mano che registrerai più cicli.",
     emptyTitle: "Continua a registrare per sbloccare le analisi",
     emptyBodyZero:
-      "Completa 2 cicli per sbloccare le analisi. Inizia inserendo il primo giorno del tuo prossimo ciclo.",
+      "Completa 3 cicli per sbloccare le analisi. Inizia inserendo il primo giorno del tuo prossimo ciclo.",
     emptyBodyOne:
-      "Hai 1 ciclo completato. Completa un altro ciclo per sbloccare le analisi.",
-    emptyProgressHint: "Le previsioni diventano più chiare dopo almeno 2 cicli completati.",
+      "Le analisi si sbloccano dopo 3 cicli completati. Continua a registrare il primo giorno di ogni ciclo.",
+    emptyProgressHint: "Le previsioni diventano più chiare dopo almeno 3 cicli completati.",
     emptyActionLabel: "Registra oggi per sbloccare prima",
-    completedCyclesProgress: (count: number) => `Ciclo ${count} di 2 completato`,
+    completedCyclesProgress: (count: number) => `Ciclo ${count} di 3 completato`,
     irregularNotice: (minDays: number, maxDays: number) =>
       `I tuoi cicli variano da ${minDays} a ${maxDays} giorni. È un ritmo irregolare. Le previsioni sono approssimative.`,
     irregularRecommendation: "Valuta di attivare la modalità ciclo irregolare nelle impostazioni.",
