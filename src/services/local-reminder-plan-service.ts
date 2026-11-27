@@ -161,15 +161,16 @@ export function buildLocalReminderPlans(
   if (
     projection.isPregnancyPaused ||
     projection.cycleDayLooksLong ||
-    // An irregular cycle with fewer than three completed cycles names no date
-    // at all (web PredictionsSuppressed), so no period, fertile or cycle-day
-    // reminder is planned from it.
-    projection.awaitingIrregularHistory ||
     activePregnancy?.status === "active"
   ) {
     return plans;
   }
 
+  // An irregular cycle with fewer than three completed cycles names no date at
+  // all (web PredictionsSuppressed): its projection carries no next period and
+  // a set fertility verdict, so neither reminder below is planned. Cycle-day
+  // reminders count from the recorded start and stay, as web's cycle-day
+  // decision only consults the pregnancy pause.
   if (profile.upcomingPeriodReminderEnabled === true) {
     const targetDate =
       projection.nextPeriodWindowStartDate ?? projection.nextPeriodDate;

@@ -227,8 +227,8 @@ function applyFertilityGate(
       fertilitySuppressed: true,
       currentCycleDay: projection.rawCycleDay ?? projection.currentCycleDay,
       currentPhase: projection.currentPhase === "menstrual" ? "menstrual" : "unknown",
-      isPredictionStale: false,
-      cycleDayLooksLong: false,
+      // The stale band and the overdue gate keep their own verdicts: surfaces
+      // that read them (stale hero, cycle-day reminders) must still see them.
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
