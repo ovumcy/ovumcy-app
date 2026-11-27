@@ -797,10 +797,9 @@ function buildDashboardCycleHero(
       detail: dashboardCopy.cycleHeroApproximate,
       // The projection names no next period here (web PredictionsSuppressed
       // withholds both halves for an irregular cycle awaiting history), so the
-      // caption says why instead of naming a date.
-      caption: projection.awaitingIrregularHistory
-        ? `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodNeedsMoreCycles}`
-        : buildDashboardCycleHeroCaption(profile, projection, history, locale),
+      // caption says why instead of naming a date. (This branch is exactly
+      // awaitingIrregularHistory: irregular and fewer than three completed.)
+      caption: `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodNeedsMoreCycles}`,
       upcomingOvulationLabel,
       progressPercent: null,
       currentTone: "neutral",

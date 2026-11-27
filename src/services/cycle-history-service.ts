@@ -198,7 +198,6 @@ function applyFertilityGate(
   now: Date,
 ): StatsCycleProjection {
   const completedCycleCount = history.completedCycleCount;
-  const todayValue = formatLocalDate(atLocalDay(now));
   const awaitingIrregularHistory =
     profile.irregularCycle && completedCycleCount < FERTILITY_MINIMUM_CYCLES;
   const fertilityAwaiting: FertilityAwaitingTier | null =
@@ -217,7 +216,7 @@ function applyFertilityGate(
     projection.cycleDayLooksLong === true;
   const bleedingOutsideCycleStart =
     projection.cycleAnchorDate !== null &&
-    hasBleedingOutsideCycleStart(profile, records, todayValue, projection.cycleAnchorDate);
+    hasBleedingOutsideCycleStart(profile, records, now, projection.cycleAnchorDate);
   const gate = { fertilityAwaiting, awaitingIrregularHistory };
 
   if (awaitingIrregularHistory && !noProjection) {
@@ -225,10 +224,9 @@ function applyFertilityGate(
       ...projection,
       ...gate,
       fertilitySuppressed: true,
-      currentCycleDay: projection.rawCycleDay ?? projection.currentCycleDay,
       currentPhase: projection.currentPhase === "menstrual" ? "menstrual" : "unknown",
-      // The stale band and the overdue gate keep their own verdicts: surfaces
-      // that read them (stale hero, cycle-day reminders) must still see them.
+      // The stale band and the overdue gate keep their own verdicts (and with
+      // them the raw-day display): surfaces that read them must still see them.
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
@@ -274,13 +272,12 @@ function applyFertilityGate(
 function hasBleedingOutsideCycleStart(
   profile: ProfileRecord,
   records: DayLogRecord[],
-  todayValue: string,
+  now: Date,
   anchorDate: string,
 ): boolean {
-  const today = parseLocalDate(todayValue);
-  if (!today) {
-    return false;
-  }
+  const today = atLocalDay(now);
+  const todayValue = formatLocalDate(today);
+  const yesterdayValue = formatLocalDate(addDays(today, -1));
   let openingStart = anchorDate;
   let openingEnd = anchorDate;
   for (const cluster of buildObservedPeriodClusters(profile, records, todayValue)) {
@@ -292,17 +289,12 @@ function hasBleedingOutsideCycleStart(
       break;
     }
   }
-  return records.some((record) => {
-    if (!record.isPeriod) {
-      return false;
-    }
-    const day = parseLocalDate(record.date);
-    const sinceDay = day ? diffCalendarDays(day, today) : -1;
-    return (
-      (sinceDay === 0 || sinceDay === 1) &&
-      (record.date < openingStart || record.date > openingEnd)
-    );
-  });
+  return records.some(
+    (record) =>
+      record.isPeriod &&
+      (record.date === todayValue || record.date === yesterdayValue) &&
+      (record.date < openingStart || record.date > openingEnd),
+  );
 }
 
 function buildProjectionDates(
