@@ -119,6 +119,33 @@ describe("fertility gate on the shared projection", () => {
     expect(control.awaitingIrregularHistory).toBe(false);
     expect(control.nextPeriodDate).not.toBeNull();
   });
+
+  it("keeps the overdue verdict for an irregular cycle awaiting history", () => {
+    // Raw cycle day 58 of the 2026-03-05 cycle, far past 28 + 7.
+    const projection = project(
+      profileOf({ irregularCycle: true }),
+      recordsWith(1),
+      new Date(2026, 4, 1, 10),
+    );
+    expect(projection.awaitingIrregularHistory).toBe(true);
+    expect(projection.cycleDayLooksLong).toBe(true);
+    expect(projection.isPredictionStale).toBe(true);
+    expect(projection.nextPeriodDate).toBeNull();
+  });
+
+  it("keeps a profile-only anchor's own period days inside the opening episode", () => {
+    // The stored start has no day-log row but still seeds the period clusters,
+    // so the day logged today is the second day of that same bleed, not
+    // bleeding outside the cycle start.
+    const profile = profileOf({ lastPeriodStart: CURRENT_START });
+    const records = [
+      ...completedCycleHistory({ currentStart: CURRENT_START }),
+      { ...createEmptyDayLogRecord("2026-03-06"), isPeriod: true, flow: "medium" as const },
+    ];
+    const projection = project(profile, records, new Date(2026, 2, 6, 10));
+    expect(projection.cycleAnchorDate).toBe(CURRENT_START);
+    expect(projection.fertilitySuppressed).toBe(false);
+  });
 });
 
 describe("fertility gate on the day-save message", () => {
@@ -246,5 +273,17 @@ describe("fertility gate on device reminders", () => {
     expect(kinds(profileOf({ irregularCycle: true }), recordsWith(3), MARCH_12)).toContain(
       "upcoming_period",
     );
+  });
+
+  it("keeps cycle-day reminders for an irregular cycle awaiting history", () => {
+    // Web's cycle-day decision counts from the recorded start and only
+    // consults the pregnancy pause, never PredictionsSuppressed.
+    const profile = profileOf({
+      irregularCycle: true,
+      cycleDayReminders: [
+        { id: "cdr_a", cycleDay: 14, remindAtHour: 9, label: "", showLabel: false },
+      ],
+    });
+    expect(kinds(profile, recordsWith(2), MARCH_12)).toEqual(["daily_log", "cycle_day"]);
   });
 });
