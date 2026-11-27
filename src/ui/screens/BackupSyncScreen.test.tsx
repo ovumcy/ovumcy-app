@@ -3407,6 +3407,8 @@ describe("BackupSyncScreen", () => {
           rotationCopy.deviceAuthPrompt,
         ),
       );
+      expect(screen.queryByTestId("sync-recovery-rotation-stepup-password")).toBeNull();
+      await agreeToDataSharingConsent();
       const password = await screen.findByTestId("sync-recovery-rotation-stepup-password");
       const localStep = screen.getByTestId("settings-sync-local-step");
       expect(
