@@ -30,7 +30,7 @@ Run on an Android emulator or physical device.
   - `Track BBT` shows the BBT section with the selected temperature unit; a decimal reading (e.g. `36.50`) keeps the typed value instead of snapping to `0.00`, non-numeric characters are rejected, and switching the unit between °C and °F recalculates the shown value to the same temperature instead of relabelling the raw number
   - `Track cervical mucus` shows the cervical-mucus section
 15. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
-16. After two completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
+16. After three completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
 17. Settings allows creating a custom symptom, and the new symptom appears in the dashboard and calendar day editor for new entries.
 18. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
 19. The settings export/restore screen shows the current entry summary; `Export as CSV` and `Export as JSON` always open a local share or save flow without leaking data into a URL, while `Export as PDF` stays locked unless the current managed cloud account has an active plan.
@@ -75,7 +75,7 @@ Run on an iOS simulator or physical device.
   - `Track BBT` shows the BBT section with the selected temperature unit; a decimal reading (e.g. `36.50`) keeps the typed value instead of snapping to `0.00`, non-numeric characters are rejected, and switching the unit between °C and °F recalculates the shown value to the same temperature instead of relabelling the raw number
   - `Track cervical mucus` shows the cervical-mucus section
 15. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
-16. After two completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
+16. After three completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
 17. Settings allows creating a custom symptom, and the new symptom appears in the dashboard and calendar day editor for new entries.
 18. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
 19. The settings export/restore screen shows the current entry summary; `Export as CSV` and `Export as JSON` always open a local share or save flow without leaking data into a URL, while `Export as PDF` stays locked unless the current managed cloud account has an active plan.
@@ -111,7 +111,7 @@ Run when web support, branding, or app-shell navigation is touched.
    - editing a day entry on the dashboard autosaves and updates local state without a page error
    - enabling `Track BBT` shows the BBT field; a decimal reading is accepted and preserved, and switching the BBT unit between °C and °F recalculates the displayed value to the same temperature
    - calendar shows markers for the saved entry and opens the same day details when that day is selected
-   - after two completed cycles exist, insights render reliability and cycle-length cards instead of the empty unlock state
+   - after three completed cycles exist, insights render reliability and cycle-length cards instead of the empty unlock state
    - the settings tab opens as a hub with one navigation row per section route (`/settings/cycle`, `/settings/symptoms`, `/settings/tracking`, `/settings/reminders`, `/settings/interface`, `/settings/data`, `/settings/danger`) and each section screen offers a back action to the hub
    - the settings symptoms screen can create a custom symptom and that symptom appears in dashboard and calendar day editors for new entries
    - changing a settings value and then switching tabs, leaving the section, or opening `Backup & sync` shows a three-way confirmation with working `Save and leave`, `Discard changes`, and `Keep editing` outcomes, where dismissing the dialog keeps editing

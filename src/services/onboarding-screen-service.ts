@@ -3,7 +3,13 @@ import type {
   OnboardingStep,
   OnboardingStepTwoValues,
 } from "../models/onboarding";
-import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
+import {
+  createDefaultProfileRecord,
+  DEFAULT_WEEK_START_DAY,
+  defaultWeekStartForLanguage,
+  type ProfileRecord,
+} from "../models/profile";
+import { resolveEffectiveLanguage } from "../i18n/runtime";
 import { resolvePredictionModeFlags } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { buildInitialBootstrapState } from "./app-bootstrap-service";
@@ -212,10 +218,17 @@ export async function finishOnboarding(
 
   try {
     const currentProfile = await storage.readProfileRecord();
+    const completedProfile = applyOnboardingRecordToProfile(
+      currentProfile,
+      completedRecord,
+    );
+    if (currentProfile.firstDayOfWeek === DEFAULT_WEEK_START_DAY) {
+      completedProfile.firstDayOfWeek = defaultWeekStartForLanguage(
+        resolveEffectiveLanguage(currentProfile.languageOverride),
+      );
+    }
     await Promise.all([
-      storage.writeProfileRecord(
-        applyOnboardingRecordToProfile(currentProfile, completedRecord),
-      ),
+      storage.writeProfileRecord(completedProfile),
       storage.writeBootstrapState({
         ...buildInitialBootstrapState(),
         hasCompletedOnboarding: true,

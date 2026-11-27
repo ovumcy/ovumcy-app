@@ -978,6 +978,7 @@ describe("sqlite-app-storage", () => {
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
       ...createDefaultProfileRecord(),
+      autoPeriodFill: true,
       lastPeriodStart: "2026-03-14",
       cycleLength: 31,
       periodLength: 6,
@@ -1364,6 +1365,7 @@ describe("sqlite-app-storage", () => {
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
       ...createDefaultProfileRecord(),
+      autoPeriodFill: true,
       lastPeriodStart: "2026-03-15",
       cycleLength: 30,
       periodLength: 6,

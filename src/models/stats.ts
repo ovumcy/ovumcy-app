@@ -2,7 +2,11 @@ import type { DayCycleFactorKey } from "./day-log";
 import type { LocalDateISO } from "./profile";
 import type { SymptomID } from "./symptom";
 
-export const STATS_MINIMUM_INSIGHTS_CYCLES = 2;
+// Web's statsMinimumInsightsCycles (= fertilityMinimumCycles): insights and the
+// personal cycle range. The projection trusts observed lengths earlier, at
+// PREDICTION_OBSERVED_LENGTH_MIN_CYCLES, pinned by the shared golden vectors.
+export const STATS_MINIMUM_INSIGHTS_CYCLES = 3;
+export const PREDICTION_OBSERVED_LENGTH_MIN_CYCLES = 2;
 export const STATS_MINIMUM_PHASE_INSIGHTS_CYCLES = 3;
 export const STATS_RELIABLE_TREND_CYCLES = 3;
 export const STATS_CYCLE_PREDICTION_WINDOW = 6;

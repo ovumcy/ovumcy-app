@@ -1,5 +1,6 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import type { OnboardingRecord } from "../models/onboarding";
+import { createDefaultProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   finishOnboarding,
@@ -419,6 +420,44 @@ describe("onboarding-screen-service", () => {
         irregularCycle: false,
         unpredictableCycle: true,
       }),
+    );
+  });
+
+  it.each([
+    ["ru", 1],
+    ["de", 1],
+    ["en", 0],
+  ] as const)(
+    "starts the week from the %s interface language on completion",
+    async (languageOverride, expectedFirstDay) => {
+      const storage = createStorageMock({
+        readProfileRecord: jest.fn().mockResolvedValue({
+          ...createDefaultProfileRecord(),
+          languageOverride,
+        }),
+      });
+
+      await finishOnboarding(storage, createLoadedState());
+
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ firstDayOfWeek: expectedFirstDay }),
+      );
+    },
+  );
+
+  it("keeps a Monday week chosen before onboarding finished", async () => {
+    const storage = createStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        ...createDefaultProfileRecord(),
+        languageOverride: "en",
+        firstDayOfWeek: 1,
+      }),
+    });
+
+    await finishOnboarding(storage, createLoadedState());
+
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ firstDayOfWeek: 1 }),
     );
   });
 

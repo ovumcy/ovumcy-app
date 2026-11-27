@@ -230,8 +230,8 @@ that owns the canonical web UX).
   - `3` or `4` columns on desktop depending on reliability card
   - compact `stat-card` geometry
 - Unlock thresholds:
-  - `< 2 completed cycles`: empty hero only
-  - `2 completed cycles`: top cards, cycle overview, trend, symptom frequency
+  - `< 3 completed cycles`: empty hero only (web `statsMinimumInsightsCycles` = 3)
+  - `3 completed cycles`: top cards, cycle overview, trend, symptom frequency
   - `3+ completed cycles`: stronger reliability state and deeper stats sections as data allows
 - Recent completed cycles (web Insights cycle stack, `stats_cycle_ribbon.go`):
   - Free list of the latest `4` completed cycles (start, cycle length, period length), newest
