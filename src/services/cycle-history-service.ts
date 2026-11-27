@@ -22,6 +22,7 @@ import {
   STATS_FACTOR_CONTEXT_WINDOW_DAYS,
   STATS_FACTOR_PATTERN_ITEM_LIMIT,
   STATS_FACTOR_RECENT_CYCLE_LIMIT,
+  PREDICTION_OBSERVED_LENGTH_MIN_CYCLES,
   STATS_MINIMUM_INSIGHTS_CYCLES,
   STATS_RELIABLE_TREND_CYCLES,
   type CompletedCycleSummary,
@@ -779,7 +780,7 @@ export function resolveOverdueCycleLength(
   predictionCycleLength: number,
 ): number {
   const referenceLength =
-    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
+    history.completedCycleCount >= PREDICTION_OBSERVED_LENGTH_MIN_CYCLES &&
     history.averageCycleLength > 0
       ? Math.floor(history.averageCycleLength + 0.5)
       : profile.cycleLength;
@@ -1242,7 +1243,7 @@ function resolvePredictionCycleLength(
   // trusting observed data and fall back to the owner's configured cycle length
   // until then (strictly safer than web for the single-merged-cycle case). Above
   // that gate the median-first choice itself is the shared predictedCycleLength.
-  if (history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES) {
+  if (history.completedCycleCount >= PREDICTION_OBSERVED_LENGTH_MIN_CYCLES) {
     const observed = predictedCycleLength(
       history.medianCycleLength,
       history.averageCycleLength,

@@ -67,6 +67,7 @@ describe("volatile-web-app-storage", () => {
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
       ...createDefaultProfileRecord(),
+      autoPeriodFill: true,
       lastPeriodStart: "2026-03-14",
       cycleLength: 30,
       periodLength: 6,

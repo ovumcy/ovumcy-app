@@ -1,6 +1,6 @@
 export const DEFAULT_CYCLE_LENGTH = 28;
 export const DEFAULT_PERIOD_LENGTH = 5;
-export const DEFAULT_AUTO_PERIOD_FILL = true;
+export const DEFAULT_AUTO_PERIOD_FILL = false;
 export const DEFAULT_TEMPERATURE_UNIT = "c";
 export const DEFAULT_REMINDER_TIME = "20:00";
 // Reminder lead window mirrors ovumcy-web's reminder_lead_days contract:
@@ -76,6 +76,12 @@ export const SUPPORTED_THEME_PREFERENCES = ["light", "dark", "system"] as const;
 // 1 = Monday. Mirrors web's optional "First day of the week" preference.
 export type WeekStartDay = 0 | 1;
 export const DEFAULT_WEEK_START_DAY: WeekStartDay = 0;
+const MONDAY_FIRST_LANGUAGES: readonly InterfaceLanguage[] = ["de", "es", "fr", "it", "ru"];
+
+// Mirrors web's DefaultWeekStartForLanguage: the week a new profile starts with.
+export function defaultWeekStartForLanguage(language: InterfaceLanguage): WeekStartDay {
+  return MONDAY_FIRST_LANGUAGES.includes(language) ? 1 : DEFAULT_WEEK_START_DAY;
+}
 export const SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS = [
   "calendar_irregular_prediction_notice_v1",
   "calendar_unpredictable_prediction_notice_v1",

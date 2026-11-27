@@ -471,6 +471,7 @@ describe("StatsScreen", () => {
         themeOverride: "light",
       }),
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2025-12-04"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true, cycleStart: true },
@@ -487,7 +488,7 @@ describe("StatsScreen", () => {
     expect(screen.getByTestId("stats-extended-reports-lock")).toBeTruthy();
     expect(screen.queryByTestId("stats-extended-reports")).toBeNull();
     const rows = screen.getAllByTestId("stats-completed-cycle-row");
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     expect(rows[0]?.props.accessibilityLabel).toContain("Cycle 28 d");
     expect(screen.queryByText(/usual pattern/)).toBeNull();
   });
@@ -565,6 +566,7 @@ describe("StatsScreen", () => {
         themeOverride: "light",
       }),
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2025-12-04"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true, cycleStart: true },
@@ -607,6 +609,7 @@ describe("StatsScreen", () => {
         themeOverride: "light",
       }),
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2025-12-04"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true, cycleStart: true },
@@ -647,6 +650,7 @@ describe("StatsScreen", () => {
         themeOverride: "light",
       }),
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2025-12-04"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
         { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true, cycleStart: true },

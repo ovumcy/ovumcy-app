@@ -223,6 +223,7 @@ describe("buildStatsViewData", () => {
         trackCervicalMucus: true,
       }),
       [
+        createPeriodRecord("2025-12-20"),
         createPeriodRecord("2026-01-17"),
         createPeriodRecord("2026-02-14"),
         createPeriodRecord("2026-03-14"),
@@ -258,6 +259,7 @@ describe("buildStatsViewData", () => {
     const viewData = buildStatsViewData(
       createProfileRecord(),
       [
+        createPeriodRecord("2025-12-20"),
         createPeriodRecord("2026-01-17"),
         {
           ...createEmptyDayLogRecord("2026-01-18"),
@@ -394,6 +396,8 @@ describe("buildStatsViewData", () => {
         unpredictableCycle: true,
       }),
       [
+        createPeriodRecord("2025-12-20"),
+        createPeriodRecord("2026-01-17"),
         createPeriodRecord("2026-02-14"),
         createPeriodRecord("2026-03-14"),
       ],
@@ -424,6 +428,7 @@ describe("buildStatsViewData", () => {
         ageGroup: "age_45_plus",
       }),
       [
+        createPeriodRecord("2026-01-04"),
         createPeriodRecord("2026-02-08", {
           cycleFactorKeys: ["stress"],
         }),
@@ -959,7 +964,7 @@ describe("buildStatsViewData short/long completed-cycle notices", () => {
   it("does not show the short-cycle notice with only 2 short cycles", () => {
     const viewData = buildNoticeViewData([23, 23]);
 
-    expect(viewData.hasInsights).toBe(true);
+    expect(viewData.hasInsights).toBe(false);
     expect(viewData.notices).not.toContain(SHORT_NOTICE);
   });
 
