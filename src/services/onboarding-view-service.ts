@@ -13,7 +13,6 @@ import {
 } from "./onboarding-policy";
 
 export type OnboardingViewData = {
-  progressLabel: string;
   stepOne: {
     title: string;
     subtitle: string;
@@ -88,10 +87,6 @@ export function buildOnboardingViewData(
   );
 
   return {
-    progressLabel:
-      record.lastPeriodStart === null
-        ? onboardingCopy.progress.step1
-        : onboardingCopy.progress.step2,
     stepOne: {
       title: onboardingCopy.step1.title,
       subtitle: onboardingCopy.step1.subtitle,
