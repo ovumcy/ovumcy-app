@@ -174,7 +174,7 @@ describe("DashboardCycleHero", () => {
     const value = screen.getByTestId("dashboard-cycle-hero-value");
     expect(value.props.children).toBe("—");
     expect(value.props.numberOfLines).toBe(1);
-    expect(screen.getByLabelText("Day Unknown. Predictions paused")).toBeTruthy();
+    expect(screen.getByLabelText("Day: unknown. Predictions paused")).toBeTruthy();
   });
 
   it("keeps a known day number in the ring as is", async () => {

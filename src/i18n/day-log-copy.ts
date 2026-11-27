@@ -313,13 +313,13 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     mood: "Настроение",
     cycleFactors: "Факторы цикла",
     cycleFactorsHint:
-      "Необязательные теги-контекст для того, что могло повлиять на тайминг этого цикла.",
-    flow: "Интенсивность",
+      "Необязательные теги-контекст для того, что могло повлиять на сроки этого цикла.",
+    flow: "Обильность",
     intimacy: "Близость",
     cervicalMucus: "Цервикальная слизь",
     cervicalMucusExplainer:
       "Цервикальная слизь означает вагинальные выделения. Выделения как яичный белок часто появляются ближе к пику фертильности.",
-    lhTest: "LH-тест",
+    lhTest: "ЛГ-тест",
     lhTestHint: "Необязательный результат овуляционного теста за сегодня.",
     pregnancyTest: "Тест на беременность",
     pregnancyTestHint:
@@ -339,7 +339,7 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     notes: "Заметки",
     showMoreSymptoms: "Ещё симптомы",
     showFewerSymptoms: "Свернуть симптомы",
-    notesPlaceholder: "Всё, что вы хотите запомнить о сегодняшнем дне.",
+    notesPlaceholder: "Всё, что Вы хотите запомнить о сегодняшнем дне.",
     saveToday: "Сохранить сегодня",
     updateEntry: "Обновить запись",
     saveDay: "Сохранить запись",
@@ -350,19 +350,19 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     deleted: "Запись удалена локально.",
     deleteFailed: "Не удалось очистить запись. Попробуйте ещё раз.",
     deletePrompt:
-      "Очистить запись за этот день? Из локальной записи будут удалены менструация, симптомы, настроение, интенсивность и заметки.",
+      "Очистить запись за этот день? Из локальной записи будут удалены месячные, симптомы, настроение, обильность и заметки.",
     deleteHint: "Это удаляет локальную запись для этого дня.",
     periodOffHint:
-      "Интенсивность доступна, когда этот день отмечен как день менструации.",
+      "Обильность доступна, когда этот день отмечен как день месячных.",
     bleedingSafetyHint:
       "Это ориентир, а не диагноз: кровотечение дольше примерно 7 дней или очень обильные выделения несколько дней подряд стоит обсудить с врачом.",
     options: {
       mood: [
-        { value: 1, label: "😞", secondaryLabel: "Ужасно" },
-        { value: 2, label: "🙁", secondaryLabel: "Плохо" },
-        { value: 3, label: "😌", secondaryLabel: "Нормально" },
-        { value: 4, label: "🙂", secondaryLabel: "Хорошо" },
-        { value: 5, label: "🤩", secondaryLabel: "Отлично" },
+        { value: 1, label: "😞", secondaryLabel: "Очень плохое" },
+        { value: 2, label: "🙁", secondaryLabel: "Плохое" },
+        { value: 3, label: "😌", secondaryLabel: "Нормальное" },
+        { value: 4, label: "🙂", secondaryLabel: "Хорошее" },
+        { value: 5, label: "🤩", secondaryLabel: "Очень хорошее" },
       ],
       flow: [
         { value: "none", label: "Нет" },
@@ -373,8 +373,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
       ],
       sexActivity: [
         { value: "none", label: "Нет" },
-        { value: "protected", label: "С защитой" },
-        { value: "unprotected", label: "Без защиты" },
+        { value: "protected", label: "Защищённый" },
+        { value: "unprotected", label: "Незащищённый" },
       ],
       cervicalMucus: [
         { value: "none", label: "Нет" },
@@ -398,8 +398,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
         stress: { label: "Стресс", icon: "⚡" },
         illness: { label: "Болезнь", icon: "🤒" },
         travel: { label: "Поездка", icon: "✈️" },
-        sleep_disruption: { label: "Нарушение сна", icon: "🌙" },
-        medication_change: { label: "Смена лекарств", icon: "💊" },
+        sleep_disruption: { label: "Сбой сна", icon: "🌙" },
+        medication_change: { label: "Изменение лекарств", icon: "💊" },
       },
     },
   },

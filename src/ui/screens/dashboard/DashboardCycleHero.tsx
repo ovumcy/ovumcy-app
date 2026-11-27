@@ -261,7 +261,11 @@ function buildDashboardCycleHeroAccessibilityLabel(
   const activePhase = viewData.phaseCards.find((phaseCard) => phaseCard.active)?.label ?? "";
 
   return [
-    `${viewData.title} ${viewData.value}`,
+    // An unknown day reads as "Day: unknown", not as the capitalised value
+    // glued onto the title ("Day Unknown").
+    viewData.state === "unknown"
+      ? `${viewData.title}: ${viewData.value.toLowerCase()}`
+      : `${viewData.title} ${viewData.value}`,
     activePhase,
     viewData.detail,
     viewData.caption,
