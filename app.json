@@ -21,6 +21,7 @@
       "./plugins/withAndroidNetworkSecurityConfig",
       "./plugins/withAndroidExcludeDataFromBackup",
       "./plugins/withIosExcludeDataFromICloudBackup",
+      "./plugins/withIosPinnedDomains",
       "expo-font",
       [
         "expo-iap",

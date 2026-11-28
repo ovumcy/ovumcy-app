@@ -8,9 +8,27 @@ import {
   applyBackupRulesToManifest,
   writeBackupRules,
 } from "../../plugins/withAndroidExcludeDataFromBackup";
-import { writeNetworkSecurityConfigs } from "../../plugins/withAndroidNetworkSecurityConfig";
+import {
+  ANDROID_PIN_SET_VALIDITY_DAYS,
+  MANAGED_PINNED_HOSTS,
+  MANAGED_ROOT_PINS,
+} from "../../plugins/managed-cert-pins";
+import {
+  pinSetExpiration,
+  writeNetworkSecurityConfigs,
+} from "../../plugins/withAndroidNetworkSecurityConfig";
 
 const DEV_HOSTS = ["10.0.2.2", "127.0.0.1", "localhost"];
+
+// An independent copy of the pin table in docs/sync-trust-model.md, so a change
+// to the shared pin module is a visible test change, never a silent one.
+const MANAGED_HOSTS = ["managed.ovumcy.cloud", "sync.ovumcy.cloud"];
+const ISRG_ROOT_PINS = [
+  "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=", // ISRG Root X1
+  "diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=", // ISRG Root X2
+  "fk6IOKit1ild5647BH06ujSIq5XbCgqlbYl6ANhhi88=", // ISRG Root YR
+  "sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=", // ISRG Root YE
+];
 
 let projectRoot: string;
 
@@ -54,7 +72,13 @@ describe("Android network security config", () => {
     for (const sourceSet of ["main", "debug"]) {
       const xml = readXml(sourceSet, "network_security_config");
       expect(xml).toContain('<base-config cleartextTrafficPermitted="false" />');
-      const domains = [...xml.matchAll(/<domain [^>]*>([^<]+)<\/domain>/g)].map((m) => m[1]);
+      const cleartextConfigs = [
+        ...xml.matchAll(/<domain-config cleartextTrafficPermitted="true">([\s\S]*?)<\/domain-config>/g),
+      ];
+      expect(cleartextConfigs).toHaveLength(1);
+      const domains = [
+        ...(cleartextConfigs[0]?.[1] ?? "").matchAll(/<domain [^>]*>([^<]+)<\/domain>/g),
+      ].map((m) => m[1]);
       expect(domains).toEqual(DEV_HOSTS);
       expect(xml).not.toContain('includeSubdomains="true"');
     }
@@ -62,6 +86,75 @@ describe("Android network security config", () => {
 
   it("is wired into the app config", () => {
     expect(pluginEntries()).toContain("./plugins/withAndroidNetworkSecurityConfig");
+  });
+});
+
+describe("Android managed-host root pinning", () => {
+  // A fixed build clock: 2026-11-28T23:30Z plus 365 days is 2027-11-28 in UTC.
+  const BUILD_DATE = new Date("2026-11-28T23:30:00Z");
+  const EXPECTED_EXPIRATION = "2027-11-28";
+
+  function pinnedDomainConfigs(xml: string): { host: string; expiration: string; pins: string[] }[] {
+    return [...xml.matchAll(/<domain-config>([\s\S]*?)<\/domain-config>/g)].map(([, body = ""]) => ({
+      host: /<domain includeSubdomains="false">([^<]+)<\/domain>/.exec(body)?.[1] ?? "",
+      expiration: /<pin-set expiration="([^"]+)">/.exec(body)?.[1] ?? "",
+      pins: [...body.matchAll(/<pin digest="SHA-256">([^<]+)<\/pin>/g)].map((m) => m[1] ?? ""),
+    }));
+  }
+
+  it.each([
+    ["main", undefined],
+    ["main", "production"],
+    ["main", "local"],
+    ["debug", "production"],
+  ])(
+    "pins both managed hosts to exactly the four ISRG root keys in the %s config (EAS profile %s)",
+    async (sourceSet, profile) => {
+      await writeNetworkSecurityConfigs(projectRoot, { EAS_BUILD_PROFILE: profile }, BUILD_DATE);
+
+      const xml = readXml(sourceSet, "network_security_config");
+      const configs = pinnedDomainConfigs(xml);
+      expect(configs.map((c) => c.host)).toEqual(MANAGED_HOSTS);
+      for (const config of configs) {
+        expect(config.pins).toEqual(ISRG_ROOT_PINS);
+        expect(config.expiration).toBe(EXPECTED_EXPIRATION);
+      }
+      // Every pin in the file is one of the roots: no leaf or intermediate pin anywhere.
+      const allPins = [...xml.matchAll(/<pin digest="SHA-256">([^<]+)<\/pin>/g)].map((m) => m[1]);
+      expect(allPins).toHaveLength(MANAGED_HOSTS.length * ISRG_ROOT_PINS.length);
+      expect(new Set(allPins)).toEqual(new Set(ISRG_ROOT_PINS));
+      expect(xml).toContain('<base-config cleartextTrafficPermitted="false" />');
+    },
+  );
+
+  it("keeps the release main config free of cleartext with pinning added", async () => {
+    await writeNetworkSecurityConfigs(projectRoot, { EAS_BUILD_PROFILE: "production" }, BUILD_DATE);
+
+    const main = readXml("main", "network_security_config");
+    expect(main).not.toContain('cleartextTrafficPermitted="true"');
+    for (const host of DEV_HOSTS) {
+      expect(main).not.toContain(host);
+    }
+  });
+
+  it("sets the pin-set expiration to the UTC build date plus 365 days", () => {
+    expect(pinSetExpiration(BUILD_DATE)).toBe(EXPECTED_EXPIRATION);
+    expect(pinSetExpiration(new Date("2027-03-01T00:00:00Z"))).toBe("2028-02-29");
+  });
+
+  it("fails the prebuild on an invalid build date instead of writing a malformed expiration", async () => {
+    expect(() => pinSetExpiration(new Date("not a date"))).toThrow(/valid build date/);
+    await expect(
+      writeNetworkSecurityConfigs(projectRoot, {}, new Date(Number.NaN)),
+    ).rejects.toThrow(/valid build date/);
+  });
+
+  it("holds the documented hosts and root pins in the shared pin module", () => {
+    expect([...MANAGED_PINNED_HOSTS]).toEqual(MANAGED_HOSTS);
+    expect(MANAGED_ROOT_PINS.map((pin: { spkiSha256: string }) => pin.spkiSha256)).toEqual(
+      ISRG_ROOT_PINS,
+    );
+    expect(ANDROID_PIN_SET_VALIDITY_DAYS).toBe(365);
   });
 });
 
