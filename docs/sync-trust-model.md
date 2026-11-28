@@ -622,7 +622,7 @@ Run before shipping the release that carries pinning, not after:
 - [ ] Check both key types if the ACME configuration can produce either, since the chain differs between them — only the RSA chain was observed on 2026-11-28.
 - [ ] On a real device or dev build of each platform, from a cold start: a good chain connects, and a build with a deliberately wrong pin set refuses the connect as a network failure — never a crash, never a silent fallback to unpinned.
 - [ ] Confirm the release notes state that sync requires this app version onward, since older installs are unaffected but a later infrastructure change will not be able to reach them.
-- [ ] Android: note the shipped build's pin-set expiration (build date + 365 days) and plan the next release with a refreshed date before it passes.
+- [ ] Android: note the shipped build's pin-set expiration (build date + 365 days) and plan the next release with a refreshed date before it passes. The date is fixed at prebuild, so a release built outside EAS runs `expo prebuild --clean` first rather than reusing an older `android/` tree.
 
 ### The superseded 2026-07-20 deferral, kept for context
 
