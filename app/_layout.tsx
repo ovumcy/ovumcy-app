@@ -79,6 +79,7 @@ function RootNavigator() {
             <Stack.Screen name="sync-account-security" />
             <Stack.Screen name="partner-shared" />
             <Stack.Screen name="privacy" />
+            <Stack.Screen name="about" />
           </Stack>
         </View>
       </ConfirmDialogProvider>

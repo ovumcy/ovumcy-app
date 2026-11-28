@@ -1,3 +1,4 @@
+import { selectAboutCopy } from "../i18n/about-copy";
 import { selectAccountSecurityCopy } from "../i18n/account-security-copy";
 import { APP_LANGUAGE_LABELS, resolveCopyLanguage } from "../i18n/runtime";
 import { getPregnancyEndCopy } from "../i18n/pregnancy-end-copy";
@@ -474,6 +475,7 @@ export type SettingsViewData = {
     };
   };
   privacy: SettingsCopy["privacy"];
+  about: { title: string; description: string };
   status: SettingsCopy["status"];
   premiumLock: SettingsCopy["premiumLock"];
 };
@@ -1089,6 +1091,7 @@ export function buildSettingsViewData(
       },
     },
     privacy: settingsCopy.privacy,
+    about: selectAboutCopy(locale).hubRow,
     status: settingsCopy.status,
     premiumLock: settingsCopy.premiumLock,
   };

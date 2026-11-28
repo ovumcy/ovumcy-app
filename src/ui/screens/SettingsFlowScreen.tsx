@@ -133,6 +133,7 @@ export type SettingsFlowScreenProps = {
   onCycleViewToggle: (value: CycleViewKey) => void;
   onOpenBackupSync: () => void | Promise<void>;
   onOpenPrivacyNotice: () => void | Promise<void>;
+  onOpenAbout: () => void;
   onOpenPregnancyManage: () => void;
   onPeriodLengthChange: (value: number) => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
@@ -236,6 +237,7 @@ export function SettingsFlowScreen({
   onCycleViewToggle,
   onOpenBackupSync,
   onOpenPrivacyNotice,
+  onOpenAbout,
   onOpenPregnancyManage,
   onPeriodLengthChange,
   onPredictionModeSelect,
@@ -542,6 +544,13 @@ export function SettingsFlowScreen({
             <SettingsPrivacyCard
               onOpen={onOpenPrivacyNotice}
               viewData={viewData.privacy}
+            />
+          ) : null}
+          {section === "hub" ? (
+            <SettingsHubNavigationRow
+              onPress={onOpenAbout}
+              row={viewData.about}
+              testID="settings-hub-open-about"
             />
           ) : null}
           {section === "hub" ? (

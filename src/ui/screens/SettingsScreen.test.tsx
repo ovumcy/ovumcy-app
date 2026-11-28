@@ -395,6 +395,16 @@ describe("SettingsScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/privacy");
   });
 
+  it("opens the About screen from its hub row", async () => {
+    const storage = createSettingsStorageMock();
+
+    await render(<SettingsScreen now={new Date(2026, 2, 17)} section="hub" storage={storage} />);
+
+    await fireEvent.press(await screen.findByTestId("settings-hub-open-about"));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/about"));
+  });
+
   it("saves pending reminder settings when the leave guard is accepted", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");
