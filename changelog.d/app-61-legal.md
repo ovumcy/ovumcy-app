@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- **Privacy notice.** The Google Play section now names every moment the billing component starts, including ending a pregnancy, when the app checks whether postpartum tracking can start.
+- **Privacy notice.** The Google Play section now names every moment the billing component starts, including ending a pregnancy with a birth and opening pregnancy settings in the weeks after one, when the app checks whether postpartum tracking can start.
