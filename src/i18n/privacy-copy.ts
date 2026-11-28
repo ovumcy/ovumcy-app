@@ -50,7 +50,7 @@ const privacyCopyEn: PrivacyNoticeCopy = {
     },
     storePurchase: {
       title: "Buying through Google Play",
-      body: "Pregnancy mode is bought through Google Play. To show the price and to complete or restore a purchase, Google's billing component runs inside the app. It starts only when the app needs to know whether pregnancy mode is unlocked — after you log a positive pregnancy test, or when you open pregnancy mode or its purchase screen on Android. If you never do, it never runs. It is Google's code: it exchanges purchase details with Google Play and may send Google technical diagnostics about its own operation. Ovumcy passes it none of your health data and keeps no record of the purchase itself.",
+      body: "Pregnancy mode is bought through Google Play. To show the price and to complete or restore a purchase, Google's billing component runs inside the app. It starts only when the app needs to know whether pregnancy mode is unlocked — after you log a positive pregnancy test, or on Android when you open pregnancy mode or its purchase screen, or end a pregnancy and the app checks whether postpartum tracking can start. If you never do, it never runs. It is Google's code: it exchanges purchase details with Google Play and may send Google technical diagnostics about its own operation. Ovumcy passes it none of your health data and keeps no record of the purchase itself.",
     },
     exports: {
       title: "Exports and files you create",
@@ -103,7 +103,7 @@ const privacyCopyDe: PrivacyNoticeCopy = {
     },
     storePurchase: {
       title: "Kauf über Google Play",
-      body: "Der Schwangerschaftsmodus wird über Google Play gekauft. Um den Preis anzuzeigen und einen Kauf abzuschließen oder wiederherzustellen, läuft in der App die Abrechnungskomponente von Google. Sie startet nur, wenn die App wissen muss, ob der Schwangerschaftsmodus freigeschaltet ist — nachdem Sie einen positiven Schwangerschaftstest eingetragen haben oder wenn Sie auf Android den Schwangerschaftsmodus oder dessen Kaufbildschirm öffnen. Tun Sie das nie, läuft sie nie. Es ist Code von Google: Er tauscht Kaufdaten mit Google Play aus und kann technische Diagnosedaten über seinen eigenen Betrieb an Google senden. Ovumcy übergibt ihm keine Ihrer Gesundheitsdaten und speichert selbst nichts über den Kauf.",
+      body: "Der Schwangerschaftsmodus wird über Google Play gekauft. Um den Preis anzuzeigen und einen Kauf abzuschließen oder wiederherzustellen, läuft in der App die Abrechnungskomponente von Google. Sie startet nur, wenn die App wissen muss, ob der Schwangerschaftsmodus freigeschaltet ist — nachdem Sie einen positiven Schwangerschaftstest eingetragen haben oder wenn Sie auf Android den Schwangerschaftsmodus oder dessen Kaufbildschirm öffnen oder eine Schwangerschaft beenden und die App prüft, ob das Wochenbett-Tracking starten kann. Tun Sie das nie, läuft sie nie. Es ist Code von Google: Er tauscht Kaufdaten mit Google Play aus und kann technische Diagnosedaten über seinen eigenen Betrieb an Google senden. Ovumcy übergibt ihm keine Ihrer Gesundheitsdaten und speichert selbst nichts über den Kauf.",
     },
     exports: {
       title: "Exporte und erzeugte Dateien",
@@ -156,7 +156,7 @@ const privacyCopyFr: PrivacyNoticeCopy = {
     },
     storePurchase: {
       title: "Achat via Google Play",
-      body: "Le mode grossesse s'achète via Google Play. Pour afficher le prix et finaliser ou restaurer un achat, le composant de facturation de Google s'exécute dans l'application. Il ne démarre que lorsque l'application doit savoir si le mode grossesse est débloqué — après l'enregistrement d'un test de grossesse positif, ou quand vous ouvrez le mode grossesse ou son écran d'achat sur Android. Si vous ne le faites jamais, il ne s'exécute jamais. C'est du code de Google : il échange les détails de l'achat avec Google Play et peut envoyer à Google des diagnostics techniques sur son propre fonctionnement. Ovumcy ne lui transmet aucune de vos données de santé et ne conserve elle-même aucune trace de l'achat.",
+      body: "Le mode grossesse s'achète via Google Play. Pour afficher le prix et finaliser ou restaurer un achat, le composant de facturation de Google s'exécute dans l'application. Il ne démarre que lorsque l'application doit savoir si le mode grossesse est débloqué — après l'enregistrement d'un test de grossesse positif, ou sur Android quand vous ouvrez le mode grossesse ou son écran d'achat, ou terminez une grossesse et que l'application vérifie si le suivi post-partum peut commencer. Si vous ne le faites jamais, il ne s'exécute jamais. C'est du code de Google : il échange les détails de l'achat avec Google Play et peut envoyer à Google des diagnostics techniques sur son propre fonctionnement. Ovumcy ne lui transmet aucune de vos données de santé et ne conserve elle-même aucune trace de l'achat.",
     },
     exports: {
       title: "Exports et fichiers que vous créez",
@@ -209,7 +209,7 @@ const privacyCopyRu: PrivacyNoticeCopy = {
     },
     storePurchase: {
       title: "Покупка через Google Play",
-      body: "Режим беременности покупается через Google Play. Чтобы показать цену, провести или восстановить покупку, внутри приложения работает платёжный компонент Google. Он запускается только когда приложению нужно узнать, разблокирован ли режим беременности: после отметки положительного теста на беременность либо при открытии режима беременности или экрана покупки на Android. Если вы этого не делаете, он не запускается. Это код Google: он обменивается с Google Play данными о покупке и может отправлять в Google техническую диагностику собственной работы. Ovumcy не передаёт ему данных о здоровье и сама не хранит сведений о покупке.",
+      body: "Режим беременности покупается через Google Play. Чтобы показать цену, провести или восстановить покупку, внутри приложения работает платёжный компонент Google. Он запускается только когда приложению нужно узнать, разблокирован ли режим беременности: после отметки положительного теста на беременность, а на Android — при открытии режима беременности или экрана покупки либо при завершении беременности, когда приложение проверяет, можно ли начать отслеживание послеродового периода. Если вы этого не делаете, он не запускается. Это код Google: он обменивается с Google Play данными о покупке и может отправлять в Google техническую диагностику собственной работы. Ovumcy не передаёт ему данных о здоровье и сама не хранит сведений о покупке.",
     },
     exports: {
       title: "Экспорт и созданные файлы",
@@ -262,7 +262,7 @@ const privacyCopyEs: PrivacyNoticeCopy = {
     },
     storePurchase: {
       title: "Compra a través de Google Play",
-      body: "El modo embarazo se compra a través de Google Play. Para mostrar el precio y completar o restaurar una compra, el componente de facturación de Google se ejecuta dentro de la aplicación. Solo se inicia cuando la aplicación necesita saber si el modo embarazo está desbloqueado: después de registrar una prueba de embarazo positiva, o al abrir el modo embarazo o su pantalla de compra en Android. Si nunca lo haces, nunca se ejecuta. Es código de Google: intercambia los datos de la compra con Google Play y puede enviar a Google diagnósticos técnicos sobre su propio funcionamiento. Ovumcy no le entrega ninguno de tus datos de salud ni guarda por su cuenta ningún registro de la compra.",
+      body: "El modo embarazo se compra a través de Google Play. Para mostrar el precio y completar o restaurar una compra, el componente de facturación de Google se ejecuta dentro de la aplicación. Solo se inicia cuando la aplicación necesita saber si el modo embarazo está desbloqueado: después de registrar una prueba de embarazo positiva, o en Android al abrir el modo embarazo o su pantalla de compra, o al finalizar un embarazo, cuando la aplicación comprueba si puede empezar el seguimiento posparto. Si nunca lo haces, nunca se ejecuta. Es código de Google: intercambia los datos de la compra con Google Play y puede enviar a Google diagnósticos técnicos sobre su propio funcionamiento. Ovumcy no le entrega ninguno de tus datos de salud ni guarda por su cuenta ningún registro de la compra.",
     },
     exports: {
       title: "Exportaciones y archivos que creas",
@@ -315,7 +315,7 @@ const privacyCopyIt: PrivacyNoticeCopy = {
     },
     storePurchase: {
       title: "Acquisto tramite Google Play",
-      body: "La modalità gravidanza si acquista tramite Google Play. Per mostrare il prezzo e completare o ripristinare un acquisto, il componente di fatturazione di Google viene eseguito all'interno dell'app. Si avvia solo quando l'app deve sapere se la modalità gravidanza è sbloccata: dopo aver registrato un test di gravidanza positivo, oppure quando apri la modalità gravidanza o la sua schermata di acquisto su Android. Se non lo fai mai, non viene mai eseguito. È codice di Google: scambia i dati dell'acquisto con Google Play e può inviare a Google diagnostica tecnica sul proprio funzionamento. Ovumcy non gli passa nessuno dei tuoi dati sanitari e non conserva alcuna traccia dell'acquisto.",
+      body: "La modalità gravidanza si acquista tramite Google Play. Per mostrare il prezzo e completare o ripristinare un acquisto, il componente di fatturazione di Google viene eseguito all'interno dell'app. Si avvia solo quando l'app deve sapere se la modalità gravidanza è sbloccata: dopo aver registrato un test di gravidanza positivo, oppure su Android quando apri la modalità gravidanza o la sua schermata di acquisto, o concludi una gravidanza e l'app verifica se può iniziare il monitoraggio post-partum. Se non lo fai mai, non viene mai eseguito. È codice di Google: scambia i dati dell'acquisto con Google Play e può inviare a Google diagnostica tecnica sul proprio funzionamento. Ovumcy non gli passa nessuno dei tuoi dati sanitari e non conserva alcuna traccia dell'acquisto.",
     },
     exports: {
       title: "Esportazioni e file che crei",

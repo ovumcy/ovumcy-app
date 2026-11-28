@@ -810,6 +810,11 @@ export function useSettingsScreenController({
           void router.push("/privacy");
         });
       },
+      onOpenAbout: () => {
+        void confirmPendingSettingsThen(() => {
+          void router.push("/about");
+        });
+      },
       onOpenPregnancyManage: () => {
         void confirmPendingSettingsThen(() => {
           void router.push("/pregnancy-end");

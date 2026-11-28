@@ -113,6 +113,7 @@ Whether and how long the backend retains data after account deletion is determin
 - If the stored key no longer authenticates the stored rows, the storage layer wipes and reseeds rather than failing or exposing partial data.
 - Restoring a sync snapshot replaces local data (it wipes first, then writes the snapshot).
 - Cloud backups can only be removed through the backend: account deletion, or a self-hoster's own server controls.
+- On Ovumcy Cloud a lapsed subscription starts a retention clock: sync access ends at once, and the sync server erases the account together with its ciphertext blob once the lapse is older than `LAPSED_ACCOUNT_GRACE_PERIOD` (60 days by default, operator-tunable). The managed cloud only signals the lapse. Source: ovumcy-sync-community `internal/services/lapsed_account_sweep_service.go` and `Store.DeleteLapsedManagedAccount`; self-hosted accounts are never swept. This is the basis of the in-app notice's lapse sentence.
 
 ## OS Backups
 
