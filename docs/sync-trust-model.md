@@ -492,7 +492,14 @@ The flag alone is not enforcement on native builds: React Native's global fetch 
 
 Decision (2026-07-23): the managed endpoint (Ovumcy Cloud) pins at the **Let's Encrypt CA level — the ISRG root public keys — never the leaf certificate**. This supersedes the 2026-07-20 deferral recorded below. That deferral was right about the risk it named and wrong only in its conclusion: what makes pinning fragile in this deployment is the *shape* of the pin, not pinning itself.
 
-Unchanged by this decision, and still true: **nothing is wired**. The pure-TypeScript scaffolding (`src/security/cert-pin-store.ts`, `src/sync/cert-pin-policy.ts`, `src/sync/sync-endpoint-policy.ts`) enforces nothing at runtime — the only runtime call is the wipe paths deleting the pin store's SecureStore entry (`clearAll`), and nothing writes or reads a pin — `resolveManagedPinSet()` returns `null`, and the native enforcement layer is not a dependency of this project. Transport relies on platform CA-chain trust plus the outbound-fetch posture above, exactly as before. What this section adds is the pin set and the rotation rule, so that turning pinning on becomes a mechanical step taken deliberately before public production, rather than a design question answered under release pressure.
+**What is wired.** `managed.ovumcy.cloud` and `sync.ovumcy.cloud` are pinned to the four ISRG root keys below by each platform's own TLS stack, with no third-party library. One committed module, `plugins/managed-cert-pins.js`, holds the hosts and the pins; two config plugins turn it into native configuration at `expo prebuild` (`android/` and `ios/` are gitignored, so the plugins are the committed source of truth):
+
+- **Android** — `plugins/withAndroidNetworkSecurityConfig.js` writes, into both the main and the debug network security config, one `<domain-config>` per host (`includeSubdomains="false"`) with a `<pin-set>` of the four `<pin digest="SHA-256">` values. The `<pin-set expiration>` is the build date (UTC, at prebuild) plus 365 days; past it Android stops enforcing the pins and falls back to CA-chain trust. `base-config cleartextTrafficPermitted="false"` and the dev cleartext exceptions are unchanged.
+- **iOS** — `plugins/withIosPinnedDomains.js` merges `NSAppTransportSecurity.NSPinnedDomains[host] = { NSIncludesSubdomains: false, NSPinnedCAIdentities: [four SPKI-SHA256-BASE64 entries] }` into Info.plist, keeping every other ATS key. ATS pins carry **no expiration**: they are enforced for as long as the installed build runs.
+
+A pin mismatch fails the TLS handshake before any request is sent. Both managed clients reach the platform stack through `expo/fetch` (OkHttp on Android, URLSession on iOS), so the pins cover every managed and managed-sync request. The web export is not covered and stays on browser CA trust. Regression: `src/security/android-platform-config.test.ts`, `src/security/ios-platform-config.test.ts`.
+
+The pure-TypeScript scaffolding (`src/security/cert-pin-store.ts`, `src/sync/cert-pin-policy.ts`, `src/sync/sync-endpoint-policy.ts`) still enforces nothing at runtime: `resolveManagedPinSet()` returns `null`, because no native bridge reports an observed SPKI fingerprint when the platform does the pinning, so `evaluateCertPin` has nothing to compare against. The only runtime call into it remains the wipe paths deleting the pin store's SecureStore entry (`clearAll`).
 
 ### Why not the leaf
 
@@ -553,16 +560,22 @@ Let's Encrypt publishes no pin values of its own to compare against, so each val
 
 No discrepancy was found. Any future re-derivation that disagrees with this table is a stop condition, not a value to reconcile by hand.
 
+Re-derived on 2026-11-28, before the pins were wired: X1, X2 and YR from the Windows, Node and Git root stores, and from the live chains of both pinned hosts, which on that date were `leaf ← YR1/YR2 ← ISRG Root YR (cross-signed by X1) ← ISRG Root X1`, RSA. All three matched the table. YE was not re-derived — no root store or live chain on hand carried it — and ships with its 2026-07-23 value. No ECDSA chain was served by either host that day.
+
 ### Does a root pin actually get honored
 
-It does, on both platforms, and this was checked rather than assumed — a root pin that the enforcement layer ignored would invalidate the whole strategy.
+It does, on both platforms, and the shipped mechanism was chosen for it — a root pin that the enforcement layer ignored would invalidate the whole strategy.
 
-- **iOS (TrustKit)** compares each pin against every certificate in the trust object, iterating from the anchor down to the leaf and succeeding on the first match. A root pin matches at the anchor.
-- **Android (OkHttp `CertificatePinner`)** iterates the cleaned chain and compares each certificate's SPKI hash against the pin set. Android's chain cleaner returns the validated chain with the trust anchor as its last element, so the root is in scope.
+- **iOS (ATS `NSPinnedCAIdentities`)** matches a CA certificate's SPKI hash anywhere in the validated chain, the trust anchor included. A root pin matches at the anchor. (`NSPinnedLeafIdentities`, the leaf form, is deliberately not used.)
+- **Android (network security config `<pin-set>`)** checks the pins against the validated chain the platform trust manager built, whose last element is the trust anchor, so the root is in scope.
 
 Two consequences follow from *validated* chain rather than *served* chain being what is matched. First, the pinned certificate does not need to be sent by the server — an anchor supplied by the device trust store still counts. Second, and less comfortably, a root that has dropped out of the validated chain cannot be matched even if the server still sends it, which is exactly the YE/YR migration case above and the reason all four pins ship together.
 
-Two operational notes from the same libraries: TrustKit requires at least two pins per domain, which this set satisfies, and iOS caches TLS sessions, so a pin change may not take effect on a connection that already succeeded. Pinning behaviour must be tested from a cold start.
+iOS caches TLS sessions, so a pin change may not take effect on a connection that already succeeded. Pinning behaviour must be tested from a cold start.
+
+### Why the platform mechanisms and not a library
+
+The earlier plan named `react-native-ssl-public-key-pinning` (TrustKit on iOS, OkHttp `CertificatePinner` on Android). It was not used. Both platforms enforce SPKI pins natively for the stack `expo/fetch` already uses, so a library would add a native dependency, its supply chain and a JS registration step that must run before the first managed fetch — while the platform configs are in force from process start with nothing to register. The Android network security config also supports a pin-set expiration, which the library path did not offer and which bounds the damage of a stale pin set on an install nobody updates (below).
 
 ### What pinning buys, and what it does not
 
@@ -582,9 +595,9 @@ The pin becomes a standing constraint on infrastructure, and it points the wrong
 
 ### Rollback
 
-The lever is a release that empties the pin set — `resolveManagedPinSet()` back to `null` — which restores platform CA-chain trust.
+The lever is a release that drops the managed hosts from `plugins/managed-cert-pins.js` (or the two plugins from `app.json`), which restores platform CA-chain trust in the next native build.
 
-Its limit has to be stated with it: rollback only reaches devices that install the new release. An install already refusing to connect stays broken until its user updates, and a remote kill switch cannot help, because fetching it would use the pinned connection that is broken. That asymmetry is why the pre-release checklist below matters more than the rollback does.
+Its limit has to be stated with it: rollback only reaches devices that install the new release. An install already refusing to connect stays broken until its user updates, and a remote kill switch cannot help, because fetching it would use the pinned connection that is broken. On Android the damage is bounded by the pin-set expiration — a year after the build that install falls back to CA-chain trust on its own. iOS has no such bound. That asymmetry is why the pre-release checklist below matters more than the rollback does.
 
 ### Self-hosted: unchanged, still unwired, out of scope here
 
@@ -592,27 +605,24 @@ Nothing in this decision applies to community self-hosted sync. That path pins t
 
 Owner-entered pins remain unwired, and the work that path still needs is unchanged from the 2026-07-20 note: a setup-form input field, format validation on entry, a mismatch warning screen distinguishing operator-initiated rotation from active MITM, and copy across all six locales. Deliberately not in scope here. The threat model for self-hosted stays dominated by the operator's own infrastructure choices, which they already control.
 
-### Implementation plan (not part of this change)
+### What shipped
 
-Recorded so the wiring is a checklist rather than a redesign:
-
-1. **Native dependency.** `react-native-ssl-public-key-pinning` — TrustKit on iOS, OkHttp `CertificatePinner` on Android. Not in `package.json` today; adding it is a separate change.
-2. **Prebuild / config plugin.** It is a native module, so it needs a prebuild and its registration belongs in a committed config plugin, alongside the existing Android network-security-config plugin under `plugins/`. It does **not** work in Expo Go; a development build or release build is required.
-3. **Wiring.** Populate the managed pin constant in `sync-contract`, return it from `resolveManagedPinSet()`, register the pins before the first managed fetch, and keep `evaluateCertPin` as the JS-side defensive check so a registration regression cannot silently downgrade to unpinned.
-4. **Verification is device-only.** Neither CI nor the web export can exercise this: the web target has no native pinning and stays on browser CA trust, and the pure policy tests cannot observe a real handshake. Verification means a real device or dev build, from a cold TLS session, against the live endpoint.
-5. **Timing.** Immediately before public production, once the managed host actually serves an ACME certificate. As of 2026-07-23 `sync.ovumcy.cloud` and `invite.ovumcy.cloud` answer with Traefik's built-in default self-signed certificate, so no live chain exists yet to validate the pin set against.
+1. **No dependency.** The platforms' own mechanisms (above); nothing was added to `package.json`. Being native configuration, the pins take effect only in a prebuilt development or release build — never in Expo Go, never on web.
+2. **One source, two plugins.** `plugins/managed-cert-pins.js` (hosts, pins, the Android validity window) feeds `plugins/withAndroidNetworkSecurityConfig.js` and `plugins/withIosPinnedDomains.js`, both registered in `app.json`.
+3. **No JS registration.** `resolveManagedPinSet()` stays `null` (see *What is wired*); there is no runtime step that could be skipped.
+4. **Verification is device-only.** The jest suites pin the generated configuration — both hosts, exactly the four root pins, the expiration for a fixed clock, no cleartext in release, ATS keys merged — but cannot observe a real handshake. That needs a real device or dev build, from a cold TLS session, against the live endpoint.
 
 ### Pre-release checklist
 
-Run before shipping the release that enables pinning, not after:
+Run before shipping the release that carries pinning, not after:
 
-- [ ] Re-derive all four pins from `letsencrypt.org` with the command above; do not copy them out of this table. Stop if any value differs from what is recorded here.
-- [ ] For every pinned host, capture the live chain — `openssl s_client -connect <host>:443 -servername <host> -showcerts` — hash each certificate's SPKI, and confirm at least one is in the pin set.
+- [x] Re-derive the pins and stop on any difference — done 2026-11-28 for X1, X2 and YR (*How the pins were derived*). YE still carries its 2026-07-23 value; re-derive it from `letsencrypt.org/certs/gen-y/root-ye.der` with the command above.
+- [x] For every pinned host, capture the live chain, hash each certificate's SPKI, and confirm at least one is in the pin set — done 2026-11-28, RSA chain through Root YR to X1. Repeat immediately before the release.
 - [ ] Confirm the chain still terminates in an ISRG root and that no CDN, WAF, or proxy has been placed in front of the host.
-- [ ] Check both key types if the ACME configuration can produce either, since the chain differs between them.
-- [ ] Confirm at least two pins per host are registered (TrustKit refuses fewer).
-- [ ] On a real device or dev build, from a cold start: a good chain connects, and a deliberately wrong pin set produces a refused connect with the mismatch warning — never a crash, never a silent fallback to unpinned.
+- [ ] Check both key types if the ACME configuration can produce either, since the chain differs between them — only the RSA chain was observed on 2026-11-28.
+- [ ] On a real device or dev build of each platform, from a cold start: a good chain connects, and a build with a deliberately wrong pin set refuses the connect as a network failure — never a crash, never a silent fallback to unpinned.
 - [ ] Confirm the release notes state that sync requires this app version onward, since older installs are unaffected but a later infrastructure change will not be able to reach them.
+- [ ] Android: note the shipped build's pin-set expiration (build date + 365 days) and plan the next release with a refreshed date before it passes.
 
 ### The superseded 2026-07-20 deferral, kept for context
 

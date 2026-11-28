@@ -16,17 +16,16 @@
 //     announced root-generation migration. See the TLS Pinning Posture
 //     section in docs/sync-trust-model.md for the pin set and the rationale.
 //
-// Because the managed pin is a CA pin, the observed fingerprint compared here
-// is whichever certificate in the validated chain the enforcement layer
-// matched — not necessarily the leaf. Both TrustKit (iOS) and OkHttp's
-// CertificatePinner (Android) match against every certificate in the
-// validated chain, anchor included, which is what makes a root pin work.
-//
-// The native enforcement layer (`react-native-ssl-public-key-pinning`) blocks
-// a TLS handshake when no certificate in the validated chain is in its
-// registered pin set. This JS-layer policy backs that with a defensive check
-// at the sync-connect boundary so a regression in pin-set registration cannot
-// silently let an unpinned connect through.
+// The managed root pins are enforced by the platforms, not by this module:
+// the Android network security config <pin-set> and iOS App Transport
+// Security NSPinnedDomains, generated at prebuild from
+// plugins/managed-cert-pins.js. Both match a pin against every certificate in
+// the validated chain, anchor included, which is what makes a root pin work,
+// and both block the TLS handshake on a mismatch. No native bridge reports
+// the observed fingerprint back to JS, so `resolveManagedPinSet()` stays null
+// and this policy evaluates nothing for managed endpoints today; it remains
+// the defensive check for a pin set that a future enforcement path does
+// report (the self-hosted Trust On First Use pin).
 
 export type CertPinEvaluationResult =
   | {

@@ -163,13 +163,16 @@ function isWellFormedFingerprint(value: string): boolean {
 }
 
 function resolveManagedPinSet(): readonly string[] | null {
-  // Placeholder. The pin set itself is no longer an open question: the TLS
-  // Pinning Posture section in docs/sync-trust-model.md records the four
-  // Let's Encrypt ISRG root pins that belong here, and the pre-release
-  // checklist that must pass before they are enabled. Returning null means
-  // managed endpoints fall back to standard CA chain trust until pinning is
-  // wired — populating this constant without the native enforcement layer
-  // registered changes nothing at the handshake, so the two land together.
+  // Managed pinning is enforced by the platforms, not here. The managed hosts
+  // are pinned to the four Let's Encrypt ISRG root keys in the native configs
+  // generated at prebuild from plugins/managed-cert-pins.js: the Android
+  // network security config <pin-set> (plugins/withAndroidNetworkSecurityConfig.js)
+  // and iOS App Transport Security NSPinnedDomains (plugins/withIosPinnedDomains.js).
+  // A pin mismatch fails the TLS handshake before any request leaves the
+  // device. This JS policy stays null because no native bridge reports an
+  // observed SPKI fingerprint with platform pinning, so `evaluateCertPin` has
+  // nothing to compare against for managed endpoints. Rationale and rotation
+  // rule: the TLS Pinning Posture section in docs/sync-trust-model.md.
   return null;
 }
 

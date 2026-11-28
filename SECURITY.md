@@ -152,6 +152,20 @@ follows from that:
   (parsing the host as a literal IPv4 and bucketing by octet, never
   prefix-matching the hostname) as defense in depth, so an `http://` sync/managed
   endpoint is refused before a request goes out regardless of the OS layer.
+- **Managed hosts pinned to the Let's Encrypt roots (Android and iOS).**
+  `managed.ovumcy.cloud` and `sync.ovumcy.cloud` are pinned to the SPKI SHA-256
+  of the four ISRG root keys (X1, X2, YR, YE) — CA roots only, never a leaf or an
+  intermediate — by each platform's own TLS stack, from one committed pin
+  module (`plugins/managed-cert-pins.js`). On Android the same network security
+  config gets one `<domain-config>` per host (no subdomains) with a `<pin-set>`
+  whose `expiration` is the build date plus 365 days, in both the main and the
+  debug config; after that date Android falls back to CA-chain trust. On iOS
+  `plugins/withIosPinnedDomains.js` merges `NSAppTransportSecurity.NSPinnedDomains`
+  with `NSPinnedCAIdentities` into Info.plist, keeping every other ATS key; ATS
+  pins have no expiration. A mismatch fails the handshake before any request is
+  sent. Web builds stay on browser CA trust. Rationale, pin derivation, rotation
+  rule and pre-release checklist:
+  [docs/sync-trust-model.md](docs/sync-trust-model.md#tls-pinning-posture).
 - **No OS-level backup or remote-delivery channels (Android).** `app.json` sets
   `android.allowBackup=false`, and the committed config plugin
   `plugins/withAndroidExcludeDataFromBackup.js` points
@@ -245,22 +259,23 @@ follows from that:
 
 ## Accepted Residual Risks
 
-- **Certificate pinning is scaffolded, not wired.** The pure pin-evaluation
-  policy (`src/sync/cert-pin-policy.ts`) and the owner pin store
-  (`src/security/cert-pin-store.ts`) exist and are tested, and the sync-endpoint
-  policy threads pin sets through. However, the native enforcement layer
-  (`react-native-ssl-public-key-pinning`) is **not installed or registered**, so
-  TLS today relies on standard CA-chain trust. The JS policy is defense-in-depth
-  for when native pinning is enabled. The strategy is no longer open: the
-  managed endpoint will pin the Let's Encrypt ISRG root keys rather than the
-  leaf, because ACME renewal mints a new leaf key roughly every 60 days and a
-  leaf pin would break every install at the first renewal. A CA-level pin
+- **Managed pinning is CA-level; self-hosted pinning is not wired.** The
+  managed hosts pin the Let's Encrypt ISRG root keys through the platform
+  configs (see *Managed hosts pinned to the Let's Encrypt roots* above) rather
+  than the leaf, because ACME renewal mints a new leaf key roughly every 60 days
+  and a leaf pin would break every install at the first renewal. A CA-level pin
   narrows the accepted issuer set to one CA but does not defend against a
   certificate Let's Encrypt itself is induced to issue for the host — a
   deliberate trade, recorded with the pin set, the rotation rule, and the
   pre-release checklist in
   [docs/sync-trust-model.md](docs/sync-trust-model.md#tls-pinning-posture).
-  Until that wiring ships, the residual risk stands exactly as described above.
+  Two further limits: an Android install not updated within a year of its build
+  passes its pin-set expiration and falls back to CA-chain trust, and an iOS
+  install carrying a stale pin set stays unable to connect until it updates.
+  Self-hosted sync keeps standard CA-chain trust: the pure pin-evaluation policy
+  (`src/sync/cert-pin-policy.ts`) and the owner pin store
+  (`src/security/cert-pin-store.ts`) exist and are tested, but no runtime path
+  writes or evaluates a pin, and `resolveManagedPinSet()` returns `null`.
 - **Signed entitlement tokens are implemented but dormant; verification, once
   activated, is bypassable by a forked client (honest non-DRM scope).** A signed
   EdDSA/Ed25519 token overlay for the two *purely-local* premium features
@@ -830,10 +845,12 @@ pregnancy never sets it, so neither signal ever covers the other.
 | The web build offers no guest accept, since web holds sync secrets in memory only and a reload would lose a guest session whose single-use invite is already spent; the invite stays unredeemed for the app, and a signed-in accept on web is unchanged | `offers no guest accept on web and leaves the invite for the app` in [src/ui/screens/backup-sync/SettingsPartnerAccessSection.test.tsx](src/ui/screens/backup-sync/SettingsPartnerAccessSection.test.tsx), `redeems no invite as a guest on web and keeps the pending token` in [src/ui/screens/backup-sync/useBackupSyncPartnerAccess.test.ts](src/ui/screens/backup-sync/useBackupSyncPartnerAccess.test.ts) |
 | A managed login or register refused with `429` carries the server's `Retry-After` to the sign-in and recovery results; a register refused with `503 trial_unavailable` is a live refusal reported as `generic`, and a recovery-phrase rotation refused with `503 sync_not_configured` is a live refusal reported as `sync_not_configured`; neither is a transport failure or `rotation_unconfirmed` | `keeps the old package on %s and retries with the same package` in [src/sync/managed-recovery-rotation-service.test.ts](src/sync/managed-recovery-rotation-service.test.ts); `surfaces Retry-After on a rate-limited managed login`, `surfaces Retry-After on a rate-limited managed register`, `maps a 503 trial_unavailable body to its own code, not to network_failed`, `maps a 503 sync_not_configured body to its own code, not to network_failed` in [src/sync/managed-cloud-api-client.test.ts](src/sync/managed-cloud-api-client.test.ts); `carries Retry-After from a rate-limited managed login to the connect result`, `carries Retry-After from a rate-limited managed register to the connect result`, `reports a register refused with trial_unavailable as generic, not a network failure`, `carries Retry-After from a rate-limited managed recovery login to the recovery result` in [src/sync/sync-client-service.managed-auth-errors.test.ts](src/sync/sync-client-service.managed-auth-errors.test.ts) |
 
-### Android platform config (cleartext, backup, device transfer)
+### Platform config (cleartext, root pinning, backup, device transfer)
 
 | Claim | Enforced by |
 | --- | --- |
+| Both Android network security configs pin `managed.ovumcy.cloud` and `sync.ovumcy.cloud`, without subdomains, to exactly the four ISRG root SPKI pins — no leaf or intermediate pin — with a pin-set expiration of the UTC build date plus 365 days; an invalid build date fails the prebuild; the release main config still carries no cleartext exception | `pins both managed hosts to exactly the four ISRG root keys in the %s config (EAS profile %s)`, `keeps the release main config free of cleartext with pinning added`, `sets the pin-set expiration to the UTC build date plus 365 days`, `fails the prebuild on an invalid build date instead of writing a malformed expiration`, `holds the documented hosts and root pins in the shared pin module` in [src/security/android-platform-config.test.ts](src/security/android-platform-config.test.ts) |
+| iOS App Transport Security pins `managed.ovumcy.cloud` and `sync.ovumcy.cloud`, without subdomains, to exactly the four ISRG root keys as CA identities with no leaf identity, merging into any existing ATS dictionary, and the plugin is wired into `app.json` | `pins both managed hosts, without subdomains, to exactly the four ISRG root keys`, `merges into an existing App Transport Security dictionary and keeps its keys`, `replaces a stale entry for a managed host with the committed pin set`, `is wired into the app config` in [src/security/ios-platform-config.test.ts](src/security/ios-platform-config.test.ts) |
 | A release build for any EAS profile but `local` ships a network security config with no cleartext exception; the debug variant and the `local` profile exempt exactly `10.0.2.2`, `127.0.0.1` and `localhost`, no subdomains, and the plugin is wired into `app.json` | `ships no cleartext exception in the main config for EAS profile %s`, `exempts only the emulator-host/loopback dev addresses in the debug variant and the local profile`, `is wired into the app config` in [src/security/android-platform-config.test.ts](src/security/android-platform-config.test.ts) |
 | Cloud backup and device-to-device transfer exclude every backup domain on Android 12+ and below; the manifest points at these rules, replacing expo-secure-store's partial ones; `allowBackup` stays off and expo-secure-store's own backup rules stay disabled | `excludes every backup domain from cloud backup and device-to-device transfer`, `points the manifest at its own rules, replacing expo-secure-store's partial ones`, `keeps allowBackup off, the exclusion plugin wired, and expo-secure-store's own backup rules disabled` in [src/security/android-platform-config.test.ts](src/security/android-platform-config.test.ts) |
 
@@ -853,10 +870,13 @@ pregnancy never sets it, so neither signal ever covers the other.
   only ever sees opaque ciphertext is enforced jointly with the backend test
   suites (`ovumcy-sync-community` and the managed cloud); the app side is covered by
   the local/partner crypto rows above and by the env-gated live smoke tests.
-- **Certificate pinning enforcement.** Native pin registration
-  (`react-native-ssl-public-key-pinning`) is not yet wired, so the
-  observed-fingerprint comparison cannot be exercised against a real handshake in
-  the app test suite; only the pure policy and store are tested today. Planned.
+- **Certificate pinning enforcement.** The managed-host pins are enforced by
+  the platform TLS stacks, which the jest suite cannot drive: the matrix rows
+  above pin the generated configuration, and a refused handshake on a wrong pin
+  set is a device check from a cold start (the pre-release checklist in
+  [docs/sync-trust-model.md](docs/sync-trust-model.md#tls-pinning-posture)).
+  Self-hosted pin enforcement is planned; only its pure policy and store are
+  tested today.
 - **Signed premium entitlement tokens (honest non-DRM scope).** The
   entitlement-token verifier and its snapshot-fallback overlay are implemented
   and pinned by the matrix rows above, but remain dormant: the production
