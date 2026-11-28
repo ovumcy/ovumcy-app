@@ -15,6 +15,7 @@ placeholders below, then drag `site/` to the static host as-is.
 | `apple-app-site-association` | `https://invite.ovumcy.cloud/.well-known/apple-app-site-association` | same as above; **no `.json` extension** |
 | `fallback.html` | `https://invite.ovumcy.cloud/backup-sync` | static only; must never log/echo/persist the `invite_token` query value |
 | `site/backup-sync/style.css` | `https://invite.ovumcy.cloud/backup-sync/style.css` | `Content-Type: text/css`; the page has no inline style or script, so the host CSP can stay at `style-src 'self'` |
+| `site/.well-known/security.txt` | `https://invite.ovumcy.cloud/.well-known/security.txt` | RFC 9116; `Content-Type: text/plain; charset=utf-8`; renew `Expires` before 2027-11-01 |
 
 Deployment shape (2026-07-23): DNS for `invite.ovumcy.cloud` already points at the VPS, and the
 files are served at deploy time by a Traefik static route — companion infrastructure, not app
