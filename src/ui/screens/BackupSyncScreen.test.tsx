@@ -21,7 +21,10 @@ import {
 } from "../../services/settings-view-service";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
-import { createDefaultSyncPreferencesRecord } from "../../sync/sync-contract";
+import {
+  createDefaultSyncPreferencesRecord,
+  type SyncPreferencesRecord,
+} from "../../sync/sync-contract";
 import { openConfirmation, openLeaveConfirmation } from "../confirm/open-confirmation";
 import { BackupSyncScreen } from "./BackupSyncScreen";
 
@@ -3345,10 +3348,18 @@ describe("BackupSyncScreen", () => {
     it("lets a connected non-guest managed owner change the phrase through Ovumcy Cloud, revealed only after the 200 (owner path)", async () => {
       clearPendingManagedRecoveryRotation();
       const rotationCopy = selectManagedRecoveryRotationCopy("en");
+      // Keeps the consent the dialog records, so the submit-time check reads it back.
+      let ownerPreferences: Partial<SyncPreferencesRecord> =
+        createConnectedManagedPreferences();
       const ownerStorage = createSettingsStorageMock({
-        readSyncPreferencesRecord: jest
-          .fn()
-          .mockResolvedValue(createConnectedManagedPreferences()),
+        readSyncPreferencesRecord: jest.fn().mockImplementation(async () => ownerPreferences),
+        writeSyncPreferencesRecord: jest.fn(async (record, options) => {
+          ownerPreferences = {
+            ...record,
+            dataSharingConsent:
+              options?.dataSharingConsent ?? ownerPreferences.dataSharingConsent,
+          };
+        }),
       });
       const prepared = createSyncSecretsRecord(
         "Pixel 7",
