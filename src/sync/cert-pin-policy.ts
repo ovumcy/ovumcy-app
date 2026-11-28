@@ -10,8 +10,7 @@
 //     owner-entered pin from `cert-pin-store` and wraps it into a
 //     single-element array. A self-hoster may use a private CA or a
 //     self-signed cert, so no public root is a meaningful anchor there.
-//   - managed: the CA. The caller reads the build-time pin constants from
-//     `sync-contract` — the Let's Encrypt ISRG root keys, multi-pin so the
+//   - managed: the CA — the Let's Encrypt ISRG root keys, multi-pin so the
 //     pin survives ACME renewal (which mints a new leaf key) and the
 //     announced root-generation migration. See the TLS Pinning Posture
 //     section in docs/sync-trust-model.md for the pin set and the rationale.

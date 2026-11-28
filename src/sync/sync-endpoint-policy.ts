@@ -69,11 +69,8 @@ export function normalizeSyncEndpoint(
         host: managedHost,
         isLocalNetwork: managedIsLocalNetwork,
         isSecure: managedIsSecure,
-        // Managed pins come from the build-time constant, not from the
-        // caller. Callers passing options for managed are no-ops here:
-        // the trust set for ovumcy.cloud is controlled by the ovumcy team
-        // through `MANAGED_SYNC_PINNED_SPKI_FINGERPRINTS` and updated via
-        // app release coordinated with their cert rotation schedule.
+        // Caller-supplied pins are ignored for managed: the managed hosts
+        // are pinned natively (see resolveManagedPinSet below).
         pinnedSPKIFingerprints: resolveManagedPinSet(),
       },
     };

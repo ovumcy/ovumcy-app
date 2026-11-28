@@ -67,15 +67,13 @@ export type NormalizedSyncEndpoint = {
   // be added by the operator's deployment runbook when they're about to
   // rotate so the app accepts both old and new during the cutover window.
   //
-  // For `managed` endpoints the array carries the static pin set baked
-  // into the app at build time (see `MANAGED_SYNC_PINNED_SPKI_FINGERPRINTS`
-  // / `MANAGED_CLOUD_AUTH_PINNED_SPKI_FINGERPRINTS`). The ovumcy team owns
-  // the rotation schedule: each release that touches managed pins must ship
-  // current + next so the rotation window spans at least one release cycle.
+  // For `managed` endpoints the array is always null: the managed hosts are
+  // pinned to the Let's Encrypt root keys by the platform TLS configs
+  // generated from plugins/managed-cert-pins.js, which report nothing back
+  // to JS (see `resolveManagedPinSet` in sync-endpoint-policy).
   //
-  // Null (or absent) means the host is in the TOFU bootstrap window — no
-  // pin has been entered yet for self-hosted, or the managed constants are
-  // intentionally empty during local development against staging.
+  // Null (or absent) means no JS-side pin applies — for self-hosted, the
+  // host is in the TOFU bootstrap window with no pin entered yet.
   pinnedSPKIFingerprints?: readonly string[] | null;
 };
 

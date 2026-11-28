@@ -17,6 +17,10 @@ import {
   pinSetExpiration,
   writeNetworkSecurityConfigs,
 } from "../../plugins/withAndroidNetworkSecurityConfig";
+import {
+  MANAGED_CLOUD_AUTH_BASE_URL,
+  MANAGED_SYNC_BASE_URL,
+} from "../sync/sync-contract";
 
 const DEV_HOSTS = ["10.0.2.2", "127.0.0.1", "localhost"];
 
@@ -155,6 +159,12 @@ describe("Android managed-host root pinning", () => {
       ISRG_ROOT_PINS,
     );
     expect(ANDROID_PIN_SET_VALIDITY_DAYS).toBe(365);
+  });
+
+  it("pins every host the managed clients connect to by default", () => {
+    for (const baseURL of [MANAGED_SYNC_BASE_URL, MANAGED_CLOUD_AUTH_BASE_URL]) {
+      expect(MANAGED_PINNED_HOSTS).toContain(new URL(baseURL).hostname);
+    }
   });
 });
 
