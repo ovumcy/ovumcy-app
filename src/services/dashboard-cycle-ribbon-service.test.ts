@@ -1,5 +1,7 @@
+import { getDashboardCopy } from "../i18n/dashboard-copy";
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import {
+  SUPPORTED_INTERFACE_LANGUAGES,
   createDefaultProfileRecord,
   resolveCycleViews,
   type ProfileRecord,
@@ -143,6 +145,80 @@ describe("dashboard cycle ribbon", () => {
     expect(daysWhere(ribbon!.days, (day) => day.showScaleLabel)).toEqual([2, 28]);
     expect(ribbon!.accessibilityLabel).toContain("Predicted period days: cycle days 3–5.");
     expect(ribbon!.legend.map((item) => item.key)).toContain("predicted-flow");
+  });
+
+  it("names a one-day span and the truncated axis in every interface language", () => {
+    // Day 4 of a five-day period leaves day 5 alone as predicted.
+    const base = inputFor(profileOf(), recordsWith(3), new Date(2026, 2, 8, 10, 0, 0, 0));
+    for (const locale of SUPPORTED_INTERFACE_LANGUAGES) {
+      const copy = getDashboardCopy(locale).cycleRibbon;
+      const ribbon = buildDashboardCycleRibbon({
+        ...base,
+        locale,
+        projection: {
+          ...base.projection,
+          nextPeriodWindowStartDate: "2026-03-30",
+          nextPeriodWindowEndDate: "2026-05-30",
+        },
+      });
+
+      expect(daysWhere(ribbon!.days, (day) => day.isPredictedFlow)).toEqual([5]);
+      expect(ribbon!.accessibilityLabel).toContain(
+        `${copy.predictedPeriod}${copy.colon} ${copy.daySingle(5)}`,
+      );
+      expect(ribbon!.truncatedNote).toBe(copy.truncated(CYCLE_RIBBON_MAX_AXIS_DAYS));
+      expect(ribbon!.truncatedNote).toContain(String(CYCLE_RIBBON_MAX_AXIS_DAYS));
+    }
+  });
+
+  it("pins today's marker to the end near the last day", () => {
+    const ribbon = buildDashboardCycleRibbon(
+      inputFor(profileOf(), recordsWith(3), new Date(2026, 2, 31, 10, 0, 0, 0)),
+    );
+
+    expect(ribbon!.todayDay).toBe(27);
+    expect(ribbon!.todayMarkerAlign).toBe("end");
+  });
+
+  it("paints no start window that ends before the running cycle opened", () => {
+    const base = inputFor(profileOf(), recordsWith(3), MARCH_12);
+    const ribbon = buildDashboardCycleRibbon({
+      ...base,
+      projection: {
+        ...base.projection,
+        nextPeriodWindowStartDate: "2026-02-20",
+        nextPeriodWindowEndDate: "2026-02-25",
+      },
+    });
+
+    expect(ribbon!.days.some((day) => day.isStartWindow)).toBe(false);
+    expect(ribbon!.legend.map((item) => item.key)).not.toContain("start-window");
+  });
+
+  it("is not drawn when the period length leaves no cycle to place", () => {
+    const base = inputFor(profileOf(), recordsWith(3), MARCH_12);
+
+    expect(
+      buildDashboardCycleRibbon({
+        ...base,
+        projection: { ...base.projection, projectedPeriodLength: 0 },
+      }),
+    ).toBeNull();
+    expect(
+      buildDashboardCycleRibbon({
+        ...base,
+        projection: { ...base.projection, projectedPeriodLength: 28 },
+      }),
+    ).toBeNull();
+    // A projection without its own period length falls back to the profile's.
+    const { projectedPeriodLength: _projected, ...withoutPeriodLength } = base.projection;
+    expect(
+      buildDashboardCycleRibbon({
+        ...base,
+        profile: profileOf({ periodLength: 28 }),
+        projection: withoutPeriodLength,
+      }),
+    ).toBeNull();
   });
 
   it("extends the axis over a start window that runs past the cycle and caps it", () => {

@@ -23,6 +23,8 @@ export type CycleRibbonPhase =
   | "withheld"
   | "beyond";
 
+type InCyclePhase = Exclude<CycleRibbonPhase, "beyond">;
+
 export type CycleRibbonCellFlags = {
   phase: CycleRibbonPhase;
   isPredictedFlow: boolean;
@@ -49,6 +51,7 @@ export type DashboardCycleRibbonViewData = {
   // phase, then every span the legend names.
   accessibilityLabel: string;
   todayLabel: string;
+  todayDay: number;
   todayMarkerAlign: "start" | "center" | "end";
   days: CycleRibbonDayViewData[];
   legendLabel: string;
@@ -149,8 +152,7 @@ export function buildDashboardCycleRibbon({
   }
 
   const copy = getDashboardCopy(locale).cycleRibbon;
-  const phaseLabel = (phase: CycleRibbonPhase) =>
-    phase === "beyond" ? "" : copy.phases[phase];
+  const phaseLabel = (phase: InCyclePhase) => copy.phases[phase];
   const fertileRange = spanOf(days, (day) => day.isFertile);
   const predictedFlowRange = spanOf(days, (day) => day.isPredictedFlow);
   const startWindowRange = spanOf(days, (day) => day.isStartWindow);
@@ -158,9 +160,8 @@ export function buildDashboardCycleRibbon({
     range.startDay === range.endDay
       ? copy.daySingle(range.startDay)
       : copy.daysRange(range.startDay, range.endDay);
-  const todayPhase = resolvePhase(
+  const todayPhase = resolveInCyclePhase(
     currentDay,
-    cycleLength,
     periodLength,
     ovulationDay,
     fertilitySuppressed,
@@ -217,6 +218,7 @@ export function buildDashboardCycleRibbon({
   return {
     accessibilityLabel: summaryParts.join(" "),
     todayLabel: copy.today,
+    todayDay: currentDay,
     todayMarkerAlign:
       currentDay <= CYCLE_RIBBON_SCALE_LABEL_GAP
         ? "start"
@@ -238,9 +240,17 @@ function resolvePhase(
   ovulationDay: number,
   fertilitySuppressed: boolean,
 ): CycleRibbonPhase {
-  if (day > cycleLength) {
-    return "beyond";
-  }
+  return day > cycleLength
+    ? "beyond"
+    : resolveInCyclePhase(day, periodLength, ovulationDay, fertilitySuppressed);
+}
+
+function resolveInCyclePhase(
+  day: number,
+  periodLength: number,
+  ovulationDay: number,
+  fertilitySuppressed: boolean,
+): InCyclePhase {
   if (day <= periodLength) {
     return "menstrual";
   }
@@ -304,8 +314,8 @@ function spanOf(
   return first && last ? { startDay: first.day, endDay: last.day } : null;
 }
 
-function distinctPhases(days: readonly CycleRibbonDayViewData[]): CycleRibbonPhase[] {
-  const phases: CycleRibbonPhase[] = [];
+function distinctPhases(days: readonly CycleRibbonDayViewData[]): InCyclePhase[] {
+  const phases: InCyclePhase[] = [];
   for (const day of days) {
     if (day.phase !== "beyond" && !phases.includes(day.phase)) {
       phases.push(day.phase);

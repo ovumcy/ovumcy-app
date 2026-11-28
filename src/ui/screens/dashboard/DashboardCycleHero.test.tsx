@@ -214,6 +214,7 @@ describe("DashboardCycleHero", () => {
     const ribbon: DashboardCycleRibbonViewData = {
       accessibilityLabel: "Cycle map: today is cycle day 3 of about 4. Phase: Follicular.",
       todayLabel: "Today",
+      todayDay: 3,
       todayMarkerAlign: "end",
       days: [
         cell(1, { isLogged: true, showScaleLabel: true }),
@@ -252,5 +253,68 @@ describe("DashboardCycleHero", () => {
     expect(
       screen.getByTestId("dashboard-cycle-hero").props.accessibilityLabel,
     ).toContain("Cycle map: today is cycle day 3 of about 4.");
+  });
+
+  it("draws a start window past the cycle and the truncation note", async () => {
+    const flags = {
+      isPredictedFlow: false,
+      isFertile: false,
+      isFertilePeak: false,
+      isStartWindow: false,
+      isLogged: false,
+    };
+    const ribbon: DashboardCycleRibbonViewData = {
+      accessibilityLabel: "Cycle map: today is cycle day 2 of about 2. Phase: Luteal.",
+      todayLabel: "Today",
+      todayDay: 2,
+      todayMarkerAlign: "center",
+      days: [
+        { ...flags, day: 1, phase: "menstrual", isToday: false, showScaleLabel: true },
+        {
+          ...flags,
+          day: 2,
+          phase: "luteal",
+          isToday: true,
+          isStartWindow: true,
+          showScaleLabel: true,
+        },
+        {
+          ...flags,
+          day: 3,
+          phase: "beyond",
+          isToday: false,
+          isStartWindow: true,
+          showScaleLabel: true,
+        },
+      ],
+      legendLabel: "Cycle map legend",
+      legend: [
+        {
+          key: "start-window",
+          label: "Predicted start window",
+          swatches: [
+            { ...flags, phase: "luteal", isStartWindow: true },
+            { ...flags, phase: "beyond", isStartWindow: true },
+          ],
+        },
+      ],
+      truncatedNote: "The ribbon shows the first 60 days of this cycle.",
+    };
+
+    await renderHero({ ribbon });
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("dashboard-cycle-ribbon-day-3").props.style)
+        .backgroundColor,
+    ).toBe("transparent");
+    expect(screen.getByTestId("dashboard-cycle-ribbon-day-2").children).toHaveLength(1);
+    expect(
+      StyleSheet.flatten(screen.getByTestId("dashboard-cycle-ribbon-scale-3").props.style)
+        .textAlign,
+    ).toBe("right");
+    expect(screen.getByTestId("dashboard-cycle-ribbon-legend-start-window")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-cycle-ribbon-truncated").props.children).toBe(
+      "The ribbon shows the first 60 days of this cycle.",
+    );
   });
 });
