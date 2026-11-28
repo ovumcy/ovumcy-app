@@ -9,9 +9,9 @@
 // JSON-encoded record keeps SecureStore key sprawl bounded.
 //
 // Pin format is the base64-encoded SHA-256 hash of the leaf certificate
-// Subject Public Key Info (SPKI), matching the wire format consumed by
-// `react-native-ssl-public-key-pinning`. Other formats are rejected at write
-// time so a malformed pin can never reach the enforcement layer.
+// Subject Public Key Info (SPKI) — the same encoding as the platform pin
+// configs generated for the managed hosts. Other formats are rejected at write
+// time so a malformed pin can never reach a future self-hosted enforcement path.
 
 const CERT_PIN_STORE_KEY = "ovumcy.sync-cert-pins";
 
@@ -178,8 +178,8 @@ function isCertPinRecord(value: unknown): value is CertPinRecord {
 
 function isValidFingerprint(fingerprint: string): boolean {
   // base64-encoded SHA-256 = 32 bytes = 44 chars including a single `=` pad.
-  // `react-native-ssl-public-key-pinning` consumes this exact shape. Reject
-  // anything else at write time so the enforcement layer never sees garbage.
+  // Reject anything else at write time so an enforcement path never sees
+  // garbage.
   return /^[A-Za-z0-9+/]{43}=$/.test(fingerprint);
 }
 

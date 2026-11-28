@@ -133,4 +133,4 @@ Reminders are local notifications, scheduled only after the owner grants permiss
 
 - A managed disconnect clears the partner-share secret store, and every end of a managed session clears the entitlement token; an unauthorized sign-out, a self-hosted disconnect and a sync-mode switch keep the partner-share store. Outside those paths and the wipe paths only a single grant key can be cleared (`clearManagedPartnerGrantKey`).
 - The TLS pin store (`src/security/cert-pin-store.ts`) has a SecureStore backend, but no flow writes a pin yet; the wipe paths delete its entry.
-- Certificate pinning is not enforced natively (see `SECURITY.md`).
+- Self-hosted sync and the web build are not certificate-pinned; only the managed hosts are, on Android and iOS (see `SECURITY.md`).
