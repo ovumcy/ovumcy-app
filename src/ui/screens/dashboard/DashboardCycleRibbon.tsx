@@ -22,25 +22,21 @@ const AXIS_LABEL_WIDTH = 96;
 export function DashboardCycleRibbon({ viewData }: DashboardCycleRibbonProps) {
   const styles = useThemedStyles(createStyles);
   const axisDays = viewData.days.length;
-  const today = viewData.days.find((day) => day.isToday) ?? null;
-  const lastDay = viewData.days[axisDays - 1]?.day ?? 1;
 
   return (
     <View style={styles.root} testID="dashboard-cycle-ribbon">
       <View style={styles.axisRow}>
-        {today ? (
-          <Text
-            maxFontSizeMultiplier={fontScale.dense}
-            numberOfLines={1}
-            style={[
-              styles.todayLabel,
-              axisLabelPosition(today.day, axisDays, viewData.todayMarkerAlign),
-            ]}
-            testID="dashboard-cycle-ribbon-today-marker"
-          >
-            {viewData.todayLabel}
-          </Text>
-        ) : null}
+        <Text
+          maxFontSizeMultiplier={fontScale.dense}
+          numberOfLines={1}
+          style={[
+            styles.todayLabel,
+            axisLabelPosition(viewData.todayDay, axisDays, viewData.todayMarkerAlign),
+          ]}
+          testID="dashboard-cycle-ribbon-today-marker"
+        >
+          {viewData.todayLabel}
+        </Text>
       </View>
 
       <View style={styles.cells}>
@@ -74,13 +70,8 @@ export function DashboardCycleRibbon({ viewData }: DashboardCycleRibbonProps) {
                 axisLabelPosition(
                   day.day,
                   axisDays,
-                  day.isToday
-                    ? viewData.todayMarkerAlign
-                    : day.day === 1
-                      ? "start"
-                      : day.day === lastDay
-                        ? "end"
-                        : "center",
+                  // Besides today only day 1 and the last day carry a number.
+                  day.isToday ? viewData.todayMarkerAlign : day.day === 1 ? "start" : "end",
                 ),
               ]}
               testID={`dashboard-cycle-ribbon-scale-${String(day.day)}`}
