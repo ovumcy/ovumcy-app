@@ -63,6 +63,7 @@ export type ExportSymptomFlags = {
   foodCravings: boolean;
   diarrhea: boolean;
   constipation: boolean;
+  swelling: boolean;
 };
 
 // Pregnancy-mode fields. weightKg/bpSystolic/bpDiastolic are per-day

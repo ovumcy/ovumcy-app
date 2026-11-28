@@ -90,13 +90,14 @@ export const EXPORT_CSV_HEADERS = [
   "Food cravings",
   "Diarrhea",
   "Constipation",
+  "Swelling",
   "Cycle factors",
   "Other",
   "Notes",
   // These three columns use the ovumcy-web Free-tier header names, in that
   // relative order. The columns above are not an exact mirror of web's: the app
-  // adds `LH test` and has no `Swelling` column, so a consumer matches columns
-  // by header name rather than by position.
+  // adds `LH test`, so a consumer matches columns by header name rather than by
+  // position.
   "Pregnancy test",
   "Cycle start",
   "Uncertain",
@@ -127,6 +128,7 @@ const EXPORT_SYMPTOM_COLUMNS_BY_LABEL: Record<string, keyof ExportSymptomFlags> 
   "food cravings": "foodCravings",
   diarrhea: "diarrhea",
   constipation: "constipation",
+  swelling: "swelling",
 };
 
 export async function loadLocalExportState(
@@ -541,6 +543,7 @@ export function serializeExportCSV(
         booleanToCSV(row.symptoms.foodCravings),
         booleanToCSV(row.symptoms.diarrhea),
         booleanToCSV(row.symptoms.constipation),
+        booleanToCSV(row.symptoms.swelling),
         row.cycleFactors.map(sanitizeCSVTextCell).join("; "),
         row.otherSymptoms.map(sanitizeCSVTextCell).join("; "),
         sanitizeCSVTextCell(row.notes),
@@ -610,6 +613,7 @@ function createEmptyExportSymptomFlags(): ExportSymptomFlags {
     foodCravings: false,
     diarrhea: false,
     constipation: false,
+    swelling: false,
   };
 }
 

@@ -739,6 +739,22 @@ describe("CSV completeness: pregnancy test, cycle start, uncertain", () => {
     expect(dataLine?.split(",").slice(-3)).toEqual(["", "", ""]);
   });
 
+  it("writes built-in Swelling to its own column after Constipation, as web does", () => {
+    const rows = buildExportCSVRows(
+      [{ ...createEmptyDayLogRecord("2026-03-02"), symptomIDs: ["swelling"] }],
+      createDefaultSymptomRecords(),
+      "c",
+    );
+    const csv = serializeExportCSV([...EXPORT_CSV_HEADERS], rows, range);
+    const [headerLine, dataLine] = csv.trim().split("\n");
+    const headers = headerLine?.split(",") ?? [];
+    const cells = dataLine?.split(",") ?? [];
+
+    expect(headers.indexOf("Swelling")).toBe(headers.indexOf("Constipation") + 1);
+    expect(cells[headers.indexOf("Swelling")]).toBe("Yes");
+    expect(cells[headers.indexOf("Other")]).toBe("");
+  });
+
   it("keeps a negative result distinguishable from no test at all", () => {
     const rows = buildExportCSVRows(
       [

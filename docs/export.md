@@ -103,18 +103,18 @@ One header row, then one row per logged day inside the range, ascending by date.
 Date, Period, Flow, Mood rating, Sex activity, BBT (C) | BBT (F), Cervical mucus,
 LH test, Cramps, Headache, Acne, Mood, Bloating, Fatigue, Breast tenderness,
 Back pain, Nausea, Spotting, Irritability, Insomnia, Food cravings, Diarrhea,
-Constipation, Cycle factors, Other, Notes, Pregnancy test, Cycle start, Uncertain,
+Constipation, Swelling, Cycle factors, Other, Notes, Pregnancy test, Cycle start, Uncertain,
 Weight (kg), BP systolic (mmHg), BP diastolic (mmHg), Kick count
 ```
 
 Cell semantics:
 
 - `Date` is `YYYY-MM-DD`.
-- Boolean cells (`Period`, the 15 symptom columns, `Cycle start`, `Uncertain`) are `Yes` when set and empty otherwise. Web differs: it writes `Yes`/`No`.
+- Boolean cells (`Period`, the 16 symptom columns, `Cycle start`, `Uncertain`) are `Yes` when set and empty otherwise. Web differs: it writes `Yes`/`No`.
 - `Flow`, `Sex activity`, `Cervical mucus`, `LH test` and `Pregnancy test` carry the lowercase stored value, and are empty for `none`. Web differs: it writes capitalized labels.
 - `Mood rating`, the weight and blood-pressure columns and `Kick count` are empty when unset. `Kick count` is the total of that day's kick-count sessions.
 - `BBT` is empty when not measured. Unlike the JSON export, the CSV converts the stored Celsius value to the account's display unit, rounded to two decimals, and the header says which: `BBT (C)` or `BBT (F)`. Web differs: it always writes Celsius under `BBT (C)`.
-- The 15 symptom columns are filled from the day's symptoms by label. `Mood swings` counts as `Mood`. Every other symptom, built-in or custom, is listed by name in `Other`, sorted alphabetically and joined with `; `. Web has a sixteenth built-in column, `Swelling`, that the app does not.
+- The 16 symptom columns, the same built-in set as web's, are filled from the day's symptoms by label. `Mood swings` counts as `Mood`. Every other symptom, built-in or custom, is listed by name in `Other`, sorted alphabetically and joined with `; `.
 - `Cycle factors` is a `; `-joined list of the stored lowercase keys, for example `sleep_disruption`. Web writes display labels.
 - Formula injection: `Cycle factors`, `Other` and `Notes` are the cells built from free text. A value that starts, after leading spaces, with `=`, `+`, `-`, `@`, a tab, CR or LF gets a leading `'`.
 - Quoting: every cell containing a comma, semicolon, double quote, CR or LF is wrapped in double quotes with inner quotes doubled, so a semicolon-delimited spreadsheet locale or a bare CR cannot split a cell. A multi-value cell (`Cycle factors`, `Other`) joins its items with `; ` and is therefore always quoted.
