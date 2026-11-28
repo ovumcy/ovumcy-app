@@ -8,6 +8,11 @@ const mockBack = jest.fn();
 const mockReplace = jest.fn();
 const mockCanGoBack = jest.fn();
 
+jest.mock("../../services/about-view-service", () => ({
+  ...jest.requireActual("../../services/about-view-service"),
+  readAppVersion: () => "9.9.9 (1)",
+}));
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     back: mockBack,
@@ -48,7 +53,7 @@ describe("AboutScreen", () => {
   it("reads the version from the app config by default", async () => {
     await renderScreen();
 
-    expect(screen.getByTestId("about-version-value")).toBeTruthy();
+    expect(screen.getByTestId("about-version-value")).toHaveTextContent("Ovumcy 9.9.9 (1)");
   });
 
   it("goes back when there is history", async () => {

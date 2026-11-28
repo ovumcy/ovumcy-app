@@ -1,11 +1,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { Platform } from "react-native";
+
 import { selectAboutCopy } from "../i18n/about-copy";
 import { buildAboutViewData, readAppVersion } from "./about-view-service";
 import { DEJAVU_FONT_LICENSE_TEXT } from "./third-party-notices";
 
-const mockConstants: { expoConfig: { version?: string } | null } = {
+const mockConstants: {
+  expoConfig: {
+    version?: string;
+    android?: { versionCode?: number };
+    ios?: { buildNumber?: string };
+  } | null;
+} = {
   expoConfig: { version: "1.2.3" },
 };
 
@@ -21,10 +29,25 @@ const LANGUAGES = ["en", "de", "fr", "ru", "es", "it"] as const;
 describe("about-view-service", () => {
   afterEach(() => {
     mockConstants.expoConfig = { version: "1.2.3" };
+    jest.restoreAllMocks();
   });
 
   it("reads the app version from the Expo config", () => {
     expect(readAppVersion()).toBe("1.2.3");
+  });
+
+  it("adds the platform build number to the version", () => {
+    mockConstants.expoConfig = {
+      version: "1.2.3",
+      android: { versionCode: 4 },
+      ios: { buildNumber: "7" },
+    };
+
+    jest.replaceProperty(Platform, "OS", "android");
+    expect(readAppVersion()).toBe("1.2.3 (4)");
+
+    jest.replaceProperty(Platform, "OS", "ios");
+    expect(readAppVersion()).toBe("1.2.3 (7)");
   });
 
   it("reports no version when the Expo config carries none", () => {

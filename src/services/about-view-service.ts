@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 import { selectAboutCopy } from "../i18n/about-copy";
 import { DEJAVU_FONT_LICENSE_TEXT } from "./third-party-notices";
@@ -21,8 +22,15 @@ export type AboutViewData = {
   };
 };
 
+/** "1.0.0 (4)": the build number tells builds apart while the version stays. */
 export function readAppVersion(): string | null {
-  return Constants.expoConfig?.version ?? null;
+  const config = Constants.expoConfig;
+  if (!config?.version) {
+    return null;
+  }
+  const build =
+    Platform.OS === "ios" ? config.ios?.buildNumber : config.android?.versionCode;
+  return build ? `${config.version} (${build})` : config.version;
 }
 
 export function buildAboutViewData(
